@@ -1,3 +1,4 @@
+#include "gaus-Hermite.h"
 #include "mvtnorm-wrapper.h"
 #include "integrand-binary.h"
 
@@ -7,7 +8,8 @@ Rcpp::List pmvnorm_cpp(arma::vec const &lower, arma::vec const &upper,
                        int const maxpts, double const abseps,
                        double const releps){
   using Rcpp::Named;
-  auto res = pmvnorm::cdf(lower, upper, mean, cov, maxpts, abseps, releps);
+  auto const res = pmvnorm::cdf(
+    lower, upper, mean, cov, maxpts, abseps, releps);
 
   return Rcpp::List::create(Named("value")  = res.value,
                             Named("error")  = res.error,
@@ -24,7 +26,8 @@ Rcpp::NumericVector aprx_binary_mix(
 
   set_integrand(std::unique_ptr<integrand>(
       new mix_binary(y, eta, Z, Sigma)));
-  auto res = integral_arpx(mxvals, key, epsabs, epsrel);
+  auto const res = integral_arpx(
+    mxvals, key, epsabs, epsrel);
 
   NumericVector out = NumericVector::create(res.value);
   out.attr("error") = res.err;
@@ -33,3 +36,60 @@ Rcpp::NumericVector aprx_binary_mix(
 
   return out;
 }
+
+// [[Rcpp::export]]
+Rcpp::NumericVector aprx_binary_mix_cdf(
+    arma::ivec const &y, arma::vec eta, arma::mat Z,
+    arma::mat const &Sigma, int const maxpts, double const abseps,
+    double const releps){
+  using Rcpp::NumericVector;
+
+  arma::uword const n = y.n_elem,
+                    p = Z.n_rows;
+  assert(eta.n_elem == n);
+  assert(Z.n_cols == n);
+  assert(Sigma.n_cols == p);
+  assert(Sigma.n_rows == p);
+
+  {
+    arma::rowvec dum_vec(n, arma::fill::ones);
+    dum_vec.elem(arma::find(y < 1L)).fill(-1);
+    Z.each_row() %= dum_vec;
+    eta %= dum_vec.t();
+  }
+
+  arma::mat S = Z.t() * (Sigma * Z);
+  S.diag() += 1.;
+  arma::vec const mean(n, arma::fill::zeros);
+  arma::vec lower(n);
+  lower.fill(-std::numeric_limits<double>::infinity());
+
+  auto const res =
+    pmvnorm::cdf(lower, eta, mean, S, maxpts, abseps, releps);
+
+  NumericVector out = NumericVector::create(res.value);
+  out.attr("inform") = res.inform;
+  out.attr("error")  = res.error;
+
+  return out;
+}
+
+/* use to set cached values to avoid computation cost from computing the
+ * weights */
+// [[Rcpp::export]]
+Rcpp::List set_GH_rule_cached(unsigned const b){
+  auto const &res = GaussHermite::gaussHermiteDataCached(b);
+  return Rcpp::List::create(
+    Rcpp::Named("x") = res.x, Rcpp::Named("w") = res.w);
+}
+
+// [[Rcpp::export]]
+double aprx_binary_mix_ghq(
+    arma::ivec const &y, arma::vec eta, arma::mat Z,
+    arma::mat const &Sigma, unsigned const b){
+  auto const &rule = GaussHermite::gaussHermiteDataCached(b);
+  mix_binary integrand(y, eta, Z, Sigma);
+
+  return GaussHermite::approx(rule, integrand);
+}
+

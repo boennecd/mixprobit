@@ -13,6 +13,8 @@ Authors@R: c(
   person("Bjoern", "Bornkamp", 
          role = c("aut", "cph")), 
   person("Torsten", "Hothorn", 
+         role = c("aut", "cph")), 
+  person("Alexander", "Blocker", 
          role = c("aut", "cph")))
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.

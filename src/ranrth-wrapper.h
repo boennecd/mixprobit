@@ -7,7 +7,8 @@ namespace ranrth_aprx {
 class integrand {
 public:
   /* returns the integrand value at a given point */
-  virtual double operator()(double const*) const = 0;
+  virtual double operator()
+  (double const*, bool const ret_log = false) const = 0;
 
   /* returns the dimension of the integral */
   virtual std::size_t get_n_par() const = 0;

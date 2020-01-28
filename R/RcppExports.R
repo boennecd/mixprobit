@@ -9,3 +9,15 @@ aprx_binary_mix <- function(y, eta, Z, Sigma, mxvals, key, epsabs, epsrel) {
     .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, mxvals, key, epsabs, epsrel)
 }
 
+aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps) {
+    .Call('_mixprobit_aprx_binary_mix_cdf', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps)
+}
+
+set_GH_rule_cached <- function(b) {
+    .Call('_mixprobit_set_GH_rule_cached', PACKAGE = 'mixprobit', b)
+}
+
+aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b) {
+    .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b)
+}
+

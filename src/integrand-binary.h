@@ -25,7 +25,8 @@ public:
     assert(n_par > 1L);
   }
 
-  double operator()(double const*) const;
+  double operator()
+  (double const*, bool const ret_log = false) const;
 
   std::size_t get_n_par() const {
     return n_par;
