@@ -1,0 +1,139 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+bibliography: README.bib
+nocite: | 
+  @Ochi84, @Liu94, @Genz98, @Genz02, @Pawitan04, 
+---
+
+# Mixed Models with Probit Link
+
+```{r setup, echo = FALSE, cache=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>", fig.path = "README-", dpi = 124, 
+  error = FALSE)
+```
+
+We make a comparison below of making an approximation of a marignal 
+log-likelihood term that is typical in many mixed effect models with a 
+probit link funciton. 
+
+TODO: make a better description.
+
+```{r chunk_run, cache = TRUE}
+options(digits = 4)
+set.seed(2)
+
+#####
+# parameters to change
+n <- 10L                             # cluster size
+p <- 4L                              # number of random effects
+b <- 30L                             # number of nodes to use with Gaussian
+                                     # Hermite quadrature
+maxpts <- p * 10000L                 # factor to set the (maximum) number of
+                                     # evaluations of  the integrand with
+                                     # the other methods
+
+#####
+# variables used in simulation
+Z <- do.call(                        # random effect design matrix
+  rbind, c(list(1), list(replicate(n, runif(p - 1L, -1, 1)))))
+eta <- runif(n, -1, 1)               # fixed offsets/fixed effects
+n <- NCOL(Z)                         # number of individuals
+p <- NROW(Z)                         # number of random effects
+S <- drop(                           # covariance matrix of random effects
+  rWishart(1, p, diag(sqrt(1/ 2 / p), p)))
+S_chol <- chol(S)
+u <- drop(rnorm(p) %*% S_chol)       # random effects
+y <- runif(n) < pnorm(drop(u %*% Z)) # observed outcomes
+
+#####
+# use Gaussian Hermite quadrature (GHQ)
+library(fastGHQuad)
+rule <- fastGHQuad::gaussHermiteData(b)
+f <- function(x)
+  sum(mapply(pnorm, q = eta + sqrt(2) * drop(x %*% S_chol %*% Z),
+             lower.tail = y, log.p = TRUE))
+
+idx <- do.call(expand.grid, replicate(p, 1:b, simplify = FALSE))
+
+xs <- local({
+  args <- list(FUN = c, SIMPLIFY = FALSE)
+  do.call(mapply, c(args, lapply(idx, function(i) rule$x[i])))
+})
+ws_log <- local({
+  args <- list(FUN = prod)
+  log(do.call(mapply, c(args, lapply(idx, function(i) rule$w[i]))))
+})
+
+# function that makes the approximation
+f1 <- function()
+  sum(exp(ws_log + vapply(xs, f, numeric(1L)))) / pi^(p / 2)
+
+f  <- compiler::cmpfun(f)
+f1 <- compiler::cmpfun(f1)
+
+# same function but written in C++
+invisible(mixprobit:::set_GH_rule_cached(b))
+f1_cpp <- function()
+  mixprobit:::aprx_binary_mix_ghq(y = y, eta = eta, Z = Z, Sigma = S,
+                                  b = b)
+
+#####
+# function that returns the CDF approximation like in Pawitan et al. (2004)
+library(mvtnorm)
+f2 <- function(){
+  dum_vec <- ifelse(y, 1, -1)
+  Z_tilde <- Z * rep(dum_vec, each = p)
+  SMat <- crossprod(Z_tilde , S %*% Z_tilde)
+  diag(SMat) <- diag(SMat) + 1
+  pmvnorm(upper = dum_vec * eta, mean = rep(0, n), sigma = SMat,
+          algorithm = GenzBretz(maxpts = maxpts, abseps = 1e-5))
+}
+f2 <- compiler::cmpfun(f2)
+
+# same function but written in C++
+f2_cpp <- function(mxpts = maxpts, abseps = 1e-5)
+  mixprobit:::aprx_binary_mix_cdf(
+    y = y, eta = eta, Z = Z, Sigma = S, maxpts = mxpts,
+    abseps = abseps, releps = -1)
+
+#####
+# use method from Genz & Monahan (1998)
+f3 <- function(key, mxpts = 3L * maxpts, abseps = 1e-5)
+  mixprobit:::aprx_binary_mix(
+    y = y, eta = eta, Z = Z, Sigma = S,
+    mxvals = mxpts, key = key, epsabs = abseps, epsrel = -1)
+
+#####
+# compare results. Start with the simulation based methods with a lot of
+# samples
+capital_T_truth_maybe1 <- f2_cpp(mxpts = 1e7, abseps = 1e-11)
+capital_T_truth_maybe2 <- f3(key = 2L, mxpts = 1e7, abseps = 1e-11)
+dput(capital_T_truth_maybe1)
+dput(capital_T_truth_maybe2)
+all.equal(c(capital_T_truth_maybe1), c(capital_T_truth_maybe2))
+capital_T_truth_maybe <- c(capital_T_truth_maybe1)
+
+# compare with using fewer samples and GHQ
+all.equal(capital_T_truth_maybe,   f1())
+all.equal(capital_T_truth_maybe,   f1_cpp())
+all.equal(capital_T_truth_maybe, c(f2()))
+all.equal(capital_T_truth_maybe, c(f2_cpp()))
+all.equal(capital_T_truth_maybe, c(f3(1L)))
+all.equal(capital_T_truth_maybe, c(f3(2L)))
+all.equal(capital_T_truth_maybe, c(f3(3L)))
+all.equal(capital_T_truth_maybe, c(f3(4L)))
+
+# compare computations times
+system.time(f1()) # way too slow (seconds!). Use C++ method instead
+microbenchmark::microbenchmark(
+  `GHQ (C++)` = f1_cpp(),
+  `CDF` = f2(), `CDF (C++)` = f2_cpp(),
+  `Genz & Monahan (1)` = f3(1L), `Genz & Monahan (2)` = f3(2L),
+  `Genz & Monahan (3)` = f3(3L), `Genz & Monahan (4)` = f3(4L),
+  times = 10)
+```
+
+## References
