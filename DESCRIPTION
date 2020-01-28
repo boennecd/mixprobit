@@ -5,8 +5,15 @@ Version: 0.1.0
 Authors@R: c(
   person("Benjamin", "Christoffersen", 
          email = "boennecd@gmail.com", 
-         role = c("cre", "aut")))
-Maintainer: The package maintainer <yourself@somewhere.net>
+         role = c("cre", "aut")), 
+  person("Alan", "Genz", 
+         role = c("aut", "cph")),
+  person("Frank", "Bretz", 
+         role = c("aut", "cph")),
+  person("Bjoern", "Bornkamp", 
+         role = c("aut", "cph")), 
+  person("Torsten", "Hothorn", 
+         role = c("aut", "cph")))
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: GPL-2

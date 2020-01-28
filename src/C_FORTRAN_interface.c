@@ -5,7 +5,9 @@
 *
 */
 
-#include "mvtnorm.h"
+#include <R.h>
+#include <Rmath.h>
+#include <Rinternals.h>
 
 double F77_SUB(unifrnd)(void) {
   return unif_rand();
@@ -18,5 +20,18 @@ double F77_SUB(phid)(double *x){
 }
 double F77_SUB(studnt)(int *nu, double *x){
   return pt(x[0], (double) nu[0], 1, 0);
+}
+
+double F77_SUB(gamran)(double *a){
+  return rgamma(*a, 1);
+}
+double F77_SUB(norran)(void){
+  return norm_rand();
+}
+double F77_SUB(rnrnor)(void){
+  return norm_rand();
+}
+double F77_SUB(betran)(double *a, double *b){
+  return rbeta(*a, *b);
 }
 

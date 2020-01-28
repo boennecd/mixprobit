@@ -23,11 +23,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// aprx_binary_mix
+Rcpp::NumericVector aprx_binary_mix(arma::ivec const& y, arma::vec const& eta, arma::mat const& Z, arma::mat const& Sigma, int const mxvals, int const key, double const epsabs, double const epsrel);
+RcppExport SEXP _mixprobit_aprx_binary_mix(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP mxvalsSEXP, SEXP keySEXP, SEXP epsabsSEXP, SEXP epsrelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ivec const& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< int const >::type mxvals(mxvalsSEXP);
+    Rcpp::traits::input_parameter< int const >::type key(keySEXP);
+    Rcpp::traits::input_parameter< double const >::type epsabs(epsabsSEXP);
+    Rcpp::traits::input_parameter< double const >::type epsrel(epsrelSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix(y, eta, Z, Sigma, mxvals, key, epsabs, epsrel));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP run_testthat_tests();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
+    {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 8},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };
