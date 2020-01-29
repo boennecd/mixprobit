@@ -93,3 +93,23 @@ double aprx_binary_mix_ghq(
   return GaussHermite::approx(rule, integrand);
 }
 
+/* brute force MC estimate */
+// [[Rcpp::export]]
+double aprx_binary_mix_brute(
+    arma::ivec const &y, arma::vec eta, arma::mat Z,
+    arma::mat const &Sigma, unsigned const n_sim){
+  std::size_t const p = Sigma.n_cols;
+  mix_binary integrand(y, eta, Z, Sigma);
+  arma::vec par_vec(p);
+
+  double out(0.);
+  for(unsigned i = 0; i < n_sim; ++i){
+    for(unsigned j = 0; j < p; ++j)
+      par_vec[j] = R::rnorm(0, 1);
+
+    out += integrand(par_vec.begin());
+  }
+
+  out /= (double)n_sim;
+  return out;
+}

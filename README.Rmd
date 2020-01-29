@@ -2,9 +2,10 @@
 output:
   md_document:
     variant: markdown_github
+    pandoc_args: --webtex=https://latex.codecogs.com/svg.latex?
 bibliography: README.bib
 nocite: | 
-  @Ochi84, @Liu94, @Genz98, @Genz02, @Pawitan04, 
+  @Ochi84, @Liu94, @Genz98, @Genz99, @Genz02, @Pawitan04, 
 ---
 
 # Mixed Models with Probit Link
@@ -13,17 +14,36 @@ nocite: |
 knitr::opts_chunk$set(
   collapse = TRUE, comment = "#>", fig.path = "README-", dpi = 124, 
   error = FALSE)
+options(digits = 4)
 ```
 
 We make a comparison below of making an approximation of a marignal 
-log-likelihood term that is typical in many mixed effect models with a 
-probit link funciton. 
+likelihood factor that is typical in many mixed effect models with a 
+probit link funciton. The particular model we use here is mixed probit 
+model where the observed outcomes are binary. In this model, a marignal 
+factor, $L$, is
 
-TODO: make a better description.
+$$\begin{align*}
+L &= \int \phi^{(p)}(\vec u; \vec 0, \Sigma)
+  \prod_{i = 1}^n 
+  \Phi(\eta_i + \vec z_i^\top\vec u)^{y_i} 
+  \Phi(-\eta_i-\vec z_i^\top\vec u)^{1 - y_i}
+  d\vec u \\
+\vec y &\in \{0,1\}^n \\
+\phi^{(p)}(\vec u;\vec \mu, \Sigma) &= 
+  \frac 1{(2\pi)^{p/2}\lvert\Sigma\rvert^{1/2}}
+  \exp\left(-\frac 12 \vec u^\top\Sigma^{-1}\vec u\right) \\
+\Phi(x) &= \int_0^x\phi^{(1)}(z;0,1)dz
+\end{align*}$$
+
+where $\eta_i$ can be a fixed effect like $\vec x_i^\top\vec\beta$ for some
+fixed effect covariate $\vec x_i$ and fixed effect coefficient $\vec\beta$.
+
+## Quick Comparison
 
 First, we assign a few functions that we are going to use.
 
-```{r def_func, cache = TRUE}
+```{r def_func, cache = 1}
 aprx <- within(list(), {
   #####
   # returns a function to perform Gaussian Hermite quadrature (GHQ).
@@ -94,8 +114,9 @@ aprx <- within(list(), {
   #   Z: p by n matrix with random effect covariates. 
   #   S: n by n matrix with random effect covaraites.
   #   maxpts: maximum number of function values as integer. 
-  #   abseps: bsolute error tolerance.
-  get_cdf_R <- function(y, eta, Z, S, maxpts, abseps = 1e-5){
+  #   abseps: absolute error tolerance.
+  #   releps: relative error tolerance.
+  get_cdf_R <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1){
     library(compiler)
     library(mvtnorm)
     p <- NROW(Z)
@@ -106,7 +127,8 @@ aprx <- within(list(), {
       SMat <- crossprod(Z_tilde , S %*% Z_tilde)
       diag(SMat) <- diag(SMat) + 1
       pmvnorm(upper = dum_vec * eta, mean = rep(0, n), sigma = SMat,
-              algorithm = GenzBretz(maxpts = maxpts, abseps = abseps))
+              algorithm = GenzBretz(maxpts = maxpts, abseps = abseps, 
+                                    releps = releps))
     }
     out <- cmpfun(out)
     out
@@ -124,14 +146,16 @@ aprx <- within(list(), {
   #   S: n by n matrix with random effect covaraites.
   #   maxpts: maximum number of function values as integer. 
   #   abseps: bsolute error tolerance.
-  get_cdf_cpp <- function(y, eta, Z, S, maxpts, abseps = 1e-5)
+  #   releps: relative error tolerance.
+  get_cdf_cpp <- function(y, eta, Z, S, maxpts, abseps = 1e-5, 
+                          releps = -1)
     function()
       mixprobit:::aprx_binary_mix_cdf(
         y = y, eta = eta, Z = Z, Sigma = S, maxpts = maxpts,
-        abseps = abseps, releps = -1)
+        abseps = abseps, releps = releps)
   
   #####
-  # returns a function that uses the method from Genz & Monahan (1998).
+  # returns a function that uses the method from Genz & Monahan (1999).
   #
   # Args:
   #   y: n length logical vector with for whether the observation has an 
@@ -141,20 +165,21 @@ aprx <- within(list(), {
   #   S: n by n matrix with random effect covaraites.
   #   maxpts: maximum number of function values as integer. 
   #   abseps: bsolute error tolerance.
-  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5)
+  #   releps: relative error tolerance.
+  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1)
     # Args: 
     #   key: integer which determines degree of integration rule.
     function(key)
       mixprobit:::aprx_binary_mix(
         y = y, eta = eta, Z = Z, Sigma = S, mxvals = maxpts, key = key, 
-        epsabs = abseps, epsrel = -1)
+        epsabs = abseps, epsrel = releps)
 })
 ```
 
 Then we assign a function to get a simulated data set for a single cluster 
 within a mixed probit model with binary outcomes.
 
-```{r assign_sim_func, cache = TRUE}
+```{r assign_sim_func, cache = 1}
 #####
 # returns a simulated data set from one cluster in a mixed probit model 
 # with binary outcomes.
@@ -181,8 +206,11 @@ get_sim_dat <- function(n, p){
 
 Next we perform a quick example.
 
-```{r quick_illustration, cache = TRUE, dependson = c("def_func", "assign_sim_func")}
-options(digits = 4)
+```{r pre_cleanup, echo = FALSE}
+cur_vars <- ls()
+```
+
+```{r quick_illustration, cache = 1, dependson = c("def_func", "assign_sim_func")}
 set.seed(2)
 
 #####
@@ -198,49 +226,48 @@ maxpts <- p * 10000L  # factor to set the (maximum) number of
 # variables used in simulation
 dat <- get_sim_dat(n = n, p = p)
 
+# shorter than calling `with(dat, ...)`
+wd <- function(expr)
+  eval(bquote(with(dat, .(substitute(expr)))), parent.frame())
+
 #####
 # get the functions to use
-GHQ_R   <- with(dat, 
-                aprx$get_GHQ_R  (y = y, eta = eta, Z = Z, S = S, b = b))
-GHQ_cpp <- with(dat,
-                aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
+GHQ_R   <- wd(aprx$get_GHQ_R  (y = y, eta = eta, Z = Z, S = S, b = b))
+GHQ_cpp <- wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
 
-cdf_aprx_R   <- with(dat, 
-                     aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
-                                      maxpts = maxpts))
-cdf_aprx_cpp <- with(dat, 
-                     aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
-                                      maxpts = maxpts))
+cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
+                                    maxpts = maxpts))
+cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
+                                    maxpts = maxpts))
 
-sim_aprx <- with(dat, 
-                 aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
-                                  maxpts = maxpts))
+sim_aprx <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                maxpts = maxpts))
 
 #####
 # compare results. Start with the simulation based methods with a lot of
 # samples. We take this as the ground truth
-capital_T_truth_maybe1 <- with(
-  dat,
+truth_maybe1 <- wd(
   aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                    abseps = 1e-11))()
-capital_T_truth_maybe2 <- with(
-  dat,
+truth_maybe2 <- wd(
   aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-                   abseps = 1e-11)(4L))
-dput(capital_T_truth_maybe1)
-dput(capital_T_truth_maybe2)
-all.equal(c(capital_T_truth_maybe1), c(capital_T_truth_maybe2))
-capital_T_truth_maybe <- c(capital_T_truth_maybe1)
+                   abseps = 1e-11)(2L))
+truth <- wd(
+  mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
+                                    n_sim = 1e8))
+
+all.equal(truth, c(truth_maybe1))
+all.equal(truth, c(truth_maybe2))
 
 # compare with using fewer samples and GHQ
-all.equal(capital_T_truth_maybe,   GHQ_R())
-all.equal(capital_T_truth_maybe,   GHQ_cpp())
-all.equal(capital_T_truth_maybe, c(cdf_aprx_R()))
-all.equal(capital_T_truth_maybe, c(cdf_aprx_cpp()))
-all.equal(capital_T_truth_maybe, c(sim_aprx(1L)))
-all.equal(capital_T_truth_maybe, c(sim_aprx(2L)))
-all.equal(capital_T_truth_maybe, c(sim_aprx(3L)))
-all.equal(capital_T_truth_maybe, c(sim_aprx(4L)))
+all.equal(truth,   GHQ_R())
+all.equal(truth,   GHQ_cpp())
+all.equal(truth, c(cdf_aprx_R()))
+all.equal(truth, c(cdf_aprx_cpp()))
+all.equal(truth, c(sim_aprx(1L)))
+all.equal(truth, c(sim_aprx(2L)))
+all.equal(truth, c(sim_aprx(3L)))
+all.equal(truth, c(sim_aprx(4L)))
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
@@ -251,5 +278,278 @@ microbenchmark::microbenchmark(
   `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
   times = 10)
 ```
+
+```{r cleanup, echo = FALSE}
+rm(list = setdiff(ls(), cur_vars))
+```
+
+## More Rigorous Comparison
+We are interested in a more rigorous comparison. Therefor, we define a 
+function below which for given number of observation in the cluster, `n`, 
+and given number of random effect, `p`, perform a repeated number of runs
+with each of the methods and returns the computation time (among other 
+output). To make a fair 
+comparison, we fix the relative error of the method before hand such that the 
+relative error is below `releps`. 
+
+```{r def_sim_experiment, cache = 1}
+# perform a simulation run for a given number of observations and random 
+# effects. First we fix the relative error of each method such that it is
+# below a given threshold. Then we run each method a number of time to 
+# measure the computation time. 
+# 
+# Args:
+#   n: number of observations in the cluster.
+#   p: number of random effects. 
+#   releps: required relative error. 
+#   key_use: integer which determines degree of integration rule for the 
+#            method from Genz and Monahan (1999).
+sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
+  # simulate data
+  dat <- get_sim_dat(n = n, p = p)
+  
+  # shorter than calling `with(dat, ...)`
+  wd <- function(expr)
+    eval(bquote(with(dat, .(substitute(expr)))), parent.frame())
+  
+  # get the assumed ground truth
+  truth <- wd(
+    mixprobit:::aprx_binary_mix_brute(
+      y = y, eta = eta, Z = Z, Sigma = S, n_sim = 1e7))
+  
+  # function to test whether the value is ok
+  is_ok_func <- function(vals)
+    abs((log(vals) - log(truth)) / log(truth)) < releps
+  
+  # get function to use with GHQ
+  b_use <- local({
+    apx_func <- function(b)
+      wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))()
+    
+    streak_length <- 3L
+    vals <- rep(NA_real_, streak_length)
+    
+    b <- 10L
+    for(i in 1:(streak_length - 1L))
+      vals[i + 1L] <- apx_func(b - streak_length + i)
+    repeat({
+      vals[1:(streak_length - 1L)] <- vals[-1]
+      vals[streak_length] <- apx_func(b)
+      
+      if(all(is_ok_func(vals)))
+        break
+      
+      b <- b + 1L
+      if(b > 50L)
+        stop("found no node value")
+    })
+    b
+  })
+  
+  ghq_func <- wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b_use))
+  
+  # get function to use with CDF method
+  cdf_maxpts_use <- local({
+    maxpts <- 100L
+    repeat {
+      func <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
+                                  maxpts = maxpts, abseps = -1, 
+                                  releps = releps / 10))
+      vals <- replicate(10, func())
+      if(all(is_ok_func(vals)))
+        break
+      
+      maxpts <- maxpts * 2L
+      if(maxpts > 10000000L)
+        stop("found no maxpts for CDF method")
+    }
+    maxpts
+  })
+  
+  cdf_func <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
+                                  maxpts = cdf_maxpts_use, abseps = -1, 
+                                  releps = releps / 10))
+  
+  # get function to use with Genz and Monahan method
+  sim_maxpts_use <- local({
+    maxpts <- 100L
+    repeat {
+      func <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                  maxpts = maxpts, abseps = -1, 
+                                  releps = releps / 10))
+      vals <- replicate(10, func(key_use))
+      if(all(is_ok_func(vals)))
+        break
+      
+      maxpts <- maxpts * 2L
+      if(maxpts > 10000000L)
+        stop("found no maxpts for sim method")
+    }
+    maxpts
+  })
+  
+  sim_func <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                  maxpts = sim_maxpts_use, abseps = -1, 
+                                  releps = releps / 10))
+  formals(sim_func)$key <- key_use
+  
+  # perform the comparison
+  out <- sapply(
+    list(GHQ = ghq_func, CDF = cdf_func, GenzMonahan = sim_func), 
+    function(func){
+      n_runs <- 20L
+      ti <- system.time(vals <- replicate(n_runs, func()))
+      
+      c(mean = mean(vals), sd = sd(vals), mse = mean((vals - truth)^2), 
+        ti[1:3] / n_runs)            
+    })
+  
+  list(b_use = b_use, cdf_maxpts_use = cdf_maxpts_use, 
+       sim_maxpts_use = sim_maxpts_use, vals_n_comp_time = out)
+}
+```
+
+Here is a few quick examples where we use the method.
+
+```{r show_sim_experiment, cache = 1, dependson = "def_sim_experiment"}
+set.seed(1)
+sim_experiment(n = 3L , p = 2L)
+sim_experiment(n = 10L, p = 2L)
+sim_experiment(n = 3L , p = 4L)
+sim_experiment(n = 10L, p = 4L)
+```
+
+Next, we apply the method a number of times for a fixed of combination of 
+number of observations, `n`, and number of random effects, `p`. 
+
+```{r run_larger_sim_ex, message = FALSE}
+# number of observations in the cluster
+n_vals <- c(2L, 5L, 10L, 20L)
+# number of random effects
+p_vals <- 2:4
+# grid with all configurations
+gr_vals <- expand.grid(n = n_vals, p = p_vals)
+# number of replications per configuration
+n_runs <- 20L
+
+ex_output <- (function(){
+  # setup directory to store data
+  cache_dir <- file.path("README_cache", "experiment")
+  if(!dir.exists(cache_dir))
+    dir.create(cache_dir)
+  
+  # setup cluster to use
+  library(parallel)
+  cl <- makeCluster(4L)
+  on.exit(stopCluster(cl))
+  clusterExport(cl, c("aprx", "get_sim_dat", "sim_experiment"))
+  
+  # run the experiment
+  mapply(function(n, p){
+    cache_file <- file.path(cache_dir, sprintf("n-%03d-p-%03d.Rds", n, p))
+    if(!file.exists(cache_file)){
+      message(sprintf("Running setup with n    %3d and p %3d", n, p))
+      
+      set.seed(71771945)
+      clusterExport(cl, c("n", "p"), envir = environment())    
+      clusterSetRNGStream(cl)
+      
+      sim_out <- parLapply(cl, 1:n_runs, function(...){
+        seed <- .Random.seed
+        out <- sim_experiment(n = n, p = p)
+        attr(out, "seed") <- seed
+        out
+      })
+      
+      sim_out[c("n", "p")] <- list(n = n, p = p)
+      saveRDS(sim_out, cache_file)
+    } else
+      message(sprintf ("Loading results with n %3d and p %3d", n, p))
+      
+    
+    readRDS(cache_file)
+  }, n = gr_vals$n, p = gr_vals$p, SIMPLIFY = FALSE)
+})()
+```
+
+We create a table where we summarize the results below. First we start with 
+the average computation time and then we show the mean MSE.
+
+```{r create_table, results = "asis"}
+# table with computation times
+comp_time_mult <- 1000 # millisecond
+
+local({
+  # get mean computations time for the methods and the configurations pairs
+  comp_times <- sapply(ex_output, function(x)
+    sapply(x[!names(x) %in% c("n", "p")], `[[`, "vals_n_comp_time", 
+           simplify = "array"), 
+    simplify = "array")
+  comp_times <- comp_times["elapsed", , , ]
+  comp_times <- apply(comp_times, c(1, 3), mean) * comp_time_mult
+  
+  # flatten the table. Start by getting the row labels
+  meths <- rownames(comp_times)
+  rnames <- expand.grid(
+    Method = meths, n = sprintf("%2d", n_vals), stringsAsFactors = FALSE)
+  rnames[2:1] <- rnames[1:2]
+  nvs <- rnames[[1L]]
+  rnames[[1L]] <- c(
+    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
+  rnames[[2L]] <- gsub(
+    "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
+  
+  # then flatten
+  comp_times <- matrix(c(comp_times), nrow = NROW(rnames))
+  comp_times[] <- sprintf("%.2f", comp_times[])
+  
+  # combine computation times and row labels
+  table_out <- cbind(as.matrix(rnames), comp_times)
+  
+  # add header 
+  colnames(table_out) <- c("n", "method/p", sprintf("%d", p_vals))
+  
+  options(knitr.kable.NA = "")
+  knitr::kable(table_out, align = c("l", "l", rep("r", length(p_vals))))
+})
+
+err_mult <- 1e6
+local({
+  # get mean mse for the methods and the configurations pairs
+  res <- sapply(ex_output, function(x)
+    sapply(x[!names(x) %in% c("n", "p")], `[[`, "vals_n_comp_time", 
+           simplify = "array"), 
+    simplify = "array")
+  err <- res["mse", , , ]
+  err <- apply(err, c(1, 3), mean) * err_mult
+  
+  # flatten the table. Start by getting the row labels
+  meths <- rownames(err)
+  rnames <- expand.grid(
+    Method = meths, n = sprintf("%2d", n_vals), stringsAsFactors = FALSE)
+  rnames[2:1] <- rnames[1:2]
+  nvs <- rnames[[1L]]
+  rnames[[1L]] <- c(
+    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
+  rnames[[2L]] <- gsub(
+    "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
+  
+  # then flatten
+  err <- matrix(c(err), nrow = NROW(rnames))
+  err[] <- sprintf("%.2f", err[])
+  
+  # combine computation times and row labels
+  table_out <- cbind(as.matrix(rnames), err)
+  
+  # add header 
+  colnames(table_out) <- c("n", "method/p", sprintf("%d", p_vals))
+  
+  options(knitr.kable.NA = "")
+  knitr::kable(table_out, align = c("l", "l", rep("r", length(p_vals))))
+})
+```
+
+The computation time is in `r comp_time_mult` of a second. The mean MSE is 
+multiplied by `r err_mult`.
 
 ## References

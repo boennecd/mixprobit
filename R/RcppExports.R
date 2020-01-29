@@ -21,3 +21,7 @@ aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b) {
     .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b)
 }
 
+aprx_binary_mix_brute <- function(y, eta, Z, Sigma, n_sim) {
+    .Call('_mixprobit_aprx_binary_mix_brute', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_sim)
+}
+
