@@ -5,7 +5,7 @@ output:
     pandoc_args: --webtex=https://latex.codecogs.com/svg.latex?
 bibliography: README.bib
 nocite: | 
-  @Ochi84, @Liu94, @Genz98, @Genz99, @Genz02, @Pawitan04, 
+  @Ochi84, @Liu94, @Hajivassiliou96, @Genz98, @Genz99, @Genz02, @Pawitan04, @Barrett15
 ---
 
 # Mixed Models with Probit Link
@@ -657,5 +657,6 @@ local({
 
 The computation time is in `r comp_time_mult`s of a second. The mean MSE is 
 multiplied by $`r err_mult`$.
+
 
 ## References

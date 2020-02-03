@@ -12,6 +12,21 @@
  year = {1984}
 }
 
+@incollection{McFadden84,
+title = "Chapter 24 Econometric analysis of qualitative response models",
+series = "Handbook of Econometrics",
+publisher = "Elsevier",
+volume = "2",
+pages = "1395 - 1457",
+year = "1984",
+issn = "1573-4412",
+doi = "https://doi.org/10.1016/S1573-4412(84)02016-X",
+url = "http://www.sciencedirect.com/science/article/pii/S157344128402016X",
+author = "Daniel L. McFadden",
+abstract = "Publisher Summary
+This chapter has surveyed the current state of econometric models and methods for the analysis of qualitative dependent variables. It discusses that the models of economic optimization that are presumed to govern conventional continuous decisions are equally appropriate for the analysis of discrete response. While the intensive marginal conditions associated with many continuous decisions are not applicable, the characterization of economic agents as optimizers implies conditions at the extensive margin and substantive restrictions on functional form. Unless the tenets of the behavioral theory are themselves under test, it is good econometric practice to impose these restrictions as maintained hypotheses in the construction of discrete response models. As a formulation in terms of latent variable models makes clear, qualitative response models share many of the features of conventional econometric systems. Thus the problems and methods arising in the main stream of econometric analysis mostly transfer directly to discrete response. Divergences from the properties of the standard linear model arise from nonlinearity rather than from discreteness of the dependent variable. Thus, most developments in the analysis of nonlinear econometric systems apply to qualitative response models. In summary, methods for the analysis of qualitative dependent variables are part of the continuing development of econometric technique to match the real characteristics of economic behavior and data."
+}
+
 @article{Liu94,
  ISSN = {00063444},
  URL = {http://www.jstor.org/stable/2337136},
@@ -26,6 +41,20 @@
  year = {1994}
 }
 
+@article{Hajivassiliou96,
+title = "Simulation of multivariate normal rectangle probabilities and their derivatives theoretical and computational results",
+journal = "Journal of Econometrics",
+volume = "72",
+number = "1",
+pages = "85 - 134",
+year = "1996",
+issn = "0304-4076",
+doi = "https://doi.org/10.1016/0304-4076(94)01716-6",
+url = "http://www.sciencedirect.com/science/article/pii/0304407694017166",
+author = "Vassilis Hajivassiliou and Daniel McFadden and Paul Ruud",
+keywords = "Simulation estimation, Monte Carlo integration, Discrete choice models, Multinomial probit models, Importance sampling, Acceptance/rejection, Gibbs resampling",
+abstract = "An extensive literature in econometrics and in numerical analysis has considered the problem of evaluating the multiple integral P(B; μ, Ω) = ∝ab n(v − μ, Ω)dv ≡ Ev1(V ϵ B), where V is a m-dimensional normal vector with mean μ, covariance matrix Ω, and density n(v − μ, Ω), and 1(V ϵ B) is an indicator for the event B = (V¦a < V < b). A leading case of such an integral is the negative orthant probability, where B = (V ¦V < 0). The problem is computationally difficult except in very special cases. The multinomial probit (MNP) model used in econometrics and biometrics has cell probabilities that are negative orthant probabilities, with μ and Ω depending on unknown parameters (and, in general, on covariates). Estimation of this model requires, for each trial parameter vector and each observation in a sample, evaluation of P(B; μ, Ω) and of its derivatives with respect to μ and Ω. This paper surveys Monte Carlo techniques that have been developed for approximations of P(B; μ, Ω) and its linear and logarithmic derivatives, that limit computation while possessing properties that facilitate their use in iterative calculations for statistical inference: the Crude Frequency Simulator (CFS), Normal Importance Sampling (NIS), a Kernel-Smoothed Frequency Simulator (KFS), Stern's Decomposition Simulator (SDS), the Geweke-Hajivassiliou-Keane Simulator (GHK), a Parabolic Cylinder Function Simulator (PCF), Deák's Chi-squared Simulator (DCS), an Acceptance/Rejection Simulator (ARS), the Gibbs Sampler Simulator (GSS), a Sequentially Unbiased Simulator (SUS), and an Approximately Unbiased Simulator (AUS). We also discuss Gauss and FORTRAN implementations of these algorithms and present our computational experience with them. We find that GHK is overall the most reliable method."
+}
 
 @article{Genz98,
 author = {Genz, Alan. and Monahan, John.},
@@ -101,5 +130,21 @@ url = {https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.1603},
 eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/sim.1603},
 abstract = {Abstract While the family-based analysis of genetic and environmental contributions to continuous or Gaussian traits is now straightforward using the linear mixed models approach, the corresponding analysis of complex binary traits is still rather limited. In the latter we usually rely on twin studies or pairs of relatives, but these studies often have limited sample size or have difficulties in dealing with the dependence between the pairs. Direct analysis of extended family data can potentially overcome these limitations. In this paper, we will describe various genetic models that can be analysed using an extended family structure. We use the generalized linear mixed model to deal with the family structure and likelihood-based methodology for parameter inference. The method is completely general, accommodating arbitrary family structures and incomplete data. We illustrate the methodology in great detail using the Swedish birth registry data on pre-eclampsia, a hypertensive condition induced by pregnancy. The statistical challenges include the specification of sensible models that contain a relatively large number of variance components compared to standard mixed models. In our illustration the models will account for maternal or foetal genetic effects, environmental effects, or a combination of these and we show how these effects can be readily estimated using family data. Copyright © 2004 John Wiley \& Sons, Ltd.},
 year = {2004}
+}
+
+@article{Barrett15,
+author = {Barrett, Jessica and Diggle, Peter and Henderson, Robin and Taylor-Robinson, David},
+title = {Joint modelling of repeated measurements and time-to-event outcomes: flexible model specification and exact likelihood inference},
+journal = {Journal of the Royal Statistical Society: Series B (Statistical Methodology)},
+
+volume = {77},
+number = {1},
+pages = {131-148},
+keywords = {Cystic fibrosis, Dropout, Joint modelling, Repeated measurements, Skew normal distribution, Survival analysis},
+doi = {10.1111/rssb.12060},
+url = {https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/rssb.12060},
+eprint = {https://rss.onlinelibrary.wiley.com/doi/pdf/10.1111/rssb.12060},
+abstract = {Summary Random effects or shared parameter models are commonly advocated for the analysis of combined repeated measurement and event history data, including dropout from longitudinal trials. Their use in practical applications has generally been limited by computational cost and complexity, meaning that only simple special cases can be fitted by using readily available software. We propose a new approach that exploits recent distributional results for the extended skew normal family to allow exact likelihood inference for a flexible class of random-effects models. The method uses a discretization of the timescale for the time-to-event outcome, which is often unavoidable in any case when events correspond to dropout. We place no restriction on the times at which repeated measurements are made. An analysis of repeated lung function measurements in a cystic fibrosis cohort is used to illustrate the method.},
+year = {2015}
 }
 

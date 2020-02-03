@@ -1,0 +1,320 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+    pandoc_args: --webtex=https://latex.codecogs.com/svg.latex?
+bibliography: ../README.bib
+---
+
+# Salamander Data Set
+
+```{r setup, echo = FALSE, cache=FALSE}
+local({
+  if(!grepl("examples$", getwd()))
+    setwd("examples")
+})
+
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>", fig.path = "fig-salamander/", dpi = 124, 
+  error = FALSE, cache.path = "cache-salamander/")
+options(digits = 4)
+```
+
+Load the data
+
+```{r load_dat}
+sala <- read.csv("salam.csv", header = TRUE, sep = "")
+head(sala)
+
+sala <- within(sala, {
+  female <- as.factor(female)
+  male   <- as.factor(male) 
+})
+```
+
+Assign cluster (TODO: we must be able to this in a smart way...)
+
+```{r asg_cluster}
+sala$cl <- with(sala, {
+  cl <- rep(NA_integer_, length(female))
+  
+  grp <- 0L
+  repeat {
+    # take first NA
+    grp <- grp + 1L
+    cur <- which(is.na(cl))
+    if(length(cur) == 0L)
+      # not any left. Thus return
+      break
+    
+    new_members <- cur[1L]
+    repeat {
+      cl[new_members] <- grp
+      male_in_grp    <- male  [new_members]
+      females_in_grp <- female[new_members]
+      
+      # find mates of the new members
+      new_members <- which(
+        ((male %in% male_in_grp) | (female %in% females_in_grp)) & 
+          is.na(cl))
+      if(length(new_members) == 0L)
+        break
+    }
+  }
+  
+  cl
+})
+
+# turns out that the data was already sorted...
+stopifnot(!is.unsorted(sala$cl))
+with(sala, {
+  female <- as.integer(female)
+  male   <- as.integer(male)
+  
+  p <- length(unique(female))
+  stopifnot(length(unique(male)) == p)
+  
+  X <- matrix(0L, p, p)
+  for(i in 1:length(female))
+    X[female[i], male[i]] <- 1L
+  
+  # show plot of males and females that mate
+  image(X, xlab = "female", ylab = "male")
+})
+```
+
+Assign the formulas that we need
+
+```{r asg_forms}
+# Elements: 
+#   X: fixed effect formula.
+#   Z: random effect formula.
+frm <- list(X = ~ wsm * wsf, Z = ~ female + male - 1)
+```
+
+## Fit Model Without Random Effects
+
+```{r no_rng}
+summary(glm_fit <- glm(update(frm$X, y ~ .), binomial("probit"), sala))
+
+logLik(glm_fit)
+```
+
+## lmec
+
+Will not work as the `varstruct` argument can only be `"unstructured"` or 
+`"diagonal"`.
+
+```{r lmec_fit, eval = FALSE, echo = FALSE}
+library(lmec)
+
+lmec_analysis <- within(list(), {
+  n <- NROW(sala)
+  y_dum <- ifelse(sala$y, 1, -1)
+  Z <- model.matrix(frm$Z, sala) * y_dum
+  X <- model.matrix(frm$X, sala) * y_dum
+  
+  fit <- lmec(yL = rep(0, n), cens = rep(TRUE, n), X = X, Z = Z, 
+              cluster = rep(1L, n), varstruct = "diagonal")
+})
+```
+
+## Stan
+
+Here is the Stan file we use.
+
+```{stan output.var = "dummy", code = readLines("salamander.stan"), eval = FALSE}
+```
+
+Next, we fit the model and show the model estimates.
+
+```{r load_stan, message = FALSE}
+library(rstan)
+options(mc.cores = parallel::detectCores(logical = FALSE))
+rstan_options(auto_write = TRUE)
+```
+
+```{r fit_Stan, cache = 1}
+stan_fit <- within(list(), {
+  sala <- as.list(sala)
+  sala <- within(sala, {
+    J <- length(y)
+    K <- length(unique(female))
+    female <- as.integer(female)
+    male   <- as.integer(male)
+  })
+  stopifnot(sala$K == length(unique(sala$male)))
+  
+  fit <- stan(
+    file = "salamander.stan", # Stan program
+    data = sala,              # named list of data
+    chains = 4L,              # number of Markov chains
+    warmup = 10000L,          # number of warmup iterations per chain
+    iter = 20000L,            # total number of iterations per chain
+    cores = 2L,               # number of cores (could use one per chain)
+    refresh = 0L,             # no progress shown
+    seed = 91154163L)
+  
+  print(fit, pars = c("beta", "sigma"))
+})
+```
+
+## glmer (Laplace Approximation)
+
+We only use the Laplace approximation from `glmer` as adaptive 
+Gauss–Hermite quadrature is not available with crossed random effects (and
+would take forever with this data set).
+
+```{r load_lme4, message = FALSE}
+library(lme4)
+```
+
+```{r fit_glmer, cache = 1}
+glmer_fit <- within(list(), {
+  frm_use <- y ~ wsm * wsf + (1 | female) + (1 | male)
+  fit_laplace <- glmer(frm_use, sala, binomial("probit"))
+
+  msg <- "Laplace fit"
+  cat(msg, "\n", rep("-", nchar(msg)), "\n", sep ="")
+  print(fit_laplace)
+  
+  # AGHQ does not work...
+  try(fit_aghq <- glmer(frm_use, sala, binomial("probit"), nAGQ = 5L))
+})
+```
+
+## CDF Approximation and Genz & Monahan Approximation
+
+Fit models with the CDF approximation like in @Pawitan04 and the method by 
+@Genz99.
+
+```{r load_mixprobit}
+library(mixprobit)
+library(parallel)
+```
+
+<!-- knitr::opts_knit$set(output.dir = ".") -->
+<!-- knitr::load_cache("cdf_arpx", path = "cache-salamander/") -->
+
+```{r cdf_arpx, cache = 1, warning = FALSE}
+mix_prob_fit <- within(list(), {
+  # setup cluster
+  cl <- makeCluster(6L)
+  on.exit(stopCluster(cl))
+  
+  # run fit to get starting values
+  pre_fit <- glm(update(frm$X, y ~ .), family = binomial("probit"), sala)
+  X_terms <- delete.response(terms(pre_fit))
+  
+  # get data for each cluster
+  dat <- lapply(split(sala, sala$cl), function(cl_dat)
+    within(list(), {
+      cl_dat$female <- droplevels(cl_dat$female)
+      cl_dat$male   <- droplevels(cl_dat$male)
+      
+      y <- cl_dat$y 
+      Z <- t(model.matrix(frm$Z, cl_dat))
+      X <-   model.matrix(X_terms, cl_dat)
+      
+      p <- NROW(Z)
+      is_male <- which(grepl("^male", rownames(Z)))
+  }))
+  
+  # starting values
+  beta <- pre_fit$coefficients
+  fnscale <- abs(c(logLik(pre_fit)))
+  q <- length(beta)
+  par <- c(beta, log(c(.1, .1)))
+  
+  # negative log-likelihood function
+  ll_func <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+                      releps = 1e-2, meth){
+    if(!is.null(seed))
+      set.seed(seed)
+    clusterSetRNGStream(cl)
+    beta <-         head(par,  q)
+    vars  <- exp(2 * tail(par, -q))
+    clusterExport(cl, c("beta", "vars", "maxpts", "abseps", "releps"), 
+                  environment())
+    
+    ll_terms <- parSapply(cl, dat, function(cl_dat){
+      with(cl_dat, {
+        eta <- drop(X %*% beta)
+        Sigma <- diag(nrow(Z))
+        
+        diag(Sigma)[-is_male] <- vars[1L]
+        diag(Sigma)[ is_male] <- vars[2L]
+        
+        out <- if(identical(mixprobit:::aprx_binary_mix_cdf, meth))
+          meth(
+            y = y, eta = eta, Sigma = Sigma, Z = Z, maxpts = maxpts, 
+            abseps = abseps, releps = releps)
+        else if(identical(mixprobit:::aprx_binary_mix, meth))
+          meth(
+            y = y, eta = eta, Sigma = Sigma, Z = Z, mxvals = maxpts, 
+            epsabs = abseps, epsrel = releps, key = 2L)
+        else
+          stop("method not implemented")
+        
+        c(ll = log(c(out)), err = attr(out, "error"), 
+          inform = attr(out, "inform"))
+      })
+    })
+    
+    inform <- ll_terms["inform", ]
+    if(any(inform > 0))
+      warning(paste(
+        "Got these inform values: ", 
+        paste0(unique(inform), collapse = ", ")))
+    
+    -sum(ll_terms["ll", ])
+  }
+  
+  # use the methods to find the optimal parameters
+  take_time <- function(expr){
+    ti <- eval(bquote(system.time(out <- .(substitute(expr)))), 
+               parent.frame())
+    stopifnot(is.list(out) && is.null(out$time))
+    out$time <- ti
+    out
+  }
+  
+  fit_CDF <- take_time(optim(
+    par, ll_func, method = "BFGS", meth = mixprobit:::aprx_binary_mix_cdf,
+    control = list(trace = 3L, fnscale = fnscale)))
+  fit_CDF$q <- q
+  fit_Genz_Monahan <- take_time(optim(
+    par, ll_func, method = "BFGS", meth = mixprobit:::aprx_binary_mix,
+    control = list(trace = 3L, fnscale = fnscale)))
+  fit_Genz_Monahan$q <- q
+})
+```
+
+Show the estimates of the methods.
+
+```{r show_cdf_aprx}
+local({
+  show_res <- function(fit){
+    nam <- deparse(substitute(fit))
+    cat("\n", nam, "\n", rep("-", nchar(nam)), "\n", sep = "")
+    
+    cat("\nFixed effects\n")
+    q <- fit$q
+    print(head(fit$par,  q))
+    
+    cat("\nRandom effect standard deviations")
+    print(exp(tail(fit$par, -q)))
+    
+    cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f (seconds)\n", 
+                -fit$value, fit$time["elapsed"]))
+    cat("\n")
+  }
+  
+  with(mix_prob_fit, show_res(fit_CDF))
+  with(mix_prob_fit, show_res(fit_Genz_Monahan))
+})
+```
+
+I am not sure but I suspect that the CDF approximation is more precise. 
+
+## References
