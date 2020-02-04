@@ -184,8 +184,8 @@ aprx <- within(list(), {
     #   key: integer which determines degree of integration rule.
     function(key)
       mixprobit:::aprx_binary_mix(
-        y = y, eta = eta, Z = Z, Sigma = S, mxvals = maxpts, key = key, 
-        epsabs = abseps, epsrel = releps)
+        y = y, eta = eta, Z = Z, Sigma = S, maxpts = maxpts, key = key, 
+        abseps = abseps, releps = releps)
 })
 ```
 

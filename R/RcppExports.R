@@ -5,16 +5,20 @@ pmvnorm_cpp <- function(lower, upper, mean, cov, maxpts, abseps, releps) {
     .Call('_mixprobit_pmvnorm_cpp', PACKAGE = 'mixprobit', lower, upper, mean, cov, maxpts, abseps, releps)
 }
 
-aprx_binary_mix <- function(y, eta, Z, Sigma, mxvals, key, epsabs, epsrel) {
-    .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, mxvals, key, epsabs, epsrel)
+aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L) {
+    .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, key)
 }
 
 aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps) {
     .Call('_mixprobit_aprx_binary_mix_cdf', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps)
 }
 
-aprx_binary_mix_cdf_salamander <- function(data, beta, log_sds, n_threads, maxpts, abseps, releps) {
-    .Call('_mixprobit_aprx_binary_mix_cdf_salamander', PACKAGE = 'mixprobit', data, beta, log_sds, n_threads, maxpts, abseps, releps)
+aprx_binary_mix_cdf_get_ptr <- function(data, n_threads) {
+    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads)
+}
+
+aprx_binary_mix_cdf_eval <- function(ptr, beta, log_sds, maxpts, abseps, releps) {
+    .Call('_mixprobit_aprx_binary_mix_cdf_eval', PACKAGE = 'mixprobit', ptr, beta, log_sds, maxpts, abseps, releps)
 }
 
 set_GH_rule_cached <- function(b) {

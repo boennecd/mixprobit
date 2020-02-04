@@ -309,16 +309,9 @@ mix_prob_fit <- within(list(), {
         diag(Sigma)[-is_male] <- vars[1L]
         diag(Sigma)[ is_male] <- vars[2L]
         
-        out <- if(identical(mixprobit:::aprx_binary_mix_cdf, meth))
-          meth(
+        out <- meth(
             y = y, eta = eta, Sigma = Sigma, Z = Z, maxpts = maxpts, 
             abseps = abseps, releps = releps)
-        else if(identical(mixprobit:::aprx_binary_mix, meth))
-          meth(
-            y = y, eta = eta, Sigma = Sigma, Z = Z, mxvals = maxpts, 
-            epsabs = abseps, epsrel = releps, key = 2L)
-        else
-          stop("method not implemented")
         
         c(ll = log(c(out)), err = attr(out, "error"), 
           inform = attr(out, "inform"))
@@ -335,6 +328,9 @@ mix_prob_fit <- within(list(), {
   }
   
   # C++ version
+  cpp_ptr <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
+    data = dat, n_threads = n_threads)
+  
   ll_cpp <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
                      releps = 1e-2){
     if(!is.null(seed))
@@ -343,54 +339,103 @@ mix_prob_fit <- within(list(), {
     beta    <- head(par,  q)
     log_sds <- tail(par, -q)
     
-    out <- mixprobit:::aprx_binary_mix_cdf_salamander(
-      data = dat, beta = beta, log_sds = log_sds, n_threads = n_threads, 
-      maxpts = maxpts, abseps = abseps, releps = releps)
+    out <- mixprobit:::aprx_binary_mix_cdf_eval(
+      ptr = cpp_ptr, beta = beta, log_sds = log_sds, maxpts = maxpts, 
+      abseps = abseps, releps = releps)
     
     -out
   }
   
   # use the methods to find the optimal parameters
   take_time <- function(expr){
+    cat("Running:", sep = "\n",
+        paste0("  ", deparse(substitute(expr)), collapse = "\n"), "")
+    
     ti <- eval(bquote(system.time(out <- .(substitute(expr)))), 
                parent.frame())
+    cat("\n")
     stopifnot(is.list(out) && is.null(out$time))
     out$time <- ti
     out
   }
   
-  fit_CDF_cpp <- take_time(optim(
-    par, ll_cpp, method = "BFGS", 
-    control = list(trace = 3L, fnscale = fnscale)))
-  fit_CDF_cpp$q <- q
-  fit_CDF <- take_time(optim(
-    par, ll_func, method = "BFGS", meth = mixprobit:::aprx_binary_mix_cdf,
-    control = list(trace = 3L, fnscale = fnscale)))
-  fit_CDF$q <- q
-  fit_Genz_Monahan <- take_time(optim(
-    par, ll_func, method = "BFGS", meth = mixprobit:::aprx_binary_mix,
-    control = list(trace = 3L, fnscale = fnscale)))
-  fit_Genz_Monahan$q <- q
+  # set formals on optim
+  opt_use <- optim
+  formals(opt_use)[c("method", "control")] <- list(
+    "BFGS", list(trace = 3L, fnscale = fnscale))
+  
+  # first make a few quick fits with a low error or number of samples
+  fit_CDF_cpp_fast <- take_time(opt_use(
+    par, ll_cpp , maxpts = 5000L, releps = .1))
+  fit_Genz_Monahan_fast <- take_time(opt_use(
+    par, ll_func, maxpts = 5000L, releps = .1,
+    meth = mixprobit:::aprx_binary_mix))
+  
+  # then use a lower error or more samples starting from the previous 
+  # estimate
+  cdf_par <- fit_CDF_cpp_fast$par
+  fit_CDF_cpp <- take_time(opt_use(
+    cdf_par, ll_cpp , maxpts = 100000L, releps = 1e-3))
+  fit_CDF <- take_time(opt_use(
+    cdf_par, ll_func, maxpts = 100000L, releps = 1e-3,
+    meth = mixprobit:::aprx_binary_mix_cdf))
+
+  gmo_start <- fit_Genz_Monahan_fast$par
+  fit_Genz_Monahan <-  take_time(opt_use(
+    gmo_start, ll_func, maxpts = 100000L, releps = 1e-3,
+    meth = mixprobit:::aprx_binary_mix))
+  
+  # add q to output
+  fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- 
+    fit_CDF$q <- fit_Genz_Monahan$q <- q
 })
+#> Running:
+#>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1)
+#> 
 #> initial  value 0.993384 
-#> iter  10 value 0.932613
-#> iter  20 value 0.929376
-#> iter  30 value 0.928726
-#> final  value 0.928548 
+#> iter  10 value 0.932317
+#> iter  20 value 0.929014
+#> iter  30 value 0.928652
+#> final  value 0.928611 
 #> converged
-#> initial  value 0.993384 
-#> iter  10 value 0.935562
-#> final  value 0.930485 
+#> 
+#> Running:
+#>   opt_use(par, ll_func, maxpts = 5000L, releps = 0.1, meth = mixprobit:::aprx_binary_mix)
+#> 
+#> initial  value 0.993391 
+#> iter  10 value 0.941845
+#> iter  20 value 0.940933
+#> final  value 0.940920 
 #> converged
-#> initial  value 0.993384 
-#> iter  10 value 0.938278
-#> iter  20 value 0.931070
-#> iter  30 value 0.931060
+#> 
+#> Running:
+#>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = 0.001)
+#> 
+#> initial  value 0.928673 
+#> iter  10 value 0.928599
+#> final  value 0.928593 
+#> converged
+#> 
+#> Running:
+#>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = 0.001, meth = mixprobit:::aprx_binary_mix_cdf)
+#> 
+#> initial  value 0.928654 
+#> final  value 0.928654 
+#> converged
+#> 
+#> Running:
+#>   opt_use(gmo_start, ll_func, maxpts = 100000L, releps = 0.001, 
+#>       meth = mixprobit:::aprx_binary_mix)
+#> 
+#> initial  value 0.934738 
+#> iter  10 value 0.931189
+#> iter  20 value 0.931065
+#> iter  30 value 0.931059
 #> final  value 0.931059 
 #> converged
 ```
 
-Show the estimates of the methods.
+Show the estimates of the methods. The `_cpp` function differs by using an almost purely C++ implementation which supports computation in parallel.
 
 ``` r
 local({
@@ -405,28 +450,63 @@ local({
     cat("\nRandom effect standard deviations")
     print(exp(tail(fit$par, -q)))
     
-    cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f (seconds)\n", 
-                -fit$value, fit$time["elapsed"]))
+    cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f/%.2f (seconds total/per evaluation)\n", 
+                -fit$value, fit$time["elapsed"], 
+                fit$time["elapsed"] / (
+                  fit$counts["function"] + fit$counts["gradient"] * 2L * 
+                    length(fit$par))))
     cat("\n")
   }
   
-  with(mix_prob_fit, show_res(fit_CDF))
-  with(mix_prob_fit, show_res(fit_CDF_cpp))
-  with(mix_prob_fit, show_res(fit_Genz_Monahan))
+  with(mix_prob_fit, {
+    show_res(fit_CDF_cpp_fast)
+    show_res(fit_Genz_Monahan_fast)
+    show_res(fit_CDF)
+    show_res(fit_CDF_cpp)
+    show_res(fit_Genz_Monahan)
+  })
 })
+#> 
+#> fit_CDF_cpp_fast
+#> ----------------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.5690     -0.3897     -1.6581      2.0552 
+#> 
+#> Random effect standard deviations              
+#> 0.6991 0.6688 
+#> 
+#> Log-likelihood estimate -206.88
+#> Computation time 128.14/0.24 (seconds total/per evaluation)
+#> 
+#> 
+#> fit_Genz_Monahan_fast
+#> ---------------------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>       0.594      -0.347      -1.567       1.937 
+#> 
+#> Random effect standard deviations              
+#> 0.5536 0.5750 
+#> 
+#> Log-likelihood estimate -209.62
+#> Computation time 52.39/0.14 (seconds total/per evaluation)
+#> 
 #> 
 #> fit_CDF
 #> -------
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5085     -0.2670     -1.5778      1.8248 
+#>      0.5690     -0.3897     -1.6581      2.0552 
 #> 
 #> Random effect standard deviations              
-#> 0.6723 0.6236 
+#> 0.6991 0.6688 
 #> 
-#> Log-likelihood estimate -207.30
-#> Computation time 120.41 (seconds)
+#> Log-likelihood estimate -206.89
+#> Computation time 20.11/0.67 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF_cpp
@@ -434,13 +514,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5877     -0.3930     -1.6894      2.0879 
+#>      0.5909     -0.3991     -1.6697      2.0716 
 #> 
 #> Random effect standard deviations              
-#> 0.7132 0.6772 
+#> 0.7020 0.6746 
 #> 
-#> Log-likelihood estimate -206.87
-#> Computation time 269.62 (seconds)
+#> Log-likelihood estimate -206.88
+#> Computation time 150.71/0.58 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan
@@ -448,13 +528,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5774     -0.4255     -1.6516      2.1044 
+#>      0.5772     -0.4253     -1.6507      2.1035 
 #> 
 #> Random effect standard deviations              
-#> 0.7116 0.6756 
+#> 0.7115 0.6753 
 #> 
 #> Log-likelihood estimate -207.43
-#> Computation time 370.20 (seconds)
+#> Computation time 296.86/0.73 (seconds total/per evaluation)
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise.

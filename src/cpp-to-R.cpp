@@ -26,8 +26,8 @@ Rcpp::List pmvnorm_cpp(arma::vec const &lower, arma::vec const &upper,
 // [[Rcpp::export]]
 Rcpp::NumericVector aprx_binary_mix(
     arma::ivec const &y, arma::vec const &eta, arma::mat const &Z,
-    arma::mat const &Sigma, int const mxvals, int const key,
-    double const epsabs, double const epsrel){
+    arma::mat const &Sigma, int const maxpts, double const abseps,
+    double const releps, int const key = 2L){
   using namespace ranrth_aprx;
   using Rcpp::NumericVector;
 
@@ -35,7 +35,7 @@ Rcpp::NumericVector aprx_binary_mix(
   set_integrand(std::unique_ptr<integrand>(
       new mix_binary(y, eta, Z, Sigma)));
   auto const res = integral_arpx(
-    mxvals, key, epsabs, epsrel);
+    maxpts, key, abseps, releps);
 
   NumericVector out = NumericVector::create(res.value);
   out.attr("error") = res.err;
@@ -89,91 +89,131 @@ inline arma::mat get_mat_from_sexp(SEXP X){
   return out;
 }
 
-/* very specialized function just to get a grasp of the computation times
- * one can achieve. */
-// [[Rcpp::export]]
-double aprx_binary_mix_cdf_salamander
-  (Rcpp::List data, arma::vec const &beta, arma::vec const &log_sds,
-   unsigned const n_threads, int const maxpts, double const abseps,
-   double const releps){
-  /* setup data */
-  arma::vec const vars = arma::exp(2 * log_sds);
-
+/* class to approximate the marginal log-likelihood where the unconditional
+ * covariance is a diagonal matrix potentially with shared parameters. */
+class aprx_binary_mix_cdf_structured_diag {
+  /* class to holder data for each cluster */
   struct cluster_data {
-    arma::ivec const y, var_idx;
+    arma::vec const dum_vec;
+    arma::ivec const var_idx;
     arma::mat const X, Z;
     arma::uword const p = Z.n_rows, n = Z.n_cols;
+    arma::vec const mean = arma::vec(n, arma::fill::zeros),
+                   lower = ([&](){
+                     arma::vec out(n);
+                     out.fill(-std::numeric_limits<double>::infinity());
+                     return out;
+                   })();
 
     cluster_data(Rcpp::List data):
-      y      (Rcpp::as<Rcpp::IntegerVector>(data["y"])),
+      dum_vec(([&](){
+        arma::ivec const y = Rcpp::as<Rcpp::IntegerVector>(data["y"]);
+        arma::vec out(y.n_elem, arma::fill::ones);
+        out.elem(arma::find(y < 1L)).fill(-1);
+        return out;
+      })()),
       var_idx(Rcpp::as<Rcpp::IntegerVector>(data["var_idx"])),
-      X      (get_mat_from_sexp(data["X"])),
-      Z      (get_mat_from_sexp(data["Z"]))
+      X(([&](){
+        arma::mat out(get_mat_from_sexp(data["X"]));
+        out.each_col() %= dum_vec;
+        return out;
+      })()),
+      Z(([&](){
+        arma::mat out(get_mat_from_sexp(data["Z"]));
+        out.each_row() %= dum_vec.t();
+        return out;
+      })())
     {
       assert(X.n_rows == n);
-      assert(y.n_elem == n);
+      assert(dum_vec.n_elem == n);
       assert(var_idx.n_elem == p);
       assert(var_idx.min() >= 0L);
     }
   };
 
-  unsigned const n_clusters = data.size();
-  std::vector<cluster_data> const comp_dat = ([&](){
+  std::vector<cluster_data> const comp_dat;
+  unsigned const n_threads,
+                n_clusters = comp_dat.size();
+
+public:
+  aprx_binary_mix_cdf_structured_diag
+  (Rcpp::List data, unsigned const n_threads):
+  comp_dat(([&](){
+    unsigned const n = data.size();
     std::vector<cluster_data> out;
-    out.reserve(n_clusters);
-    for(unsigned i = 0; i < n_clusters; ++i)
+    out.reserve(n);
+    for(unsigned i = 0; i < n; ++i)
       out.emplace_back(Rcpp::as<Rcpp::List>(data[i]));
     return out;
-  })();
+  })()), n_threads(n_threads)
+  { }
 
-  /* approximate log-likelihood */
-  {
-    int const n_use = std::max(unsigned(1L), n_threads);
+  /* approximates the log-likelihood */
+  double operator()
+  (arma::vec const &beta, arma::vec const &log_sds, int const maxpts,
+   double const abseps, double const releps){
+    /* set the threads and seeds */
+    {
+      int const n_use = std::max(unsigned(1L), n_threads);
 #ifdef _OPENMP
-    omp_set_num_threads(n_use);
+      omp_set_num_threads(n_use);
 #endif
-    parallelrng::set_rng_seeds(n_use);
-  }
+      parallelrng::set_rng_seeds(n_use);
+    }
 
-  double out(0.);
+    /* compute variance parameters and then approximate the
+     * log-likelihood. */
+    arma::vec const vars = arma::exp(2 * log_sds);
+    double out(0.);
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) reduction(+:out)
 #endif
-  for(unsigned i = 0; i < n_clusters; ++i){
-    cluster_data const &my_data = comp_dat[i];
-    unsigned const n = my_data.n,
-                   p = my_data.p;
-    assert(vars.n_elem > (arma::uword)my_data.var_idx.max());
+    for(unsigned i = 0; i < n_clusters; ++i){
+      cluster_data const &my_data = comp_dat[i];
+      unsigned const p = my_data.p;
+      assert(vars.n_elem > (arma::uword)my_data.var_idx.max());
 
-    arma::vec eta = my_data.X * beta;
-    arma::mat Z(my_data.Z);
+      arma::vec const eta = my_data.X * beta;
+      arma::mat const &Z = my_data.Z;
 
-    {
-      arma::rowvec dum_vec(n, arma::fill::ones);
-      dum_vec.elem(arma::find(my_data.y < 1L)).fill(-1);
-      Z.each_row() %= dum_vec;
-      eta %= dum_vec.t();
+      arma::vec Sigma_diag(p);
+      {
+        unsigned j(0L);
+        for(auto idx : my_data.var_idx)
+          Sigma_diag[j++] = vars[idx];
+      }
+      arma::mat Sigma = arma::diagmat(Sigma_diag);
+
+      arma::mat S = Z.t() * (Sigma * Z);
+      S.diag() += 1.;
+
+      out += std::log(
+        pmvnorm::cdf(my_data.lower, eta, my_data.mean, S,
+                     maxpts, abseps, releps).value);
     }
 
-    arma::vec Sigma_diag(p);
-    {
-      unsigned j(0L);
-      for(auto idx : my_data.var_idx)
-        Sigma_diag[j++] = vars[idx];
-    }
-    arma::mat Sigma = arma::diagmat(Sigma_diag);
-
-    arma::mat S = Z.t() * (Sigma * Z);
-    S.diag() += 1.;
-    arma::vec const mean(n, arma::fill::zeros);
-    arma::vec lower(n);
-    lower.fill(-std::numeric_limits<double>::infinity());
-
-    out += std::log(
-      pmvnorm::cdf(lower, eta, mean, S, maxpts, abseps, releps).value);
+    return out;
   }
+};
 
-  return out;
+/* very specialized function just to get a grasp of the computation times
+ * one can achieve. First call this function to create a pointer to a
+ * functor. Then use the next function to approximate the log-likelihood at
+ * a given point. */
+// [[Rcpp::export]]
+SEXP aprx_binary_mix_cdf_get_ptr
+  (Rcpp::List data, unsigned const n_threads){
+  using dat_T = aprx_binary_mix_cdf_structured_diag;
+  return Rcpp::XPtr<dat_T>(new dat_T(data, n_threads), true);
+}
+
+// [[Rcpp::export]]
+double aprx_binary_mix_cdf_eval
+  (SEXP ptr, arma::vec const &beta, arma::vec const &log_sds,
+   int const maxpts,double const abseps, double const releps){
+  Rcpp::XPtr<aprx_binary_mix_cdf_structured_diag> functor(ptr);
+
+  return functor->operator()(beta, log_sds, maxpts, abseps, releps);
 }
 
 /* use to set cached values to avoid computation cost from computing the

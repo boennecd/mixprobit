@@ -73,16 +73,16 @@ context("ranrth-wrapper unit tests") {
     y << 1L << 0L << 0L << 1L;
 
     constexpr double const expec  = 0.0041247747590393,
-                           epsabs = 1e-5;
+                           abseps = 1e-5;
     for(int key = 1L; key < 5L; ++key){
       set_integrand(std::unique_ptr<integrand>(
           new mix_binary(y, eta, Z, S)));
-      auto res = integral_arpx(100000L, key, epsabs, -1.);
+      auto res = integral_arpx(100000L, key, abseps, -1.);
 
       expect_true(res.err < 1e-3);
       expect_true((res.inform == 0 || res.inform == 1));
       if(res.inform == 0L)
-        expect_true(std::abs(res.value - expec) < 100. * epsabs);
+        expect_true(std::abs(res.value - expec) < 100. * abseps);
       else
         expect_true(std::abs(res.value - expec) < 100. * res.err);
     }

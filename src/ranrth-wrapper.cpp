@@ -32,11 +32,11 @@ void set_integrand
 }
 
 integral_arpx_res integral_arpx(
-    int const mxvals, int const key, double const epsabs,
-    double const epsrel){
-  assert(mxvals > 0);
+    int const maxpts, int const key, double const abseps,
+    double const releps){
+  assert(maxpts > 0);
   assert(key > 0L and key < 5L);
-  assert(epsabs > 0 or epsrel > 0);
+  assert(abseps > 0 or releps > 0);
   assert(current_integrand);
 
   /* assign working memory */
@@ -54,7 +54,7 @@ integral_arpx_res integral_arpx(
       &inform = out.inform;
 
   F77_CALL(ranrtheval)(
-    &m, &mxvals, &epsabs, &epsrel, &key, &value, &err, &intvls, &inform,
+    &m, &maxpts, &abseps, &releps, &key, &value, &err, &intvls, &inform,
     wk.get());
 
   return out;
