@@ -42,8 +42,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_cdf
-Rcpp::NumericVector aprx_binary_mix_cdf(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps, unsigned const seed);
-RcppExport SEXP _mixprobit_aprx_binary_mix_cdf(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP seedSEXP) {
+Rcpp::NumericVector aprx_binary_mix_cdf(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps);
+RcppExport SEXP _mixprobit_aprx_binary_mix_cdf(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -54,8 +54,24 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    Rcpp::traits::input_parameter< unsigned const >::type seed(seedSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf(y, eta, Z, Sigma, maxpts, abseps, releps, seed));
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf(y, eta, Z, Sigma, maxpts, abseps, releps));
+    return rcpp_result_gen;
+END_RCPP
+}
+// aprx_binary_mix_cdf_salamander
+double aprx_binary_mix_cdf_salamander(Rcpp::List data, arma::vec const& beta, arma::vec const& log_sds, unsigned const n_threads, int const maxpts, double const abseps, double const releps);
+RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_salamander(SEXP dataSEXP, SEXP betaSEXP, SEXP log_sdsSEXP, SEXP n_threadsSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type log_sds(log_sdsSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
+    Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
+    Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
+    Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_salamander(data, beta, log_sds, n_threads, maxpts, abseps, releps));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -119,7 +135,8 @@ RcppExport SEXP run_testthat_tests();
 static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
     {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 8},
-    {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 8},
+    {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
+    {"_mixprobit_aprx_binary_mix_cdf_salamander", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_salamander, 7},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 5},
     {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 6},

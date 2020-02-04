@@ -261,7 +261,8 @@ library(parallel)
 ``` r
 mix_prob_fit <- within(list(), {
   # setup cluster
-  cl <- makeCluster(6L)
+  n_threads <- 6L
+  cl <- makeCluster(n_threads)
   on.exit(stopCluster(cl))
   
   # run fit to get starting values
@@ -280,6 +281,7 @@ mix_prob_fit <- within(list(), {
       
       p <- NROW(Z)
       is_male <- which(grepl("^male", rownames(Z)))
+      var_idx <- as.integer(grepl("^male", rownames(Z)))
   }))
   
   # starting values
@@ -294,7 +296,7 @@ mix_prob_fit <- within(list(), {
     if(!is.null(seed))
       set.seed(seed)
     clusterSetRNGStream(cl)
-    beta <-         head(par,  q)
+    beta <-          head(par,  q)
     vars  <- exp(2 * tail(par, -q))
     clusterExport(cl, c("beta", "vars", "maxpts", "abseps", "releps"), 
                   environment())
@@ -332,6 +334,22 @@ mix_prob_fit <- within(list(), {
     -sum(ll_terms["ll", ])
   }
   
+  # C++ version
+  ll_cpp <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+                     releps = 1e-2){
+    if(!is.null(seed))
+      set.seed(seed)
+    
+    beta    <- head(par,  q)
+    log_sds <- tail(par, -q)
+    
+    out <- mixprobit:::aprx_binary_mix_cdf_salamander(
+      data = dat, beta = beta, log_sds = log_sds, n_threads = n_threads, 
+      maxpts = maxpts, abseps = abseps, releps = releps)
+    
+    -out
+  }
+  
   # use the methods to find the optimal parameters
   take_time <- function(expr){
     ti <- eval(bquote(system.time(out <- .(substitute(expr)))), 
@@ -341,6 +359,10 @@ mix_prob_fit <- within(list(), {
     out
   }
   
+  fit_CDF_cpp <- take_time(optim(
+    par, ll_cpp, method = "BFGS", 
+    control = list(trace = 3L, fnscale = fnscale)))
+  fit_CDF_cpp$q <- q
   fit_CDF <- take_time(optim(
     par, ll_func, method = "BFGS", meth = mixprobit:::aprx_binary_mix_cdf,
     control = list(trace = 3L, fnscale = fnscale)))
@@ -351,17 +373,20 @@ mix_prob_fit <- within(list(), {
   fit_Genz_Monahan$q <- q
 })
 #> initial  value 0.993384 
-#> iter  10 value 0.937378
-#> iter  20 value 0.929812
-#> iter  30 value 0.928901
-#> iter  40 value 0.928580
-#> final  value 0.928552 
+#> iter  10 value 0.932613
+#> iter  20 value 0.929376
+#> iter  30 value 0.928726
+#> final  value 0.928548 
 #> converged
-#> initial  value 0.993397 
-#> iter  10 value 0.940144
-#> iter  20 value 0.935670
-#> iter  30 value 0.935282
-#> final  value 0.935280 
+#> initial  value 0.993384 
+#> iter  10 value 0.935562
+#> final  value 0.930485 
+#> converged
+#> initial  value 0.993384 
+#> iter  10 value 0.938278
+#> iter  20 value 0.931070
+#> iter  30 value 0.931060
+#> final  value 0.931059 
 #> converged
 ```
 
@@ -386,6 +411,7 @@ local({
   }
   
   with(mix_prob_fit, show_res(fit_CDF))
+  with(mix_prob_fit, show_res(fit_CDF_cpp))
   with(mix_prob_fit, show_res(fit_Genz_Monahan))
 })
 #> 
@@ -394,13 +420,27 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6078     -0.4263     -1.6912      2.1101 
+#>      0.5085     -0.2670     -1.5778      1.8248 
 #> 
 #> Random effect standard deviations              
-#> 0.7017 0.6672 
+#> 0.6723 0.6236 
+#> 
+#> Log-likelihood estimate -207.30
+#> Computation time 120.41 (seconds)
+#> 
+#> 
+#> fit_CDF_cpp
+#> -----------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.5877     -0.3930     -1.6894      2.0879 
+#> 
+#> Random effect standard deviations              
+#> 0.7132 0.6772 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 342.40 (seconds)
+#> Computation time 269.62 (seconds)
 #> 
 #> 
 #> fit_Genz_Monahan
@@ -408,13 +448,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5570     -0.4362     -1.6059      2.0276 
+#>      0.5774     -0.4255     -1.6516      2.1044 
 #> 
 #> Random effect standard deviations              
-#> 0.6210 0.6289 
+#> 0.7116 0.6756 
 #> 
-#> Log-likelihood estimate -208.37
-#> Computation time 350.46 (seconds)
+#> Log-likelihood estimate -207.43
+#> Computation time 370.20 (seconds)
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise.

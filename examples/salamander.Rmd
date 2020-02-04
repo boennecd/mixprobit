@@ -199,7 +199,8 @@ library(parallel)
 ```{r cdf_arpx, cache = 1, warning = FALSE}
 mix_prob_fit <- within(list(), {
   # setup cluster
-  cl <- makeCluster(6L)
+  n_threads <- 6L
+  cl <- makeCluster(n_threads)
   on.exit(stopCluster(cl))
   
   # run fit to get starting values
@@ -218,6 +219,7 @@ mix_prob_fit <- within(list(), {
       
       p <- NROW(Z)
       is_male <- which(grepl("^male", rownames(Z)))
+      var_idx <- as.integer(grepl("^male", rownames(Z)))
   }))
   
   # starting values
@@ -232,7 +234,7 @@ mix_prob_fit <- within(list(), {
     if(!is.null(seed))
       set.seed(seed)
     clusterSetRNGStream(cl)
-    beta <-         head(par,  q)
+    beta <-          head(par,  q)
     vars  <- exp(2 * tail(par, -q))
     clusterExport(cl, c("beta", "vars", "maxpts", "abseps", "releps"), 
                   environment())
@@ -270,6 +272,22 @@ mix_prob_fit <- within(list(), {
     -sum(ll_terms["ll", ])
   }
   
+  # C++ version
+  ll_cpp <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+                     releps = 1e-2){
+    if(!is.null(seed))
+      set.seed(seed)
+    
+    beta    <- head(par,  q)
+    log_sds <- tail(par, -q)
+    
+    out <- mixprobit:::aprx_binary_mix_cdf_salamander(
+      data = dat, beta = beta, log_sds = log_sds, n_threads = n_threads, 
+      maxpts = maxpts, abseps = abseps, releps = releps)
+    
+    -out
+  }
+  
   # use the methods to find the optimal parameters
   take_time <- function(expr){
     ti <- eval(bquote(system.time(out <- .(substitute(expr)))), 
@@ -279,6 +297,10 @@ mix_prob_fit <- within(list(), {
     out
   }
   
+  fit_CDF_cpp <- take_time(optim(
+    par, ll_cpp, method = "BFGS", 
+    control = list(trace = 3L, fnscale = fnscale)))
+  fit_CDF_cpp$q <- q
   fit_CDF <- take_time(optim(
     par, ll_func, method = "BFGS", meth = mixprobit:::aprx_binary_mix_cdf,
     control = list(trace = 3L, fnscale = fnscale)))
@@ -311,6 +333,7 @@ local({
   }
   
   with(mix_prob_fit, show_res(fit_CDF))
+  with(mix_prob_fit, show_res(fit_CDF_cpp))
   with(mix_prob_fit, show_res(fit_Genz_Monahan))
 })
 ```
