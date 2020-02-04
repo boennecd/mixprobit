@@ -168,8 +168,8 @@ aprx <- within(list(), {
     #   key: integer which determines degree of integration rule.
     function(key)
       mixprobit:::aprx_binary_mix(
-        y = y, eta = eta, Z = Z, Sigma = S, mxvals = maxpts, key = key, 
-        epsabs = abseps, epsrel = releps)
+        y = y, eta = eta, Z = Z, Sigma = S, maxpts = maxpts, key = key, 
+        abseps = abseps, releps = releps)
 })
 ```
 
@@ -275,7 +275,7 @@ all.equal(truth, c(sim_aprx(4L)))
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 #>    user  system elapsed 
-#>   21.54    0.00   21.54
+#>   21.17    0.00   21.17
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
@@ -284,13 +284,13 @@ microbenchmark::microbenchmark(
   times = 10)
 #> Unit: milliseconds
 #>                expr    min     lq   mean median     uq    max neval
-#>           GHQ (C++) 615.89 618.83 626.15 621.83 638.14 644.63    10
-#>                 CDF  20.86  20.95  21.03  21.05  21.09  21.13    10
-#>           CDF (C++)  20.81  20.83  20.89  20.90  20.94  21.02    10
-#>  Genz & Monahan (1)  29.72  29.78  29.98  29.94  30.07  30.63    10
-#>  Genz & Monahan (2)  30.78  30.80  31.12  31.07  31.25  31.96    10
-#>  Genz & Monahan (3)  29.96  29.99  30.44  30.14  31.00  31.22    10
-#>  Genz & Monahan (4)  29.50  29.53  29.65  29.61  29.64  30.30    10
+#>           GHQ (C++) 604.83 605.30 615.35 613.76 625.89 631.09    10
+#>                 CDF  20.42  20.56  20.89  21.01  21.11  21.23    10
+#>           CDF (C++)  11.55  11.65  12.05  11.87  12.10  13.36    10
+#>  Genz & Monahan (1)  28.83  28.86  29.29  29.11  29.79  29.89    10
+#>  Genz & Monahan (2)  29.60  29.66  30.61  30.55  31.45  31.60    10
+#>  Genz & Monahan (3)  28.62  28.93  29.55  29.50  29.78  30.94    10
+#>  Genz & Monahan (4)  28.31  29.18  30.37  29.48  29.85  38.62    10
 ```
 
 More Rigorous Comparison
@@ -475,9 +475,9 @@ sim_experiment(n = 3L , p = 2L)
 #> mean      1.037e-01 1.033e-01   1.031e-01
 #> sd        0.000e+00 4.327e-05   8.469e-04
 #> mse       1.117e-07 3.675e-09   7.575e-07
-#> user.self 5.000e-05 3.000e-04   9.500e-04
+#> user.self 1.000e-04 2.000e-04   9.500e-04
 #> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   5.000e-05 3.500e-04   9.000e-04
+#> elapsed   5.000e-05 2.000e-04   9.500e-04
 sim_experiment(n = 10L, p = 2L)
 #> $b_use
 #> [1] 10
@@ -493,9 +493,9 @@ sim_experiment(n = 10L, p = 2L)
 #> mean      4.839e-05 4.836e-05   4.855e-05
 #> sd        0.000e+00 3.420e-09   8.255e-07
 #> mse       1.241e-15 1.360e-16   6.858e-13
-#> user.self 1.000e-04 2.110e-02   5.500e-04
+#> user.self 5.000e-05 1.135e-02   6.000e-04
 #> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   1.000e-04 2.110e-02   5.500e-04
+#> elapsed   5.000e-05 1.135e-02   6.000e-04
 sim_experiment(n = 3L , p = 4L)
 #> $b_use
 #> [1] 10
@@ -511,9 +511,9 @@ sim_experiment(n = 3L , p = 4L)
 #> mean      2.870e-02 2.870e-02   2.877e-02
 #> sd        0.000e+00 6.402e-06   1.781e-04
 #> mse       5.949e-12 6.064e-11   3.486e-08
-#> user.self 2.450e-03 3.500e-04   1.000e-04
+#> user.self 2.400e-03 1.500e-04   1.000e-04
 #> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   2.500e-03 3.500e-04   1.000e-04
+#> elapsed   2.450e-03 2.000e-04   1.000e-04
 sim_experiment(n = 10L, p = 4L)
 #> $b_use
 #> [1] 25
@@ -529,9 +529,9 @@ sim_experiment(n = 10L, p = 4L)
 #> mean      3.504e-04 3.418e-04   3.429e-04
 #> sd        0.000e+00 5.080e-08   9.691e-06
 #> mse       7.276e-11 2.566e-15   9.027e-11
-#> user.self 3.091e-01 2.115e-02   5.200e-03
+#> user.self 3.177e-01 1.175e-02   5.050e-03
 #> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   3.091e-01 2.115e-02   5.200e-03
+#> elapsed   3.177e-01 1.175e-02   5.050e-03
 ```
 
 Next, we apply the method a number of times for a fixed of combination of number of observations, `n`, and number of random effects, `p`.
@@ -632,30 +632,30 @@ local({
 
 | n   | method/p              |      2|      3|       4|       5|
 |:----|:----------------------|------:|------:|-------:|-------:|
-| 2   | GHQ                   |   0.03|   0.39|    2.71|   21.01|
-|     | CDF                   |   0.02|   0.01|    0.01|    0.01|
-|     | Genz & Monahan (1999) |   3.77|   7.36|   10.77|   12.35|
-| 3   | GHQ                   |   0.03|   0.38|    4.62|   56.53|
-|     | CDF                   |   0.36|   0.35|    0.38|    0.37|
-|     | Genz & Monahan (1999) |   2.29|  15.04|    9.37|   23.31|
-| 4   | GHQ                   |   0.05|   0.64|    6.87|   89.45|
-|     | CDF                   |   0.76|   0.80|    0.80|    0.77|
-|     | Genz & Monahan (1999) |   8.67|  11.48|   16.41|   15.36|
-| 5   | GHQ                   |   0.07|   1.18|   15.80|   97.71|
-|     | CDF                   |   1.64|   1.43|    1.49|    1.50|
-|     | Genz & Monahan (1999) |   5.12|  17.89|   22.94|   39.72|
-| 7   | GHQ                   |   0.10|   1.38|   32.34|  349.16|
-|     | CDF                   |   5.17|   4.73|    5.02|    4.65|
-|     | Genz & Monahan (1999) |  13.71|  21.07|   19.45|   53.13|
-| 10  | GHQ                   |   0.20|   2.37|   31.67|        |
-|     | CDF                   |  23.57|  24.05|   25.75|        |
-|     | Genz & Monahan (1999) |  20.86|  25.70|   26.75|        |
-| 15  | GHQ                   |   0.30|       |  166.55|        |
-|     | CDF                   |  52.70|  51.56|   55.02|        |
-|     | Genz & Monahan (1999) |  15.28|  30.52|   32.44|        |
-| 20  | GHQ                   |   0.37|   9.63|  231.14|        |
-|     | CDF                   |  69.83|  70.36|   73.69|        |
-|     | Genz & Monahan (1999) |  17.06|  35.46|   52.60|        |
+| 2   | GHQ                   |   0.03|   0.36|    2.52|   20.05|
+|     | CDF                   |   0.01|   0.02|    0.02|    0.02|
+|     | Genz & Monahan (1999) |   3.57|   6.96|   11.36|   11.77|
+| 3   | GHQ                   |   0.05|   0.38|    4.18|   53.78|
+|     | CDF                   |   0.17|   0.19|    0.19|    0.18|
+|     | Genz & Monahan (1999) |   2.22|  14.46|    8.83|   20.97|
+| 4   | GHQ                   |   0.05|   0.55|    6.68|   81.73|
+|     | CDF                   |   0.37|   0.40|    0.42|    0.38|
+|     | Genz & Monahan (1999) |   8.10|  10.71|   15.74|   14.26|
+| 5   | GHQ                   |   0.06|   1.19|   15.67|   92.01|
+|     | CDF                   |   0.75|   0.75|    0.79|    0.77|
+|     | Genz & Monahan (1999) |   4.49|  17.73|   23.24|   37.94|
+| 7   | GHQ                   |   0.10|   1.37|   31.76|  339.64|
+|     | CDF                   |   2.46|   2.51|    2.60|    2.46|
+|     | Genz & Monahan (1999) |  13.10|  20.75|   18.46|   53.02|
+| 10  | GHQ                   |   0.18|   2.33|   29.55|        |
+|     | CDF                   |  12.23|  12.81|   12.67|        |
+|     | Genz & Monahan (1999) |  18.80|  24.15|   24.10|        |
+| 15  | GHQ                   |   0.28|       |  154.91|        |
+|     | CDF                   |  28.41|  29.38|   28.81|        |
+|     | Genz & Monahan (1999) |  14.65|  31.97|   30.80|        |
+| 20  | GHQ                   |   0.36|   9.73|  215.64|        |
+|     | CDF                   |  38.56|  40.67|   38.16|        |
+|     | Genz & Monahan (1999) |  16.96|  35.80|   50.72|        |
 
 ``` r
 

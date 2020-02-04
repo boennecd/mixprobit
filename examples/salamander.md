@@ -478,7 +478,7 @@ local({
 #> 0.6991 0.6688 
 #> 
 #> Log-likelihood estimate -206.88
-#> Computation time 128.14/0.24 (seconds total/per evaluation)
+#> Computation time 79.28/0.15 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan_fast
@@ -492,7 +492,7 @@ local({
 #> 0.5536 0.5750 
 #> 
 #> Log-likelihood estimate -209.62
-#> Computation time 52.39/0.14 (seconds total/per evaluation)
+#> Computation time 48.13/0.13 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF
@@ -506,7 +506,7 @@ local({
 #> 0.6991 0.6688 
 #> 
 #> Log-likelihood estimate -206.89
-#> Computation time 20.11/0.67 (seconds total/per evaluation)
+#> Computation time 13.31/0.44 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF_cpp
@@ -520,7 +520,7 @@ local({
 #> 0.7020 0.6746 
 #> 
 #> Log-likelihood estimate -206.88
-#> Computation time 150.71/0.58 (seconds total/per evaluation)
+#> Computation time 95.58/0.37 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan
@@ -534,7 +534,7 @@ local({
 #> 0.7115 0.6753 
 #> 
 #> Log-likelihood estimate -207.43
-#> Computation time 296.86/0.73 (seconds total/per evaluation)
+#> Computation time 294.99/0.73 (seconds total/per evaluation)
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise.

@@ -10,16 +10,24 @@
 #include <Rinternals.h>
 #include "threat-safe-random.h"
 
+double F77_SUB(sqrtqchisqint)(int const *n, double const *p) {
+  return(sqrt(qchisq(p[0], (double) n[0], 0, 0)));
+}
+
+double F77_SUB(mvphi)(double const *z){
+  return pnorm5(*z, 0., 1., 1L, 0L);
+}
+
+double F77_SUB(mvphnv)(double const *p){
+  return qnorm5(*p, 0., 1., 1L, 0L);
+}
+
 double F77_SUB(unifrnd)(void) {
 #ifdef USE_R_RNG
   return unif_rand();
 #else
   return rngunif_wrapper();
 #endif
-}
-
-double F77_SUB(sqrtqchisqint)(int const *n, double const *p) {
-    return(sqrt(qchisq(p[0], (double) n[0], 0, 0)));
 }
 
 double F77_SUB(gamran)(double const *a){
