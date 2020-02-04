@@ -42,8 +42,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_cdf
-Rcpp::NumericVector aprx_binary_mix_cdf(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps);
-RcppExport SEXP _mixprobit_aprx_binary_mix_cdf(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
+Rcpp::NumericVector aprx_binary_mix_cdf(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps, unsigned const seed);
+RcppExport SEXP _mixprobit_aprx_binary_mix_cdf(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP seedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -54,7 +54,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf(y, eta, Z, Sigma, maxpts, abseps, releps));
+    Rcpp::traits::input_parameter< unsigned const >::type seed(seedSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf(y, eta, Z, Sigma, maxpts, abseps, releps, seed));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -85,8 +86,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_brute
-double aprx_binary_mix_brute(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const n_sim);
-RcppExport SEXP _mixprobit_aprx_binary_mix_brute(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP n_simSEXP) {
+double aprx_binary_mix_brute(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const n_sim, unsigned const n_threads);
+RcppExport SEXP _mixprobit_aprx_binary_mix_brute(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP n_simSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -95,7 +96,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
     Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type n_sim(n_simSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_brute(y, eta, Z, Sigma, n_sim));
+    Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_brute(y, eta, Z, Sigma, n_sim, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// for_rngnorm_wrapper_test
+Rcpp::NumericVector for_rngnorm_wrapper_test(unsigned const n, unsigned const n_threads);
+RcppExport SEXP _mixprobit_for_rngnorm_wrapper_test(SEXP nSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< unsigned const >::type n(nSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(for_rngnorm_wrapper_test(n, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -105,10 +119,11 @@ RcppExport SEXP run_testthat_tests();
 static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
     {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 8},
-    {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
+    {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 8},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 5},
-    {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 5},
+    {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 6},
+    {"_mixprobit_for_rngnorm_wrapper_test", (DL_FUNC) &_mixprobit_for_rngnorm_wrapper_test, 2},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };

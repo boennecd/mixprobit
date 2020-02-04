@@ -9,8 +9,8 @@ aprx_binary_mix <- function(y, eta, Z, Sigma, mxvals, key, epsabs, epsrel) {
     .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, mxvals, key, epsabs, epsrel)
 }
 
-aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps) {
-    .Call('_mixprobit_aprx_binary_mix_cdf', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps)
+aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps, seed = 1L) {
+    .Call('_mixprobit_aprx_binary_mix_cdf', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, seed)
 }
 
 set_GH_rule_cached <- function(b) {
@@ -21,7 +21,11 @@ aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b) {
     .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b)
 }
 
-aprx_binary_mix_brute <- function(y, eta, Z, Sigma, n_sim) {
-    .Call('_mixprobit_aprx_binary_mix_brute', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_sim)
+aprx_binary_mix_brute <- function(y, eta, Z, Sigma, n_sim, n_threads = 1L) {
+    .Call('_mixprobit_aprx_binary_mix_brute', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_sim, n_threads)
+}
+
+for_rngnorm_wrapper_test <- function(n, n_threads) {
+    .Call('_mixprobit_for_rngnorm_wrapper_test', PACKAGE = 'mixprobit', n, n_threads)
 }
 

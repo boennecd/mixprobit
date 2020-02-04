@@ -1,6 +1,7 @@
 #include "mvtnorm-wrapper.h"
 #include <testthat.h>
 #include <limits>
+#include "threat-safe-random.h"
 
 context("pmvnorm unit tests") {
   test_that("pmvnorm gives similar output to R") {
@@ -30,6 +31,7 @@ context("pmvnorm unit tests") {
  dput(prob)
 */
     Rcpp::RNGScope rngScope;
+    parallelrng::set_rng_seeds(1L);
     constexpr double Inf = std::numeric_limits<double>::infinity();
 
     arma::vec lower, upper, mean;

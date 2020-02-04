@@ -8,30 +8,41 @@
 #include <R.h>
 #include <Rmath.h>
 #include <Rinternals.h>
+#include "threat-safe-random.h"
 
 double F77_SUB(unifrnd)(void) {
+#ifdef USE_R_RNG
   return unif_rand();
-}
-double F77_SUB(sqrtqchisqint)(int *n, double *p) {
-    return(sqrt(qchisq(p[0], (double) n[0], 0, 0)));
-}
-double F77_SUB(phid)(double *x){
-  return pnorm(*x, 0.0, 1.0, 1, 0);
-}
-double F77_SUB(studnt)(int *nu, double *x){
-  return pt(x[0], (double) nu[0], 1, 0);
+#else
+  return rngunif_wrapper();
+#endif
 }
 
-double F77_SUB(gamran)(double *a){
+double F77_SUB(sqrtqchisqint)(int const *n, double const *p) {
+    return(sqrt(qchisq(p[0], (double) n[0], 0, 0)));
+}
+
+double F77_SUB(gamran)(double const *a){
+#ifdef USE_R_RNG
   return rgamma(*a, 1);
+#else
+  return rnggamma_wrapper(*a);
+#endif
 }
+
 double F77_SUB(norran)(void){
+#ifdef USE_R_RNG
   return norm_rand();
+#else
+  return rngnorm_wrapper();
+#endif
 }
-double F77_SUB(rnrnor)(void){
-  return norm_rand();
-}
-double F77_SUB(betran)(double *a, double *b){
+
+double F77_SUB(betran)(double const *a, double const *b){
+#ifdef USE_R_RNG
   return rbeta(*a, *b);
+#else
+  return rngbeta_wrapper(*a, *b);
+#endif
 }
 

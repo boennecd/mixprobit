@@ -267,7 +267,7 @@ truth_maybe2 <- wd(
                    abseps = 1e-11)(2L))
 truth <- wd(
   mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
-                                    n_sim = 1e8))
+                                    n_sim = 1e8, n_threads = 6L))
 
 all.equal(truth, c(truth_maybe1))
 all.equal(truth, c(truth_maybe2))
@@ -365,8 +365,11 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
         break
       
       b <- b + 1L
-      if(b > 50L)
-        stop("found no node value")
+      if(b > 50L){
+        warning("found no node value")
+        b <- NA_integer_
+        break
+      }
     })
     b
   })
@@ -506,7 +509,7 @@ ex_output <- (function(){
     if(!file.exists(cache_file)){
       message(sprintf("Running setup with   n %3d and p %3d", n, p))
       
-      set.seed(71771945)
+      set.seed(71771946)
       clusterExport(cl, c("n", "p"), envir = environment())    
       clusterSetRNGStream(cl)
       
@@ -657,6 +660,5 @@ local({
 
 The computation time is in `r comp_time_mult`s of a second. The mean MSE is 
 multiplied by $`r err_mult`$.
-
 
 ## References

@@ -218,7 +218,7 @@
       DOUBLE PRECISION VALUE(*), ERROR(*)
       DOUBLE PRECISION X(*), FUNS(*), FUNC(*), FUNV(*), V(*), WK(*)
       DOUBLE PRECISION R, Q, RM, TH, WC, WV, DIFFER
-      DOUBLE PRECISION RNRNOR, BETRAN, GAMRAN
+      DOUBLE PRECISION NORRAN, BETRAN, GAMRAN
       IF ( KEY .EQ. 2 ) THEN
          NS = MAX( 3, ( MXVALS - 1 )/( 2*( M + 1 ) ) )
          INTVLS = 1 + NS*2*( M + 1 )
@@ -255,7 +255,7 @@
          DO L = 1, NS
             IF ( KEY .LE. 1 .OR. 5 .LE. KEY ) THEN
                DO I = 1, M
-                  V(I) = RNRNOR()
+                  V(I) = NORRAN()
                END DO
                CALL RNSRUL( KEY, M, NF, F, R, V, X, WK, FUNV )
             ELSE
@@ -431,7 +431,7 @@
 *     Determine random M-simplex with vertices V and work vector X.
 *
       INTEGER I, J, K, M
-      DOUBLE PRECISION V( M, * ), X(*), AL, BT, RV, MP, RNRNOR
+      DOUBLE PRECISION V( M, * ), X(*), AL, BT, RV, MP, NORRAN
       MP = M + 1
 *
 *     Determine standard unit simplex centered at origin
@@ -458,7 +458,7 @@
       DO K = M - 1, 1, -1
          AL = 0
          DO I = K, M
-            X(I) = RNRNOR()
+            X(I) = NORRAN()
             AL = AL + X(I)**2
          END DO
          AL = -SQRT(AL)

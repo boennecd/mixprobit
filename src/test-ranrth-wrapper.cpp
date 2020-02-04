@@ -2,6 +2,7 @@
 #include "integrand-binary.h"
 #include <testthat.h>
 #include <limits>
+#include "threat-safe-random.h"
 
 context("ranrth-wrapper unit tests") {
   test_that("ranrth-wrapper gives correct result with mix_binary") {
@@ -57,6 +58,7 @@ context("ranrth-wrapper unit tests") {
 
     using namespace ranrth_aprx;
     Rcpp::RNGScope rngScope;
+    parallelrng::set_rng_seeds(1L);
 
     constexpr arma::uword const n = 4L,
                                 p = 2L;
