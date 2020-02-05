@@ -81,6 +81,19 @@ with(sala, {
   # show plot of males and females that mate
   image(X, xlab = "female", ylab = "male")
 })
+
+# get summary stats for clusters
+local({
+  sum_dat <- sapply(split(sala, sala$cl), function(x){
+    p <- length(unique(x$female))
+    q <- length(unique(x$male))
+    
+    c(`# observations (n)` = NROW(x), `# random effects (p)` = p + q)
+  })
+  dimnames(sum_dat) <- structure(dimnames(sum_dat), 
+                                 names = c("Stat", "Cluster"))
+  t(sum_dat)
+})
 ```
 
 Assign the formulas that we need
@@ -364,5 +377,63 @@ local({
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise. 
+
+## Small Clusters
+
+We artificially increase the number of clusters by removing mating pairs to 
+grasp the effect on the computation time. First, we remove the pairs. 
+
+```{r make_salamander_small}
+sala <- local({
+  new_dat <- lapply(split(sala, sala$cl), function(cl_dat){
+    male   <- as.integer(cl_dat$male)
+    female <- as.integer(cl_dat$female)
+    
+    # the data is ordered such that the vsm == 0 is first. Thus, we re-order
+    # the data
+    stopifnot(!is.unsorted(tapply(cl_dat$wsm, male  , unique)), 
+              !is.unsorted(tapply(cl_dat$wsf, female, unique)), 
+              max(female) == max(male), 
+              min(female) == min(male))
+    
+    idx_vals <- min(female):max(female)
+    new_idx <- rep(NA_integer_, length(idx_vals))
+    
+    is_odd <- (idx_vals %% 2L) == 1L
+    res <- sum(is_odd)
+    new_idx[ is_odd] <- idx_vals[1:res]
+    new_idx[!is_odd] <- idx_vals[setdiff(seq_along(idx_vals), 1:res)]
+    
+    female <- idx_vals[match(female, new_idx)]
+    male   <- idx_vals[match(male  , new_idx)]
+    
+    # from groups
+    denom <- as.integer(ceiling(length(idx_vals) / 2L))
+    keep <- (female %/% denom) == (male %/% denom)
+    
+    cl_dat$male   <- male
+    cl_dat$female <- female
+    cl_dat <- cl_dat[keep, ]
+    cl_dat <- cl_dat[order(cl_dat$female), ]
+    cl_dat
+  })
+  
+  out <- do.call(rbind, new_dat)
+  out$female <- as.factor(out$female)
+  out$male   <- as.factor(out$male)
+  out
+})
+```
+
+```{r again_asg_cluster, ref.label = "asg_cluster"}
+```
+
+Then we re-run the estimation. 
+
+```{r again_cdf_arpx, cache = 1, warning = FALSE, ref.label = "cdf_arpx"}
+```
+
+```{r show_cdf_aprx}
+```
 
 ## References

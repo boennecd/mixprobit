@@ -73,6 +73,30 @@ with(sala, {
 
 ![](fig-salamander/asg_cluster-1.png)
 
+``` r
+
+# get summary stats for clusters
+local({
+  sum_dat <- sapply(split(sala, sala$cl), function(x){
+    p <- length(unique(x$female))
+    q <- length(unique(x$male))
+    
+    c(`# observations (n)` = NROW(x), `# random effects (p)` = p + q)
+  })
+  dimnames(sum_dat) <- structure(dimnames(sum_dat), 
+                                 names = c("Stat", "Cluster"))
+  t(sum_dat)
+})
+#>        Stat
+#> Cluster # observations (n) # random effects (p)
+#>       1                 60                   20
+#>       2                 60                   20
+#>       3                 60                   20
+#>       4                 60                   20
+#>       5                 60                   20
+#>       6                 60                   20
+```
+
 Assign the formulas that we need
 
 ``` r
@@ -538,6 +562,419 @@ local({
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise.
+
+Small Clusters
+--------------
+
+We artificially increase the number of clusters by removing mating pairs to grasp the effect on the computation time. First, we remove the pairs.
+
+``` r
+sala <- local({
+  new_dat <- lapply(split(sala, sala$cl), function(cl_dat){
+    male   <- as.integer(cl_dat$male)
+    female <- as.integer(cl_dat$female)
+    
+    # the data is ordered such that the vsm == 0 is first. Thus, we re-order
+    # the data
+    stopifnot(!is.unsorted(tapply(cl_dat$wsm, male  , unique)), 
+              !is.unsorted(tapply(cl_dat$wsf, female, unique)), 
+              max(female) == max(male), 
+              min(female) == min(male))
+    
+    idx_vals <- min(female):max(female)
+    new_idx <- rep(NA_integer_, length(idx_vals))
+    
+    is_odd <- (idx_vals %% 2L) == 1L
+    res <- sum(is_odd)
+    new_idx[ is_odd] <- idx_vals[1:res]
+    new_idx[!is_odd] <- idx_vals[setdiff(seq_along(idx_vals), 1:res)]
+    
+    female <- idx_vals[match(female, new_idx)]
+    male   <- idx_vals[match(male  , new_idx)]
+    
+    # from groups
+    denom <- as.integer(ceiling(length(idx_vals) / 2L))
+    keep <- (female %/% denom) == (male %/% denom)
+    
+    cl_dat$male   <- male
+    cl_dat$female <- female
+    cl_dat <- cl_dat[keep, ]
+    cl_dat <- cl_dat[order(cl_dat$female), ]
+    cl_dat
+  })
+  
+  out <- do.call(rbind, new_dat)
+  out$female <- as.factor(out$female)
+  out$male   <- as.factor(out$male)
+  out
+})
+```
+
+``` r
+sala$cl <- with(sala, {
+  cl <- rep(NA_integer_, length(female))
+  
+  grp <- 0L
+  repeat {
+    # take first NA
+    grp <- grp + 1L
+    cur <- which(is.na(cl))
+    if(length(cur) == 0L)
+      # not any left. Thus return
+      break
+    
+    new_members <- cur[1L]
+    repeat {
+      cl[new_members] <- grp
+      male_in_grp    <- male  [new_members]
+      females_in_grp <- female[new_members]
+      
+      # find mates of the new members
+      new_members <- which(
+        ((male %in% male_in_grp) | (female %in% females_in_grp)) & 
+          is.na(cl))
+      if(length(new_members) == 0L)
+        break
+    }
+  }
+  
+  cl
+})
+
+# turns out that the data was already sorted...
+stopifnot(!is.unsorted(sala$cl))
+with(sala, {
+  female <- as.integer(female)
+  male   <- as.integer(male)
+  
+  p <- length(unique(female))
+  stopifnot(length(unique(male)) == p)
+  
+  X <- matrix(0L, p, p)
+  for(i in 1:length(female))
+    X[female[i], male[i]] <- 1L
+  
+  # show plot of males and females that mate
+  image(X, xlab = "female", ylab = "male")
+})
+```
+
+![](fig-salamander/again_asg_cluster-1.png)
+
+``` r
+
+# get summary stats for clusters
+local({
+  sum_dat <- sapply(split(sala, sala$cl), function(x){
+    p <- length(unique(x$female))
+    q <- length(unique(x$male))
+    
+    c(`# observations (n)` = NROW(x), `# random effects (p)` = p + q)
+  })
+  dimnames(sum_dat) <- structure(dimnames(sum_dat), 
+                                 names = c("Stat", "Cluster"))
+  t(sum_dat)
+})
+#>        Stat
+#> Cluster # observations (n) # random effects (p)
+#>      1                  10                    8
+#>      2                  16                   10
+#>      3                   9                    8
+#>      4                  15                   10
+#>      5                  10                    8
+#>      6                  16                   10
+#>      7                   9                    8
+#>      8                  15                   10
+#>      9                  10                    8
+#>      10                 16                   10
+#>      11                  9                    8
+#>      12                 15                   10
+```
+
+Then we re-run the estimation.
+
+``` r
+mix_prob_fit <- within(list(), {
+  # setup cluster
+  n_threads <- 6L
+  cl <- makeCluster(n_threads)
+  on.exit(stopCluster(cl))
+  
+  # run fit to get starting values
+  pre_fit <- glm(update(frm$X, y ~ .), family = binomial("probit"), sala)
+  X_terms <- delete.response(terms(pre_fit))
+  
+  # get data for each cluster
+  dat <- lapply(split(sala, sala$cl), function(cl_dat)
+    within(list(), {
+      cl_dat$female <- droplevels(cl_dat$female)
+      cl_dat$male   <- droplevels(cl_dat$male)
+      
+      y <- cl_dat$y 
+      Z <- t(model.matrix(frm$Z, cl_dat))
+      X <-   model.matrix(X_terms, cl_dat)
+      
+      p <- NROW(Z)
+      is_male <- which(grepl("^male", rownames(Z)))
+      var_idx <- as.integer(grepl("^male", rownames(Z)))
+  }))
+  
+  # starting values
+  beta <- pre_fit$coefficients
+  fnscale <- abs(c(logLik(pre_fit)))
+  q <- length(beta)
+  par <- c(beta, log(c(.1, .1)))
+  
+  # negative log-likelihood function
+  ll_func <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+                      releps = 1e-2, meth){
+    if(!is.null(seed))
+      set.seed(seed)
+    clusterSetRNGStream(cl)
+    beta <-          head(par,  q)
+    vars  <- exp(2 * tail(par, -q))
+    clusterExport(cl, c("beta", "vars", "maxpts", "abseps", "releps"), 
+                  environment())
+    
+    ll_terms <- parSapply(cl, dat, function(cl_dat){
+      with(cl_dat, {
+        eta <- drop(X %*% beta)
+        Sigma <- diag(nrow(Z))
+        
+        diag(Sigma)[-is_male] <- vars[1L]
+        diag(Sigma)[ is_male] <- vars[2L]
+        
+        out <- meth(
+            y = y, eta = eta, Sigma = Sigma, Z = Z, maxpts = maxpts, 
+            abseps = abseps, releps = releps)
+        
+        c(ll = log(c(out)), err = attr(out, "error"), 
+          inform = attr(out, "inform"))
+      })
+    })
+    
+    inform <- ll_terms["inform", ]
+    if(any(inform > 0))
+      warning(paste(
+        "Got these inform values: ", 
+        paste0(unique(inform), collapse = ", ")))
+    
+    -sum(ll_terms["ll", ])
+  }
+  
+  # C++ version
+  cpp_ptr <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
+    data = dat, n_threads = n_threads)
+  
+  ll_cpp <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+                     releps = 1e-2){
+    if(!is.null(seed))
+      set.seed(seed)
+    
+    beta    <- head(par,  q)
+    log_sds <- tail(par, -q)
+    
+    out <- mixprobit:::aprx_binary_mix_cdf_eval(
+      ptr = cpp_ptr, beta = beta, log_sds = log_sds, maxpts = maxpts, 
+      abseps = abseps, releps = releps)
+    
+    -out
+  }
+  
+  # use the methods to find the optimal parameters
+  take_time <- function(expr){
+    cat("Running:", sep = "\n",
+        paste0("  ", deparse(substitute(expr)), collapse = "\n"), "")
+    
+    ti <- eval(bquote(system.time(out <- .(substitute(expr)))), 
+               parent.frame())
+    cat("\n")
+    stopifnot(is.list(out) && is.null(out$time))
+    out$time <- ti
+    out
+  }
+  
+  # set formals on optim
+  opt_use <- optim
+  formals(opt_use)[c("method", "control")] <- list(
+    "BFGS", list(trace = 3L, fnscale = fnscale))
+  
+  # first make a few quick fits with a low error or number of samples
+  fit_CDF_cpp_fast <- take_time(opt_use(
+    par, ll_cpp , maxpts = 5000L, releps = .1))
+  fit_Genz_Monahan_fast <- take_time(opt_use(
+    par, ll_func, maxpts = 5000L, releps = .1,
+    meth = mixprobit:::aprx_binary_mix))
+  
+  # then use a lower error or more samples starting from the previous 
+  # estimate
+  cdf_par <- fit_CDF_cpp_fast$par
+  fit_CDF_cpp <- take_time(opt_use(
+    cdf_par, ll_cpp , maxpts = 100000L, releps = 1e-3))
+  fit_CDF <- take_time(opt_use(
+    cdf_par, ll_func, maxpts = 100000L, releps = 1e-3,
+    meth = mixprobit:::aprx_binary_mix_cdf))
+
+  gmo_start <- fit_Genz_Monahan_fast$par
+  fit_Genz_Monahan <-  take_time(opt_use(
+    gmo_start, ll_func, maxpts = 100000L, releps = 1e-3,
+    meth = mixprobit:::aprx_binary_mix))
+  
+  # add q to output
+  fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- 
+    fit_CDF$q <- fit_Genz_Monahan$q <- q
+})
+#> Running:
+#>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1)
+#> 
+#> initial  value 0.998363 
+#> iter  10 value 0.992242
+#> iter  20 value 0.985721
+#> iter  30 value 0.983038
+#> iter  40 value 0.982476
+#> iter  50 value 0.982467
+#> iter  60 value 0.982464
+#> final  value 0.982463 
+#> converged
+#> 
+#> Running:
+#>   opt_use(par, ll_func, maxpts = 5000L, releps = 0.1, meth = mixprobit:::aprx_binary_mix)
+#> 
+#> initial  value 0.998365 
+#> iter  10 value 0.992495
+#> iter  20 value 0.985866
+#> iter  30 value 0.983612
+#> iter  40 value 0.982950
+#> iter  50 value 0.982941
+#> final  value 0.982941 
+#> converged
+#> 
+#> Running:
+#>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = 0.001)
+#> 
+#> initial  value 0.982463 
+#> final  value 0.982463 
+#> converged
+#> 
+#> Running:
+#>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = 0.001, meth = mixprobit:::aprx_binary_mix_cdf)
+#> 
+#> initial  value 0.982466 
+#> final  value 0.982466 
+#> converged
+#> 
+#> Running:
+#>   opt_use(gmo_start, ll_func, maxpts = 100000L, releps = 0.001, 
+#>       meth = mixprobit:::aprx_binary_mix)
+#> 
+#> initial  value 0.982339 
+#> iter  10 value 0.982324
+#> iter  20 value 0.982323
+#> iter  20 value 0.982323
+#> iter  20 value 0.982323
+#> final  value 0.982323 
+#> converged
+```
+
+``` r
+local({
+  show_res <- function(fit){
+    nam <- deparse(substitute(fit))
+    cat("\n", nam, "\n", rep("-", nchar(nam)), "\n", sep = "")
+    
+    cat("\nFixed effects\n")
+    q <- fit$q
+    print(head(fit$par,  q))
+    
+    cat("\nRandom effect standard deviations")
+    print(exp(tail(fit$par, -q)))
+    
+    cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f/%.2f (seconds total/per evaluation)\n", 
+                -fit$value, fit$time["elapsed"], 
+                fit$time["elapsed"] / (
+                  fit$counts["function"] + fit$counts["gradient"] * 2L * 
+                    length(fit$par))))
+    cat("\n")
+  }
+  
+  with(mix_prob_fit, {
+    show_res(fit_CDF_cpp_fast)
+    show_res(fit_Genz_Monahan_fast)
+    show_res(fit_CDF)
+    show_res(fit_CDF_cpp)
+    show_res(fit_Genz_Monahan)
+  })
+})
+#> 
+#> fit_CDF_cpp_fast
+#> ----------------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.4066     -0.1892     -1.2710      1.3930 
+#> 
+#> Random effect standard deviations              
+#> 0.6213 0.4974 
+#> 
+#> Log-likelihood estimate -92.03
+#> Computation time 36.52/0.04 (seconds total/per evaluation)
+#> 
+#> 
+#> fit_Genz_Monahan_fast
+#> ---------------------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.4037     -0.1812     -1.2658      1.3812 
+#> 
+#> Random effect standard deviations              
+#> 0.6141 0.4834 
+#> 
+#> Log-likelihood estimate -92.07
+#> Computation time 58.32/0.09 (seconds total/per evaluation)
+#> 
+#> 
+#> fit_CDF
+#> -------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.4063     -0.1885     -1.2710      1.3928 
+#> 
+#> Random effect standard deviations              
+#> 0.6215 0.4964 
+#> 
+#> Log-likelihood estimate -92.03
+#> Computation time 11.33/0.12 (seconds total/per evaluation)
+#> 
+#> 
+#> fit_CDF_cpp
+#> -----------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.4066     -0.1892     -1.2710      1.3930 
+#> 
+#> Random effect standard deviations              
+#> 0.6213 0.4974 
+#> 
+#> Log-likelihood estimate -92.03
+#> Computation time 0.66/0.04 (seconds total/per evaluation)
+#> 
+#> 
+#> fit_Genz_Monahan
+#> ----------------
+#> 
+#> Fixed effects
+#> (Intercept)         wsm         wsf     wsm:wsf 
+#>      0.4077     -0.1912     -1.2729      1.3949 
+#> 
+#> Random effect standard deviations              
+#> 0.6234 0.4992 
+#> 
+#> Log-likelihood estimate -92.01
+#> Computation time 85.57/0.33 (seconds total/per evaluation)
+```
 
 References
 ----------
