@@ -1,0 +1,236 @@
+---
+title: Multivariate Normal CDFs and Their Derivatives
+author: Benjamin Christoffersen
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  md_document:
+    variant: markdown_github
+    pandoc_args: --webtex=https://latex.codecogs.com/svg.latex?
+bibliography: ../README.bib
+---
+
+# Multivariate Normal CDFs and Their Derivatives
+
+Setup.
+
+```{r setup}
+set.seed(1L)
+options(digits = 4)
+
+# sample data
+p <- 4L
+sigma <- drop(rWishart(1, 2L * p, diag(p)))
+mu <- rnorm(p, sd = .1)
+```
+
+```{r def_R_func}
+#####
+# define function to approximate rectangular multivariate normal CDFs
+# where the lower bound are -Inf and upper bounds are zero
+my_pmvnorm <- function(mean, sigma, nsim, h = function(...) 1){
+  #####
+  # setup
+  n <- length(mean)
+  sigma_chol <- chol(sigma)
+  draw_trunc_mean <- function(b, u)
+    qnorm(pnorm(b) * u)
+  nm1 <- n - 1L
+
+  #####
+  # simulate
+  sims <- replicate(nsim, {
+    u <- runif(n)
+    draw <- numeric(n)
+    out <- 1.
+
+    for(i in 1:n){
+      b <- if(i == 1L)
+        -mean[i]
+      else
+        -mean[i] - drop(sigma_chol[1:(i - 1L), i] %*% draw[1:(i - 1L)])
+      b <- b / sigma_chol[i, i]
+
+      draw[i] <- draw_trunc_mean(b, u[i])
+
+      out <- out * pnorm(b)
+    }
+
+    h(draw, mean, sigma_chol) * out
+  }, simplify = "array")
+
+  # return MC estimate
+  if(is.vector(sims))
+    return(mean(sims))
+  rowMeans(sims)
+}
+```
+
+Approximate CDF.
+
+```{r aprx_cdf}
+library(mvtnorm)
+my_pmvnorm(mu, sigma, 10000L)
+pmvnorm(upper = rep(0, p), mean = mu, sigma = sigma)
+```
+
+Approximate derivative of CDF w.r.t. the mean.
+
+```{r arpx_deriv}
+my_pmvnorm(mu, sigma, 10000L, h = function(draw, mean, sigma_chol)
+  forwardsolve(sigma_chol, draw, upper.tri = TRUE))
+
+library(numDeriv)
+drop(jacobian(function(x){
+  set.seed(31958429L)
+  pmvnorm(upper = rep(0, p), mean = x, sigma = sigma)
+}, mu))
+```
+
+Approximate derivative of log CDF w.r.t. the mean.
+
+```{r aprx_log_deriv}
+out <- my_pmvnorm(mu, sigma, 10000L, h = function(draw, mean, sigma_chol)
+  c(1, forwardsolve(sigma_chol, draw, upper.tri = TRUE)))
+out[-1] / out[1]
+
+drop(jacobian(function(x){
+  set.seed(31958429L)
+  log(pmvnorm(upper = rep(0, p), mean = x, sigma = sigma))
+}, mu))
+```
+
+## Computation Times
+Make C++ example and compare computations times.
+
+```{r cmp_cpp_func, engine = 'Rcpp'}
+#include <stdexcept>
+#include <array>
+#include <limits>
+
+// [[Rcpp::depends("RcppArmadillo")]]
+#include <RcppArmadillo.h>
+
+inline std::array<double, 2> draw_trunc_mean
+  (double const b, const double u, const bool draw){
+  double const qb = R::pnorm5(b, 0, 1, 1L, 0L);
+  if(draw)
+    return { qb, R::qnorm5(qb * u, 0, 1, 1L, 0L) };
+  return { qb, std::numeric_limits<double>::quiet_NaN() };
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector my_pmvnorm_cpp(
+    arma::vec const &mean_in, arma::mat const &sigma_in, 
+    unsigned const nsim, double const eps){
+  arma::uword const p = mean_in.n_elem;
+  if(sigma_in.n_cols != p or sigma_in.n_rows != p)
+    throw std::invalid_argument("invalid sigma");
+  
+  /* re-scale */
+  arma::vec const sds = arma::sqrt(arma::diagvec(sigma_in));
+  arma::vec const mean = mean_in / sds;
+  
+  arma::mat const sigma = ([&](){
+    arma::mat out = sigma_in;
+    out.each_row() /= sds.t();
+    out.each_col() /= sds;
+    
+    return out;
+  })();
+  
+  arma::mat const sigma_chol = arma::chol(sigma);
+  
+  double out(0.), di(0.), M(0.);
+  arma::vec draw(p);
+  unsigned i;
+  unsigned const min_run = p * 10L;
+  constexpr double alpha(2.5);
+  for(i = 0; i < nsim;){
+    unsigned const i_max = i + min_run;
+    for(; i < i_max; i += 2L){
+      auto func = [&](arma::vec const &u){
+        double w(1.);
+        for(unsigned j = 0; j < p; ++j){
+          double b(-mean[j]);
+          for(unsigned k = 0; k < j; ++k)
+            b -= sigma_chol.at(k, j) * draw[k];
+          b /= sigma_chol.at(j, j);
+          
+          auto const draw_n_p = draw_trunc_mean(b, u[j], j + 1 < p);
+          w       *= draw_n_p[0];
+          draw[j]  = draw_n_p[1];
+        }
+        
+        /* use Welfords online algorithm */
+        double const old_diff = (w - out);
+        di  += 1.;
+        out += old_diff / di;
+        M   += old_diff * (w - out);
+      };
+      
+      arma::vec u(p);
+      u.transform([](double val) { return unif_rand(); });
+      func(u);
+      func(1 - u);
+      
+    }
+    
+    if(alpha * std::sqrt(M / di / di) < eps)
+      break;
+  }
+  
+  Rcpp::NumericVector ret_val(1L);
+  ret_val[0L] = out;
+  ret_val.attr("error") = alpha * std::sqrt(M / di / di);
+  ret_val.attr("n_sim") = i;
+  return ret_val;
+}
+```
+
+Test the C++ function.
+
+```{r test_cpp}
+# approximate CDF
+library(mvtnorm)
+library(mixprobit)
+my_wrap <- function(n_sim)
+  my_pmvnorm_cpp(mu, sigma, n_sim, 25e-5)
+cm_wrap <- function()
+  pmvnorm(
+    upper = rep(0, p), mean = mu, sigma = sigma, 
+    algorithm = GenzBretz(abseps = 1e-3, releps = -1))
+# differs by using R's pnorm and qnorm
+cm_wrap_2 <- function()
+  mixprobit:::pmvnorm_cpp(
+    lower = rep(-Inf, p), 
+    upper = rep(0, p), mean = mu, cov = sigma, 
+    abseps = 1e-3, releps = -1, maxpts = 25000L)
+
+my_wrap(100000L)
+cm_wrap()
+cm_wrap_2()
+
+sd(om  <- replicate(1000L, my_wrap(100000L)))
+sd(cm  <- replicate(1000L, cm_wrap()))
+sd(cm2 <- replicate(1000L, cm_wrap_2()$value))
+
+cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n", 
+            mean(om), mean(cm), mean(cm2), 
+            log(mean(om)), log(mean(cm)), log(mean(cm2))))
+
+microbenchmark::microbenchmark(
+  pmvnorm                 = cm_wrap(), 
+  `pmvnorm (R funcs)`     = cm_wrap_2(), 
+  `my_pmvnorm_cpp 10000`  = my_wrap(10000L ),
+  `my_pmvnorm_cpp 100000` = my_wrap(100000L),
+  times = 100L)
+```
+
+Clearly, do not directly use the GHK method used by @Hajivassiliou96 or 
+@Genz92 (two very similar and maybe independent suggestions). Use what Alan 
+Genz has implemented in `mvtnorm::pmvt`. See 
+@Niederreiter72, @Keast73, @Cranley76 and the `MVKBRV` subroutine in 
+the `mvt.f` file. Using this subroutine to approximate the derivatives 
+should be fairly straight forward.
+
+## References
