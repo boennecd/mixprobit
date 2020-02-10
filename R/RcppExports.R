@@ -5,6 +5,10 @@ pmvnorm_cpp <- function(lower, upper, mean, cov, maxpts, abseps, releps) {
     .Call('_mixprobit_pmvnorm_cpp', PACKAGE = 'mixprobit', lower, upper, mean, cov, maxpts, abseps, releps)
 }
 
+pmvnorm_cpp_restrict <- function(mean, cov, maxpts, abseps, releps) {
+    .Call('_mixprobit_pmvnorm_cpp_restrict', PACKAGE = 'mixprobit', mean, cov, maxpts, abseps, releps)
+}
+
 aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L) {
     .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, key)
 }

@@ -1,6 +1,7 @@
 #include "gaus-Hermite.h"
 #include "mvtnorm-wrapper.h"
 #include "integrand-binary.h"
+#include "restrict-cdf.h"
 #include "threat-safe-random.h"
 #include <vector>
 #ifdef _OPENMP
@@ -20,6 +21,21 @@ Rcpp::List pmvnorm_cpp(arma::vec const &lower, arma::vec const &upper,
 
   return Rcpp::List::create(Named("value")  = res.value,
                             Named("error")  = res.error,
+                            Named("inform") = res.inform);
+}
+
+// [[Rcpp::export]]
+Rcpp::List pmvnorm_cpp_restrict(
+    arma::vec const &mean, arma::mat const &cov,
+    int const maxpts, double const abseps, double const releps){
+  parallelrng::set_rng_seeds(1L);
+
+  using Rcpp::Named;
+  auto const res = restrictcdf::cdf<restrictcdf::likelihood>
+    (mean, cov).approximate(maxpts, abseps, releps);
+
+  return Rcpp::List::create(Named("value")  = res.finest[0],
+                            Named("error")  = res.abserr,
                             Named("inform") = res.inform);
 }
 
