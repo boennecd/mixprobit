@@ -5,6 +5,7 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <cmath>
 
 namespace restrictcdf {
 inline std::array<double, 2> draw_trunc_mean
@@ -97,12 +98,17 @@ template<class funcs>
 class cdf {
   using comp_dat = typename funcs::comp_dat;
 
-  thread_local static int ndim, n_integrands;
-  thread_local static arma::vec mu;
-  thread_local static arma::vec sigma_chol;
+  static int ndim, n_integrands;
+  static arma::vec mu;
+  static arma::vec sigma_chol;
+  /* TODO: use omp threadprivate... */
   thread_local static std::unique_ptr<comp_dat> dat;
   static constexpr bool const needs_last_unif =
     funcs::needs_last_unif();
+
+#ifdef _OPENMP
+#pragma omp threadprivate(ndim, n_integrands, mu, sigma_chol)
+#endif
 
 public:
   /* function to be called from mvkbrv */
@@ -153,14 +159,17 @@ public:
     mu = mu_in / sds;
 
     sigma_chol = ([&]{
-      arma::uword const p = sigma_in.size();
+      arma::uword const p = sigma_in.n_cols;
+      arma::vec out((p * (p + 1L)) / 2L);
+
 
       arma::mat tmp = sigma_in;
       tmp.each_row() /= sds.t();
       tmp.each_col() /= sds;
-      tmp = arma::chol(tmp);
-
-      arma::vec out((p * (p + 1L)) / 2L);
+      if(!arma::chol(tmp, tmp)){
+        out += std::numeric_limits<double>::infinity();
+        return out;
+      }
 
       double *o = out.memptr();
       for(unsigned c = 0; c < p; c++)
@@ -183,6 +192,14 @@ public:
     assert((abseps > 0 or releps > 0));
     assert(maxvls > 0);
 
+    if(std::isinf(sigma_chol[0])){
+      output out;
+      out.finest.resize(n_integrands);
+      out.finest.fill(std::numeric_limits<double>::quiet_NaN());
+      out.inform = -1L;
+      return out;
+    }
+
     /* set pointer to this class' member function */
     set_mvkbrv_ptr(&cdf<funcs>::eval_integrand);
     output out =
@@ -195,13 +212,13 @@ public:
 
 /* initialize static members */
 template<class funcs>
-thread_local int cdf<funcs>::ndim = 0L;
+int cdf<funcs>::ndim = 0L;
 template<class funcs>
-thread_local int cdf<funcs>::n_integrands = 0L;
+int cdf<funcs>::n_integrands = 0L;
 template<class funcs>
-thread_local arma::vec cdf<funcs>::mu = arma::vec();
+arma::vec cdf<funcs>::mu = arma::vec();
 template<class funcs>
-thread_local arma::vec cdf<funcs>::sigma_chol = arma::vec();
+arma::vec cdf<funcs>::sigma_chol = arma::vec();
 template<class funcs>
 thread_local std::unique_ptr<typename cdf<funcs>::comp_dat >
   cdf<funcs>::dat = std::unique_ptr<cdf<funcs>::comp_dat>();

@@ -1,6 +1,9 @@
 #include "restrict-cdf.h"
 
-thread_local static restrictcdf::mvkbrv_ptr current_mvkbrv_ptr = nullptr;
+static restrictcdf::mvkbrv_ptr current_mvkbrv_ptr = nullptr;
+#ifdef _OPENMP
+#pragma omp threadprivate(current_mvkbrv_ptr)
+#endif
 
 namespace restrictcdf {
 void set_mvkbrv_ptr(mvkbrv_ptr new_ptr){

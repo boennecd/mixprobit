@@ -3,7 +3,9 @@
 #include "integrand-binary.h"
 #include "restrict-cdf.h"
 #include "threat-safe-random.h"
+
 #include <vector>
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -106,6 +108,12 @@ Rcpp::NumericVector aprx_binary_mix_cdf(
   return out;
 }
 
+#ifdef _OPENMP
+/* openMP reductions */
+#pragma omp declare reduction(+: arma::vec: omp_out += omp_in) \
+  initializer (omp_priv = omp_orig)
+#endif
+
 inline arma::mat get_mat_from_sexp(SEXP X){
   Rcpp::NumericMatrix Xm(X);
   arma::mat out(Xm.begin(), Xm.nrow(), Xm.ncol());
@@ -121,12 +129,6 @@ class aprx_binary_mix_cdf_structured_diag {
     arma::ivec const var_idx;
     arma::mat const X, Z;
     arma::uword const p = Z.n_rows, n = Z.n_cols;
-    arma::vec const mean = arma::vec(n, arma::fill::zeros),
-                   lower = ([&](){
-                     arma::vec out(n);
-                     out.fill(-std::numeric_limits<double>::infinity());
-                     return out;
-                   })();
 
     cluster_data(Rcpp::List data):
       dum_vec(([&](){
@@ -157,10 +159,11 @@ class aprx_binary_mix_cdf_structured_diag {
   std::vector<cluster_data> const comp_dat;
   unsigned const n_threads,
                 n_clusters = comp_dat.size();
+  bool const gradient;
 
 public:
   aprx_binary_mix_cdf_structured_diag
-  (Rcpp::List data, unsigned const n_threads):
+  (Rcpp::List data, unsigned const n_threads, bool const gradient):
   comp_dat(([&](){
     unsigned const n = data.size();
     std::vector<cluster_data> out;
@@ -168,11 +171,11 @@ public:
     for(unsigned i = 0; i < n; ++i)
       out.emplace_back(Rcpp::as<Rcpp::List>(data[i]));
     return out;
-  })()), n_threads(n_threads)
+  })()), n_threads(n_threads), gradient(gradient)
   { }
 
   /* approximates the log-likelihood */
-  double operator()
+  arma::vec operator()
   (arma::vec const &beta, arma::vec const &log_sds, int const maxpts,
    double const abseps, double const releps){
     /* set the threads and seeds */
@@ -187,7 +190,8 @@ public:
     /* compute variance parameters and then approximate the
      * log-likelihood. */
     arma::vec const vars = arma::exp(2 * log_sds);
-    double out(0.);
+    arma::vec out(1L + gradient * (beta.n_elem + log_sds.n_elem),
+                  arma::fill::zeros);
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) reduction(+:out)
 #endif
@@ -210,9 +214,13 @@ public:
       arma::mat S = Z.t() * (Sigma * Z);
       S.diag() += 1.;
 
-      out += std::log(
-        pmvnorm::cdf(my_data.lower, eta, my_data.mean, S,
-                     maxpts, abseps, releps).value);
+      if(gradient){
+        /* TODO: implement */
+      } else {
+        out += arma::log(
+          restrictcdf::cdf<restrictcdf::likelihood>
+          (-eta, S).approximate(maxpts, abseps, releps).finest);
+      }
     }
 
     return out;
@@ -225,13 +233,13 @@ public:
  * a given point. */
 // [[Rcpp::export]]
 SEXP aprx_binary_mix_cdf_get_ptr
-  (Rcpp::List data, unsigned const n_threads){
+  (Rcpp::List data, unsigned const n_threads, bool const gradient = false){
   using dat_T = aprx_binary_mix_cdf_structured_diag;
-  return Rcpp::XPtr<dat_T>(new dat_T(data, n_threads), true);
+  return Rcpp::XPtr<dat_T>(new dat_T(data, n_threads, gradient), true);
 }
 
 // [[Rcpp::export]]
-double aprx_binary_mix_cdf_eval
+arma::vec aprx_binary_mix_cdf_eval
   (SEXP ptr, arma::vec const &beta, arma::vec const &log_sds,
    int const maxpts,double const abseps, double const releps){
   Rcpp::XPtr<aprx_binary_mix_cdf_structured_diag> functor(ptr);

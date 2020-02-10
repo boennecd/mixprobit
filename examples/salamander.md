@@ -387,7 +387,7 @@ mix_prob_fit <- within(list(), {
   opt_use <- optim
   formals(opt_use)[c("method", "control")] <- list(
     "BFGS", list(trace = 3L, fnscale = fnscale))
-  
+
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
     par, ll_cpp , maxpts = 5000L, releps = .1))
@@ -417,10 +417,10 @@ mix_prob_fit <- within(list(), {
 #>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1)
 #> 
 #> initial  value 0.993384 
-#> iter  10 value 0.932317
-#> iter  20 value 0.929014
-#> iter  30 value 0.928652
-#> final  value 0.928611 
+#> iter  10 value 0.935585
+#> iter  20 value 0.929023
+#> iter  30 value 0.928308
+#> final  value 0.928306 
 #> converged
 #> 
 #> Running:
@@ -435,16 +435,15 @@ mix_prob_fit <- within(list(), {
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = 0.001)
 #> 
-#> initial  value 0.928673 
-#> iter  10 value 0.928599
-#> final  value 0.928593 
+#> initial  value 0.928386 
+#> final  value 0.928385 
 #> converged
 #> 
 #> Running:
 #>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = 0.001, meth = mixprobit:::aprx_binary_mix_cdf)
 #> 
-#> initial  value 0.928654 
-#> final  value 0.928654 
+#> initial  value 0.928575 
+#> final  value 0.928554 
 #> converged
 #> 
 #> Running:
@@ -496,13 +495,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5690     -0.3897     -1.6581      2.0552 
+#>      0.6195     -0.4322     -1.7248      2.1341 
 #> 
 #> Random effect standard deviations              
-#> 0.6991 0.6688 
+#> 0.7108 0.6865 
 #> 
-#> Log-likelihood estimate -206.88
-#> Computation time 79.28/0.15 (seconds total/per evaluation)
+#> Log-likelihood estimate -206.81
+#> Computation time 91.15/0.19 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan_fast
@@ -516,7 +515,7 @@ local({
 #> 0.5536 0.5750 
 #> 
 #> Log-likelihood estimate -209.62
-#> Computation time 48.13/0.13 (seconds total/per evaluation)
+#> Computation time 51.67/0.14 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF
@@ -524,13 +523,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5690     -0.3897     -1.6581      2.0552 
+#>      0.6179     -0.4306     -1.7230      2.1358 
 #> 
 #> Random effect standard deviations              
-#> 0.6991 0.6688 
+#> 0.7124 0.6819 
 #> 
-#> Log-likelihood estimate -206.89
-#> Computation time 13.31/0.44 (seconds total/per evaluation)
+#> Log-likelihood estimate -206.87
+#> Computation time 43.82/0.49 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF_cpp
@@ -538,13 +537,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.5909     -0.3991     -1.6697      2.0716 
+#>      0.6195     -0.4314     -1.7245      2.1332 
 #> 
 #> Random effect standard deviations              
-#> 0.7020 0.6746 
+#> 0.7096 0.6836 
 #> 
-#> Log-likelihood estimate -206.88
-#> Computation time 95.58/0.37 (seconds total/per evaluation)
+#> Log-likelihood estimate -206.83
+#> Computation time 30.91/0.46 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan
@@ -558,7 +557,7 @@ local({
 #> 0.7115 0.6753 
 #> 
 #> Log-likelihood estimate -207.43
-#> Computation time 294.99/0.73 (seconds total/per evaluation)
+#> Computation time 316.96/0.78 (seconds total/per evaluation)
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise.
@@ -798,7 +797,7 @@ mix_prob_fit <- within(list(), {
   opt_use <- optim
   formals(opt_use)[c("method", "control")] <- list(
     "BFGS", list(trace = 3L, fnscale = fnscale))
-  
+
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
     par, ll_cpp , maxpts = 5000L, releps = .1))
@@ -828,13 +827,12 @@ mix_prob_fit <- within(list(), {
 #>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1)
 #> 
 #> initial  value 0.998363 
-#> iter  10 value 0.992242
-#> iter  20 value 0.985721
-#> iter  30 value 0.983038
-#> iter  40 value 0.982476
-#> iter  50 value 0.982467
-#> iter  60 value 0.982464
-#> final  value 0.982463 
+#> iter  10 value 0.992236
+#> iter  20 value 0.985678
+#> iter  30 value 0.983049
+#> iter  40 value 0.982483
+#> iter  50 value 0.982472
+#> final  value 0.982472 
 #> converged
 #> 
 #> Running:
@@ -852,8 +850,8 @@ mix_prob_fit <- within(list(), {
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = 0.001)
 #> 
-#> initial  value 0.982463 
-#> final  value 0.982463 
+#> initial  value 0.982469 
+#> final  value 0.982469 
 #> converged
 #> 
 #> Running:
@@ -911,13 +909,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4066     -0.1892     -1.2710      1.3930 
+#>      0.4068     -0.1886     -1.2716      1.3933 
 #> 
-#> Random effect standard deviations              
-#> 0.6213 0.4974 
+#> Random effect standard deviations            
+#> 0.621 0.496 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 36.52/0.04 (seconds total/per evaluation)
+#> Computation time 48.07/0.07 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan_fast
@@ -931,7 +929,7 @@ local({
 #> 0.6141 0.4834 
 #> 
 #> Log-likelihood estimate -92.07
-#> Computation time 58.32/0.09 (seconds total/per evaluation)
+#> Computation time 61.44/0.09 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF
@@ -939,13 +937,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4063     -0.1885     -1.2710      1.3928 
+#>      0.4067     -0.1886     -1.2715      1.3932 
 #> 
-#> Random effect standard deviations              
-#> 0.6215 0.4964 
+#> Random effect standard deviations            
+#> 0.621 0.496 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 11.33/0.12 (seconds total/per evaluation)
+#> Computation time 1.53/0.11 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_CDF_cpp
@@ -953,13 +951,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4066     -0.1892     -1.2710      1.3930 
+#>      0.4068     -0.1886     -1.2715      1.3932 
 #> 
-#> Random effect standard deviations              
-#> 0.6213 0.4974 
+#> Random effect standard deviations            
+#> 0.621 0.496 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 0.66/0.04 (seconds total/per evaluation)
+#> Computation time 1.05/0.08 (seconds total/per evaluation)
 #> 
 #> 
 #> fit_Genz_Monahan
@@ -973,7 +971,7 @@ local({
 #> 0.6234 0.4992 
 #> 
 #> Log-likelihood estimate -92.01
-#> Computation time 85.57/0.33 (seconds total/per evaluation)
+#> Computation time 89.44/0.34 (seconds total/per evaluation)
 ```
 
 References

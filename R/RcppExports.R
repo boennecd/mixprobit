@@ -17,8 +17,8 @@ aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps) {
     .Call('_mixprobit_aprx_binary_mix_cdf', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps)
 }
 
-aprx_binary_mix_cdf_get_ptr <- function(data, n_threads) {
-    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads)
+aprx_binary_mix_cdf_get_ptr <- function(data, n_threads, gradient = FALSE) {
+    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads, gradient)
 }
 
 aprx_binary_mix_cdf_eval <- function(ptr, beta, log_sds, maxpts, abseps, releps) {

@@ -314,7 +314,7 @@ mix_prob_fit <- within(list(), {
   opt_use <- optim
   formals(opt_use)[c("method", "control")] <- list(
     "BFGS", list(trace = 3L, fnscale = fnscale))
-  
+
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
     par, ll_cpp , maxpts = 5000L, releps = .1))

@@ -75,19 +75,20 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_cdf_get_ptr
-SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads);
-RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP) {
+SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads, bool const gradient);
+RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP, SEXP gradientSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_get_ptr(data, n_threads));
+    Rcpp::traits::input_parameter< bool const >::type gradient(gradientSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_get_ptr(data, n_threads, gradient));
     return rcpp_result_gen;
 END_RCPP
 }
 // aprx_binary_mix_cdf_eval
-double aprx_binary_mix_cdf_eval(SEXP ptr, arma::vec const& beta, arma::vec const& log_sds, int const maxpts, double const abseps, double const releps);
+arma::vec aprx_binary_mix_cdf_eval(SEXP ptr, arma::vec const& beta, arma::vec const& log_sds, int const maxpts, double const abseps, double const releps);
 RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_eval(SEXP ptrSEXP, SEXP betaSEXP, SEXP log_sdsSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -164,7 +165,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 6},
     {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 8},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
-    {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 2},
+    {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 3},
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 5},
