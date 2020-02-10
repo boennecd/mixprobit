@@ -23,16 +23,8 @@
 
 /* The code is modified by Benjamin Christoffersen. */
 
+#include "lapack.h"
 #include "gaus-Hermite.h"
-#include <Rconfig.h>
-#include <R_ext/BLAS.h>
-#ifndef FCLEN
-#define FCLEN
-#endif
-#ifndef FCONE
-#define FCONE
-#endif
-#include <R_ext/Lapack.h>
 #include <memory>
 #include <map>
 
@@ -109,10 +101,9 @@ void quadInfoGolubWelsch
                                Z(new double[n * n]);
 
   // Run eigen decomposition
-  F77_NAME(dstev)(&JOBZ, &n, &D[0], &E[0],  // Job flag & input matrix
-           Z.get(), &n,       // Output array for eigenvectors & dim
-           work.get(), &INFO  // Workspace & info flag
-           FCONE);
+  dstev_call(&JOBZ, &n, &D[0], &E[0], // Job flag & input matrix
+             Z.get(), &n,             // Output array for eigenvectors & dim
+             work.get(), &INFO);      // Workspace & info flag
 
   // Setup x & w
   for (int i = 0; i < n; i++) {

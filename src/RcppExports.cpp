@@ -24,8 +24,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // pmvnorm_cpp_restrict
-Rcpp::List pmvnorm_cpp_restrict(arma::vec const& mean, arma::mat const& cov, int const maxpts, double const abseps, double const releps);
-RcppExport SEXP _mixprobit_pmvnorm_cpp_restrict(SEXP meanSEXP, SEXP covSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
+Rcpp::List pmvnorm_cpp_restrict(arma::vec const& mean, arma::mat const& cov, int const maxpts, double const abseps, double const releps, bool const gradient);
+RcppExport SEXP _mixprobit_pmvnorm_cpp_restrict(SEXP meanSEXP, SEXP covSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP gradientSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -34,7 +34,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    rcpp_result_gen = Rcpp::wrap(pmvnorm_cpp_restrict(mean, cov, maxpts, abseps, releps));
+    Rcpp::traits::input_parameter< bool const >::type gradient(gradientSEXP);
+    rcpp_result_gen = Rcpp::wrap(pmvnorm_cpp_restrict(mean, cov, maxpts, abseps, releps, gradient));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -160,7 +161,7 @@ RcppExport SEXP run_testthat_tests();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
-    {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 5},
+    {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 6},
     {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 8},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
     {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 2},

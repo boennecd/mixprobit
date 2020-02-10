@@ -4,6 +4,7 @@
 #include "arma-wrap.h"
 #include <array>
 #include <limits>
+#include <memory>
 
 namespace restrictcdf {
 inline std::array<double, 2> draw_trunc_mean
@@ -42,11 +43,40 @@ output approximate_integral(
 /* used to approximate the likelihood */
 class likelihood {
 public:
+  class comp_dat {
+  public:
+    comp_dat(arma::vec const&, arma::mat const&, arma::vec const&) { }
+  };
+
   static int get_n_integrands(arma::vec const&, arma::mat const&);
-  static arma::vec integrand(arma::vec const&, arma::vec const&,
-                             arma::mat const&, arma::mat const&);
+  static arma::vec integrand(arma::vec const&, comp_dat const&);
   constexpr static bool needs_last_unif() {
     return false;
+  }
+};
+
+/* approximates both the probability and the derivatives w.r.t. the mean
+ * and covariance matrix */
+class deriv {
+public:
+  class comp_dat {
+  public:
+    arma::vec const *mu;
+    arma::mat const *sigma,
+                     signa_inv,
+                     sigma_chol_inv;
+
+    comp_dat(arma::vec const &mu_in, arma::mat const &sigma_in,
+             arma::vec const &sigma_chol):
+      mu(&mu_in), sigma(&sigma_in), signa_inv(arma::inv(sigma_in)),
+      sigma_chol_inv(arma::inv(arma::trimatu(
+        arma::chol(sigma_in)))) { }
+  };
+
+  static int get_n_integrands(arma::vec const&, arma::mat const&);
+  static arma::vec integrand(arma::vec const&, comp_dat const&);
+  constexpr static bool needs_last_unif() {
+    return true;
   }
 };
 
@@ -63,10 +93,12 @@ public:
  */
 template<class funcs>
 class cdf {
+  using comp_dat = typename funcs::comp_dat;
+
   thread_local static int ndim, n_integrands;
   thread_local static arma::vec mu;
-  thread_local static arma::mat sigma;
   thread_local static arma::vec sigma_chol;
+  thread_local static std::unique_ptr<comp_dat> dat;
   static constexpr bool const needs_last_unif =
     funcs::needs_last_unif();
 
@@ -80,7 +112,7 @@ public:
 
     arma::vec u(unifs        , ndim        , false),
             out(integrand_val, n_integrands, false),
-            draw(ndim);
+           draw(ndim);
 
     double w(1.), *sc = sigma_chol.memptr();
     for(unsigned j = 0; j < (unsigned)ndim; ++j){
@@ -95,8 +127,10 @@ public:
       draw[j]  = draw_n_p[1];
     }
 
-    out.zeros();
-    out += funcs::integrand(draw, mu, sigma, sigma_chol) * w;
+
+    auto output_val = funcs::integrand(draw, *dat);
+    assert(out.n_elem == output_val.n_elem);
+    out = output_val * w;
   }
 
   /* Args:
@@ -115,18 +149,15 @@ public:
     /* re-scale */
     arma::vec const sds = arma::sqrt(arma::diagvec(sigma_in));
     mu = mu_in / sds;
-    sigma = ([&](){
-      arma::mat out = sigma_in;
-      out.each_row() /= sds.t();
-      out.each_col() /= sds;
-
-      return out;
-    })();
 
     sigma_chol = ([&]{
-      arma::uword const p = sigma.size();
+      arma::uword const p = sigma_in.size();
 
-      arma::mat tmp(arma::chol(sigma));
+      arma::mat tmp = sigma_in;
+      tmp.each_row() /= sds.t();
+      tmp.each_col() /= sds;
+      tmp = arma::chol(tmp);
+
       arma::vec out((p * (p + 1L)) / 2L);
 
       double *o = out.memptr();
@@ -136,6 +167,8 @@ public:
 
       return out;
     })();
+
+    dat.reset(new comp_dat(mu_in, sigma_in, sigma_chol));
   }
 
   /* Args:
@@ -162,9 +195,10 @@ thread_local int cdf<funcs>::n_integrands = 0L;
 template<class funcs>
 thread_local arma::vec cdf<funcs>::mu = arma::vec();
 template<class funcs>
-thread_local arma::mat cdf<funcs>::sigma = arma::mat();
-template<class funcs>
 thread_local arma::vec cdf<funcs>::sigma_chol = arma::vec();
+template<class funcs>
+thread_local std::unique_ptr<typename cdf<funcs>::comp_dat >
+  cdf<funcs>::dat = std::unique_ptr<cdf<funcs>::comp_dat>();
 }
 
 #endif

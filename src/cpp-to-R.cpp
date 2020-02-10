@@ -27,14 +27,21 @@ Rcpp::List pmvnorm_cpp(arma::vec const &lower, arma::vec const &upper,
 // [[Rcpp::export]]
 Rcpp::List pmvnorm_cpp_restrict(
     arma::vec const &mean, arma::mat const &cov,
-    int const maxpts, double const abseps, double const releps){
+    int const maxpts, double const abseps, double const releps,
+    bool const gradient = false){
   parallelrng::set_rng_seeds(1L);
 
   using Rcpp::Named;
-  auto const res = restrictcdf::cdf<restrictcdf::likelihood>
-    (mean, cov).approximate(maxpts, abseps, releps);
+  auto const res = ([&]{
+    if(gradient)
+      return restrictcdf::cdf<restrictcdf::deriv>
+        (mean, cov).approximate(maxpts, abseps, releps);
 
-  return Rcpp::List::create(Named("value")  = res.finest[0],
+    return restrictcdf::cdf<restrictcdf::likelihood>
+      (mean, cov).approximate(maxpts, abseps, releps);
+  })();
+
+  return Rcpp::List::create(Named("value")  = res.finest,
                             Named("error")  = res.abserr,
                             Named("inform") = res.inform);
 }
