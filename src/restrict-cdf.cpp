@@ -47,6 +47,8 @@ arma::vec likelihood::integrand
   return arma::vec(1L, arma::fill::ones);
 }
 
+void likelihood::post_process(arma::vec &finest, comp_dat const &dat) { }
+
 int deriv::get_n_integrands
 (arma::vec const &mu, arma::mat const &sigma) {
   arma::uword const p = mu.n_elem;
@@ -61,17 +63,35 @@ arma::vec deriv::integrand
 
   out[0L] = 1.;
   arma::vec mean_part(out.memptr() + 1L, p, false);
-  /* TODO: exploit triangular matrix times vector */
-  mean_part = dat.sigma_chol_inv * draw;
+  /* Multiplying by the inverse matrix is fast but not smart numerically.
+   * TODO: much of this computation can be done later */
+  {
+    mean_part.zeros();
+    for(unsigned c = 0; c < p; ++c)
+      for(unsigned r = 0; r <= c; ++r)
+        mean_part[r] += dat.sigma_chol_inv.at(r, c) * draw[c];
+  }
 
-  /* TODO: do something smarter */
-  arma::mat intermediate = mean_part * mean_part.t() - dat.signa_inv;
-  double *o = out.memptr() + 1L + p;
-  for(unsigned c = 0; c < p; c++)
-    for(unsigned r = 0; r <= c; r++)
-      *o++ = intermediate(r, c) / 2.;
+  {
+    double *o = out.memptr() + 1L + p;
+    for(unsigned c = 0; c < p; c++)
+      for(unsigned r = 0; r <= c; r++)
+        *o++ = mean_part[c] * mean_part[r];
+  }
 
   return out;
+}
+
+void deriv::post_process(arma::vec &finest, comp_dat const &dat) {
+  arma::uword const p = dat.mu->n_elem;
+
+  double phat = finest[0L];
+  double *o = finest.memptr() + 1L + p;
+  for(unsigned c = 0; c < p; c++)
+    for(unsigned r = 0; r <= c; r++){
+      *o   -= phat * dat.signa_inv(r, c);
+      *o++ /= 2.;
+    }
 }
 
 template class cdf<likelihood>;

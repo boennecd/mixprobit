@@ -50,6 +50,7 @@ public:
 
   static int get_n_integrands(arma::vec const&, arma::mat const&);
   static arma::vec integrand(arma::vec const&, comp_dat const&);
+  static void post_process(arma::vec&, comp_dat const&);
   constexpr static bool needs_last_unif() {
     return false;
   }
@@ -75,6 +76,7 @@ public:
 
   static int get_n_integrands(arma::vec const&, arma::mat const&);
   static arma::vec integrand(arma::vec const&, comp_dat const&);
+  static void post_process(arma::vec&, comp_dat const&);
   constexpr static bool needs_last_unif() {
     return true;
   }
@@ -183,7 +185,11 @@ public:
 
     /* set pointer to this class' member function */
     set_mvkbrv_ptr(&cdf<funcs>::eval_integrand);
-    return approximate_integral(ndim, n_integrands, maxvls, abseps, releps);
+    output out =
+      approximate_integral(ndim, n_integrands, maxvls, abseps, releps);
+
+    funcs::post_process(out.finest, *dat);
+    return out;
   }
 };
 
