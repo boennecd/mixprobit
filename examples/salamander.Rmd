@@ -279,11 +279,13 @@ mix_prob_fit <- within(list(), {
   }
   
   # C++ version
-  cpp_ptr <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
+  cpp_ptr     <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
     data = dat, n_threads = n_threads)
+  cpp_ptr_grad <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
+    data = dat, n_threads = n_threads, gradient = TRUE)
   
   ll_cpp <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
-                     releps = 1e-2){
+                     releps = 1e-2, gradient = FALSE){
     if(!is.null(seed))
       set.seed(seed)
     
@@ -291,11 +293,14 @@ mix_prob_fit <- within(list(), {
     log_sds <- tail(par, -q)
     
     out <- mixprobit:::aprx_binary_mix_cdf_eval(
-      ptr = cpp_ptr, beta = beta, log_sds = log_sds, maxpts = maxpts, 
-      abseps = abseps, releps = releps)
+      ptr = if(gradient) cpp_ptr_grad else cpp_ptr, beta = beta, 
+      log_sds = log_sds, maxpts = maxpts, abseps = abseps, releps = releps)
     
-    -out
+    if(gradient)
+      -out[-1L] else -out
   }
+  ll_cpp_grad <- ll_cpp
+  formals(ll_cpp_grad)$gradient <- TRUE
   
   # use the methods to find the optimal parameters
   take_time <- function(expr){
@@ -307,6 +312,7 @@ mix_prob_fit <- within(list(), {
     cat("\n")
     stopifnot(is.list(out) && is.null(out$time))
     out$time <- ti
+    out$used_gr <- !is.null(substitute(expr)$gr)
     out
   }
   
@@ -315,9 +321,25 @@ mix_prob_fit <- within(list(), {
   formals(opt_use)[c("method", "control")] <- list(
     "BFGS", list(trace = 3L, fnscale = fnscale))
 
+  # TODO: move this to a test of gradients to a unit test
+  tol <- .Machine$double.eps^(1/3)
+  cpp_grad <- drop(
+    ll_cpp_grad(par, maxpts = 250000L, releps = 1e-4))
+  num_grad <- drop(numDeriv::jacobian(
+    function(x) ll_cpp(x, maxpts = 250000L, releps = 1e-4), par, 
+    method.args = list(eps = tol)))
+  if(!isTRUE(
+    ae_res <- all.equal(cpp_grad, num_grad, tolerance = tol^(1/2)))){
+      msg <- c(sprintf("%s returned:", sQuote("all.equal")), 
+               paste0("  ", ae_res))
+      bx <- paste0(rep("=", max(nchar(msg))), collapse = "")
+      cat(bx, msg, bx, "", sep = "\n")
+    } else
+      cat("Gradient test passed\n")
+  
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
-    par, ll_cpp , maxpts = 5000L, releps = .1))
+    par, ll_cpp , maxpts = 5000L, releps = .1, gr = ll_cpp_grad))
   fit_Genz_Monahan_fast <- take_time(opt_use(
     par, ll_func, maxpts = 5000L, releps = .1,
     meth = mixprobit:::aprx_binary_mix))
@@ -326,6 +348,8 @@ mix_prob_fit <- within(list(), {
   # estimate
   cdf_par <- fit_CDF_cpp_fast$par
   fit_CDF_cpp <- take_time(opt_use(
+    cdf_par, ll_cpp , maxpts = 100000L, releps = 1e-3, gr = ll_cpp_grad))
+  fit_CDF_cpp_wo_grad <- take_time(opt_use(
     cdf_par, ll_cpp , maxpts = 100000L, releps = 1e-3))
   fit_CDF <- take_time(opt_use(
     cdf_par, ll_func, maxpts = 100000L, releps = 1e-3,
@@ -338,7 +362,7 @@ mix_prob_fit <- within(list(), {
   
   # add q to output
   fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- 
-    fit_CDF$q <- fit_Genz_Monahan$q <- q
+    fit_CDF$q <- fit_Genz_Monahan$q <- fit_CDF_cpp_wo_grad$q <- q
 })
 ```
 
@@ -358,12 +382,18 @@ local({
     cat("\nRandom effect standard deviations")
     print(exp(tail(fit$par, -q)))
     
-    cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f/%.2f (seconds total/per evaluation)\n", 
-                -fit$value, fit$time["elapsed"], 
-                fit$time["elapsed"] / (
-                  fit$counts["function"] + fit$counts["gradient"] * 2L * 
-                    length(fit$par))))
-    cat("\n")
+    fit_time <- fit$time["elapsed"]
+    used_gr <- fit$used_gr
+    fit_per_eval <- if(used_gr)
+      fit_time / fit$counts["function"] else 
+        fit_time / (fit$counts["function"] + fit$counts["gradient"] * 2L * 
+                      length(fit$par))
+    fit_per_grad <- if(used_gr)
+      fit_time / fit$counts["gradient"] else NA_real_
+      
+    cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f/%.2f (seconds total/per function evaluation)\n", 
+                -fit$value, fit_time, fit_per_eval))
+    cat("The latter times are not comparable for methods that do not use numerical derivatives\n")
   }
   
   with(mix_prob_fit, {
@@ -371,6 +401,7 @@ local({
     show_res(fit_Genz_Monahan_fast)
     show_res(fit_CDF)
     show_res(fit_CDF_cpp)
+    show_res(fit_CDF_cpp_wo_grad)
     show_res(fit_Genz_Monahan)
   })
 })

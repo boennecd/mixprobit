@@ -197,7 +197,8 @@ public:
 #endif
     for(unsigned i = 0; i < n_clusters; ++i){
       cluster_data const &my_data = comp_dat[i];
-      unsigned const p = my_data.p;
+      unsigned const p = my_data.p,
+                     n = my_data.n;
       assert(vars.n_elem > (arma::uword)my_data.var_idx.max());
 
       arma::vec const eta = my_data.X * beta;
@@ -215,7 +216,46 @@ public:
       S.diag() += 1.;
 
       if(gradient){
-        /* TODO: implement */
+        auto output = restrictcdf::cdf<restrictcdf::deriv>
+          (-eta, S).approximate(maxpts, abseps, releps);
+
+        double const phat = output.finest[0L];
+        arma::vec d_eta(output.finest.memptr() + 1L, n, false),
+                  d_S  (output.finest.memptr() + 1L + n,
+                        (n * (n + 1L)) / 2L, false);
+
+        d_eta *= -1 / phat;
+        d_S /= phat;
+
+        /* log-probability */
+        out[0L] += std::log(phat);
+
+        /* derivatives w.r.t. coefs */
+        out.subvec(1L, beta.n_elem) += arma::trans(d_eta.t() * my_data.X);
+
+        /* derivatives w.r.t. log standard deviations */
+        arma::vec d_log_sds(out.memptr() + 1L + beta.n_elem,
+                            log_sds.n_elem, false);
+        d_log_sds.zeros();
+        unsigned pi(0L);
+        /* TODO: maybe do something smarter... */
+        arma::vec zi(n);
+        for(auto const idx : my_data.var_idx){
+          zi = Z.row(pi++).t();
+
+          double nv(0.);
+          double const *d_Si = d_S.memptr();
+          for(unsigned c = 0; c < n; c++){
+            double const zic = zi[c];
+            for(unsigned r = 0; r < c; r++)
+              nv += 2. * *d_Si++ * zi[r] * zic;
+            nv   +=      *d_Si++ * zic   * zic;
+
+          }
+
+          d_log_sds[idx] += 2. * vars[idx] * nv;
+        }
+
       } else {
         out += arma::log(
           restrictcdf::cdf<restrictcdf::likelihood>
