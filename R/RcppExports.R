@@ -9,8 +9,8 @@ pmvnorm_cpp_restrict <- function(mean, cov, maxpts, abseps, releps, gradient = F
     .Call('_mixprobit_pmvnorm_cpp_restrict', PACKAGE = 'mixprobit', mean, cov, maxpts, abseps, releps, gradient)
 }
 
-aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L) {
-    .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, key)
+aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, key, is_adaptive)
 }
 
 aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps) {
@@ -29,8 +29,8 @@ set_GH_rule_cached <- function(b) {
     .Call('_mixprobit_set_GH_rule_cached', PACKAGE = 'mixprobit', b)
 }
 
-aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b) {
-    .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b)
+aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b, is_adaptive)
 }
 
 aprx_binary_mix_brute <- function(y, eta, Z, Sigma, n_sim, n_threads = 1L) {

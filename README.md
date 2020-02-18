@@ -93,12 +93,15 @@ aprx <- within(list(), {
   #   Z: p by n matrix with random effect covariates. 
   #   S: n by n matrix with random effect covaraites.
   #   b: number of nodes to use with GHQ.
-  get_GHQ_cpp <- function(y, eta, Z, S, b){
+  #   is_adaptive: logical for whether to use adaptive GHQ.
+  get_GHQ_cpp <- function(y, eta, Z, S, b, is_adaptive = FALSE){
     mixprobit:::set_GH_rule_cached(b)
     function()
       mixprobit:::aprx_binary_mix_ghq(y = y, eta = eta, Z = Z, Sigma = S,
-                                      b = b)
+                                      b = b, is_adaptive = is_adaptive)
   }
+  get_AGHQ_cpp <- get_GHQ_cpp
+  formals(get_AGHQ_cpp)$is_adaptive <- TRUE
   
   #####
   # returns a function that returns the CDF approximation like in Pawitan 
@@ -163,13 +166,17 @@ aprx <- within(list(), {
   #   maxpts: maximum number of function values as integer. 
   #   abseps: bsolute error tolerance.
   #   releps: relative error tolerance.
-  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1)
+  #   is_adaptive: logical for whether to use adaptive GHQ.
+  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1, 
+                          is_adaptive = FALSE)
     # Args: 
     #   key: integer which determines degree of integration rule.
     function(key)
       mixprobit:::aprx_binary_mix(
         y = y, eta = eta, Z = Z, Sigma = S, maxpts = maxpts, key = key, 
-        abseps = abseps, releps = releps)
+        abseps = abseps, releps = releps, is_adaptive = is_adaptive)
+  get_Asim_mth <- get_sim_mth
+  formals(get_Asim_mth)$is_adaptive <- TRUE
 })
 ```
 
@@ -224,73 +231,93 @@ wd <- function(expr)
 
 #####
 # get the functions to use
-GHQ_R   <- wd(aprx$get_GHQ_R  (y = y, eta = eta, Z = Z, S = S, b = b))
-#> Loading required package: Rcpp
-GHQ_cpp <- wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
+GHQ_R    <- wd(aprx$get_GHQ_R   (y = y, eta = eta, Z = Z, S = S, b = b))
+GHQ_cpp  <- wd(aprx$get_GHQ_cpp (y = y, eta = eta, Z = Z, S = S, b = b))
+AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
 
 cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
                                     maxpts = maxpts))
 cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
                                     maxpts = maxpts))
 
-sim_aprx <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
-                                maxpts = maxpts))
+sim_aprx <-  wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                 maxpts = maxpts))
+sim_Aaprx <- wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                  maxpts = maxpts))
 
 #####
 # compare results. Start with the simulation based methods with a lot of
 # samples. We take this as the ground truth
 truth_maybe1 <- wd(
-  aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-                   abseps = 1e-11))()
+  aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                    abseps = 1e-11))()
 truth_maybe2 <- wd(
-  aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-                   abseps = 1e-11)(2L))
+  aprx$get_sim_mth (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                    abseps = 1e-11)(2L))
+truth_maybe2_A <- wd(
+  aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                    abseps = 1e-11)(2L))
 truth <- wd(
   mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
                                     n_sim = 1e8, n_threads = 6L))
 
 all.equal(truth, c(truth_maybe1))
-#> [1] "Mean relative difference: 0.0001078"
+#> [1] "Mean relative difference: 0.00011"
 all.equal(truth, c(truth_maybe2))
-#> [1] "Mean relative difference: 6.412e-05"
+#> [1] "Mean relative difference: 6.625e-05"
+all.equal(truth, c(truth_maybe2_A))
+#> [1] "Mean relative difference: 2.715e-05"
 
 # compare with using fewer samples and GHQ
 all.equal(truth,   GHQ_R())
-#> [1] "Mean relative difference: 0.0006208"
+#> [1] "Mean relative difference: 0.0006187"
 all.equal(truth,   GHQ_cpp())
-#> [1] "Mean relative difference: 0.0006208"
+#> [1] "Mean relative difference: 0.0006187"
+all.equal(truth,   AGHQ_cpp())
+#> [1] "Mean relative difference: 0.0001097"
 all.equal(truth, c(cdf_aprx_R()))
-#> [1] "Mean relative difference: 0.0001428"
+#> [1] "Mean relative difference: 7.304e-05"
 all.equal(truth, c(cdf_aprx_cpp()))
-#> [1] "Mean relative difference: 0.0001866"
+#> [1] "Mean relative difference: 0.0001474"
 all.equal(truth, c(sim_aprx(1L)))
-#> [1] "Mean relative difference: 0.001772"
+#> [1] "Mean relative difference: 0.009943"
 all.equal(truth, c(sim_aprx(2L)))
-#> [1] "Mean relative difference: 0.0005996"
+#> [1] "Mean relative difference: 0.009267"
 all.equal(truth, c(sim_aprx(3L)))
-#> [1] "Mean relative difference: 0.002807"
+#> [1] "Mean relative difference: 0.008177"
 all.equal(truth, c(sim_aprx(4L)))
-#> [1] "Mean relative difference: 0.01063"
+#> [1] "Mean relative difference: 0.008469"
+all.equal(truth, c(sim_Aaprx(1L)))
+#> [1] "Mean relative difference: 0.001121"
+all.equal(truth, c(sim_Aaprx(2L)))
+#> [1] "Mean relative difference: 0.001385"
+all.equal(truth, c(sim_Aaprx(3L)))
+#> [1] "Mean relative difference: 0.0004224"
+all.equal(truth, c(sim_Aaprx(4L)))
+#> [1] "Mean relative difference: 0.000278"
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 #>    user  system elapsed 
-#>   21.17    0.00   21.17
+#>   21.11    0.00   21.11
 microbenchmark::microbenchmark(
-  `GHQ (C++)` = GHQ_cpp(),
+  `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
   `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
   `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
+  `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 10)
 #> Unit: milliseconds
-#>                expr    min     lq   mean median     uq    max neval
-#>           GHQ (C++) 604.83 605.30 615.35 613.76 625.89 631.09    10
-#>                 CDF  20.42  20.56  20.89  21.01  21.11  21.23    10
-#>           CDF (C++)  11.55  11.65  12.05  11.87  12.10  13.36    10
-#>  Genz & Monahan (1)  28.83  28.86  29.29  29.11  29.79  29.89    10
-#>  Genz & Monahan (2)  29.60  29.66  30.61  30.55  31.45  31.60    10
-#>  Genz & Monahan (3)  28.62  28.93  29.55  29.50  29.78  30.94    10
-#>  Genz & Monahan (4)  28.31  29.18  30.37  29.48  29.85  38.62    10
+#>                         expr    min     lq   mean median     uq    max neval
+#>                    GHQ (C++) 607.35 608.58 613.04 611.49 616.22 622.13    10
+#>                   AGHQ (C++) 645.85 648.12 651.18 651.48 653.69 657.09    10
+#>                          CDF  20.44  20.45  20.74  20.66  21.02  21.12    10
+#>                    CDF (C++)  11.49  11.54  11.68  11.63  11.79  12.02    10
+#>           Genz & Monahan (1)  28.82  29.14  29.53  29.43  29.69  31.00    10
+#>           Genz & Monahan (2)  29.88  30.03  30.44  30.42  30.56  31.38    10
+#>           Genz & Monahan (3)  29.04  29.37  29.80  29.54  29.81  32.44    10
+#>           Genz & Monahan (4)  28.48  28.91  29.01  28.95  29.09  29.50    10
+#>  Genz & Monahan Adaptive (2)  34.15  34.30  34.76  34.62  35.16  35.82    10
 ```
 
 More Rigorous Comparison
@@ -332,38 +359,48 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
     abs((log(vals) - log(truth)) / log(truth)) < releps
   
   # get function to use with GHQ
-  b_use <- if(do_not_run)
-    NA_integer_
-  else local({
-    apx_func <- function(b)
-      wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))()
-    
-    # length of node values which have a relative error below the threshold
-    streak_length <- 3L
-    vals <- rep(NA_real_, streak_length)
-    
-    b <- 10L
-    for(i in 1:(streak_length - 1L))
-      vals[i + 1L] <- apx_func(b - streak_length + i)
-    repeat({
-      vals[1:(streak_length - 1L)] <- vals[-1]
-      vals[streak_length] <- apx_func(b)
+  get_b <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else local({
+      apx_func <- function(b)
+        wd(meth(y = y, eta = eta, Z = Z, S = S, b = b))()
       
-      if(all(is_ok_func(vals)))
-        break
+      # length of node values which have a relative error below the threshold
+      streak_length <- 3L
+      vals <- rep(NA_real_, streak_length)
       
-      b <- b + 1L
-      if(b > 50L){
-        warning("found no node value")
-        b <- NA_integer_
-        break
-      }
+      b <- streak_length
+      for(i in 1:(streak_length - 1L))
+        vals[i + 1L] <- apx_func(b - streak_length + i)
+      repeat({
+        vals[1:(streak_length - 1L)] <- vals[-1]
+        vals[streak_length] <- apx_func(b)
+        
+        if(all(is_ok_func(vals)))
+          break
+        
+        b <- b + 1L
+        if(b > 50L){
+          warning("found no node value")
+          b <- NA_integer_
+          break
+        }
+      })
+      b
     })
-    b
-  })
+  }
   
+  b_use <- get_b(aprx$get_GHQ_cpp)
   ghq_func <- if(!is.na(b_use))
     wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b_use))
+  else
+    NA
+  
+  # get function to use with AGHQ
+  b_use_A <- get_b(aprx$get_AGHQ_cpp)
+  aghq_func <- if(!is.na(b_use_A))
+    wd(aprx$get_AGHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b_use_A))
   else
     NA
   
@@ -398,41 +435,54 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
     NA
   
   # get function to use with Genz and Monahan method
-  sim_maxpts_use <- if(do_not_run)
-    NA_integer_
-  else local({
-    maxpts <- 100L
-    repeat {
-      func <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
-                                  maxpts = maxpts, abseps = -1, 
-                                  releps = releps / 10))
-      vals <- replicate(10, func(key_use))
-      if(all(is_ok_func(vals)))
-        break
-      
-      maxpts <- maxpts * 2L
-      if(maxpts > 1000000L){
-        warning("found no maxpts for sim method")
-        maxpts <- NA_integer_
-        break
+  get_sim_maxpts <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else local({
+      maxpts <- 100L
+      repeat {
+        func <- wd(meth(y = y, eta = eta, Z = Z, S = S, maxpts = maxpts, 
+                        abseps = -1, releps = releps / 10))
+        vals <- replicate(10, func(key_use))
+        if(all(is_ok_func(vals)))
+          break
+        
+        maxpts <- maxpts * 2L
+        if(maxpts > 1000000L){
+          warning("found no maxpts for sim method")
+          maxpts <- NA_integer_
+          break
+        }
       }
-    }
-    maxpts
-  })
+      maxpts
+    })
+  }
   
+  sim_maxpts_use <- get_sim_maxpts(aprx$get_sim_mth)
   sim_func <- if(!is.na(sim_maxpts_use))
     wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
                         maxpts = sim_maxpts_use, abseps = -1, 
                         releps = releps / 10))
   else 
     NA
-  
   if(is.function(sim_func))
     formals(sim_func)$key <- key_use
   
+  # do the same with the adaptive version
+  Asim_maxpts_use <- get_sim_maxpts(aprx$get_Asim_mth)
+  Asim_func <- if(!is.na(Asim_maxpts_use))
+    wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, 
+                         maxpts = Asim_maxpts_use, abseps = -1, 
+                         releps = releps / 10))
+  else 
+    NA
+  if(is.function(Asim_func))
+    formals(Asim_func)$key <- key_use
+  
   # perform the comparison
   out <- sapply(
-    list(GHQ = ghq_func, CDF = cdf_func, GenzMonahan = sim_func), 
+    list(GHQ = ghq_func, ADHQ = aghq_func, CDF = cdf_func, 
+         GenzMonahan = sim_func, GenzMonahanA = Asim_func), 
     function(func){
       if(!is.function(func) && is.na(func)){
         out <- rep(NA_real_, 6L)
@@ -451,8 +501,9 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
         ti[1:3] / n_runs)            
     })
   
-  list(b_use = b_use, cdf_maxpts_use = cdf_maxpts_use, 
-       sim_maxpts_use = sim_maxpts_use, vals_n_comp_time = out)
+  list(b_use = b_use, b_use_A = b_use_A, cdf_maxpts_use = cdf_maxpts_use, 
+       sim_maxpts_use = sim_maxpts_use, Asim_maxpts_use = Asim_maxpts_use, 
+       vals_n_comp_time = out)
 }
 ```
 
@@ -464,23 +515,32 @@ sim_experiment(n = 3L , p = 2L)
 #> $b_use
 #> [1] 14
 #> 
+#> $b_use_A
+#> [1] 3
+#> 
 #> $cdf_maxpts_use
 #> [1] 100
 #> 
 #> $sim_maxpts_use
 #> [1] 3200
 #> 
+#> $Asim_maxpts_use
+#> [1] 100
+#> 
 #> $vals_n_comp_time
-#>                 GHQ       CDF GenzMonahan
-#> mean      1.037e-01 1.033e-01   1.031e-01
-#> sd        0.000e+00 4.327e-05   8.469e-04
-#> mse       1.117e-07 3.675e-09   7.575e-07
-#> user.self 1.000e-04 2.000e-04   9.500e-04
-#> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   5.000e-05 2.000e-04   9.500e-04
+#>                 GHQ      ADHQ       CDF GenzMonahan GenzMonahanA
+#> mean      1.037e-01 1.033e-01 1.033e-01   1.033e-01    1.034e-01
+#> sd        0.000e+00 0.000e+00 4.360e-05   7.787e-04    3.337e-04
+#> mse       1.117e-07 6.102e-09 4.817e-09   5.838e-07    1.060e-07
+#> user.self 5.000e-05 5.000e-05 2.000e-04   9.500e-04    5.000e-05
+#> sys.self  0.000e+00 0.000e+00 0.000e+00   0.000e+00    0.000e+00
+#> elapsed   5.000e-05 0.000e+00 2.000e-04   9.500e-04    5.000e-05
 sim_experiment(n = 10L, p = 2L)
 #> $b_use
-#> [1] 10
+#> [1] 9
+#> 
+#> $b_use_A
+#> [1] 3
 #> 
 #> $cdf_maxpts_use
 #> [1] 100
@@ -488,59 +548,74 @@ sim_experiment(n = 10L, p = 2L)
 #> $sim_maxpts_use
 #> [1] 800
 #> 
+#> $Asim_maxpts_use
+#> [1] 100
+#> 
 #> $vals_n_comp_time
-#>                 GHQ       CDF GenzMonahan
-#> mean      4.839e-05 4.836e-05   4.855e-05
-#> sd        0.000e+00 3.420e-09   8.255e-07
-#> mse       1.241e-15 1.360e-16   6.858e-13
-#> user.self 5.000e-05 1.135e-02   6.000e-04
-#> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   5.000e-05 1.135e-02   6.000e-04
+#>                 GHQ      ADHQ       CDF GenzMonahan GenzMonahanA
+#> mean      4.979e-05 4.931e-05 4.933e-05   4.893e-05    4.932e-05
+#> sd        0.000e+00 0.000e+00 5.040e-09   1.465e-06    4.078e-08
+#> mse       1.990e-13 7.887e-16 1.652e-16   2.213e-12    2.090e-15
+#> user.self 5.000e-05 5.000e-05 1.140e-02   6.000e-04    5.000e-05
+#> sys.self  0.000e+00 0.000e+00 0.000e+00   0.000e+00    0.000e+00
+#> elapsed   5.000e-05 5.000e-05 1.145e-02   6.000e-04    5.000e-05
 sim_experiment(n = 3L , p = 4L)
 #> $b_use
-#> [1] 10
+#> [1] 9
+#> 
+#> $b_use_A
+#> [1] 5
 #> 
 #> $cdf_maxpts_use
 #> [1] 100
 #> 
 #> $sim_maxpts_use
-#> [1] 400
+#> [1] 204800
+#> 
+#> $Asim_maxpts_use
+#> [1] 200
 #> 
 #> $vals_n_comp_time
-#>                 GHQ       CDF GenzMonahan
-#> mean      2.870e-02 2.870e-02   2.877e-02
-#> sd        0.000e+00 6.402e-06   1.781e-04
-#> mse       5.949e-12 6.064e-11   3.486e-08
-#> user.self 2.400e-03 1.500e-04   1.000e-04
-#> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   2.450e-03 2.000e-04   1.000e-04
+#>                 GHQ      ADHQ       CDF GenzMonahan GenzMonahanA
+#> mean      1.712e-01 1.708e-01 1.707e-01   1.708e-01    1.709e-01
+#> sd        0.000e+00 0.000e+00 6.768e-05   7.911e-04    1.142e-03
+#> mse       1.620e-07 1.642e-11 4.701e-09   5.948e-07    1.250e-06
+#> user.self 1.800e-03 2.000e-04 1.500e-04   6.560e-02    1.000e-04
+#> sys.self  0.000e+00 0.000e+00 0.000e+00   0.000e+00    0.000e+00
+#> elapsed   1.800e-03 2.000e-04 1.500e-04   6.560e-02    1.000e-04
 sim_experiment(n = 10L, p = 4L)
 #> $b_use
-#> [1] 25
+#> [1] 22
+#> 
+#> $b_use_A
+#> [1] 3
 #> 
 #> $cdf_maxpts_use
 #> [1] 100
 #> 
 #> $sim_maxpts_use
-#> [1] 6400
+#> [1] 12800
+#> 
+#> $Asim_maxpts_use
+#> [1] 100
 #> 
 #> $vals_n_comp_time
-#>                 GHQ       CDF GenzMonahan
-#> mean      3.504e-04 3.418e-04   3.429e-04
-#> sd        0.000e+00 5.080e-08   9.691e-06
-#> mse       7.276e-11 2.566e-15   9.027e-11
-#> user.self 3.177e-01 1.175e-02   5.050e-03
-#> sys.self  0.000e+00 0.000e+00   0.000e+00
-#> elapsed   3.177e-01 1.175e-02   5.050e-03
+#>                 GHQ      ADHQ       CDF GenzMonahan GenzMonahanA
+#> mean      4.243e-04 4.215e-04 4.235e-04   4.257e-04    4.242e-04
+#> sd        0.000e+00 0.000e+00 2.713e-07   1.344e-05    5.694e-06
+#> mse       7.966e-13 3.780e-12 7.227e-14   1.769e-10    3.135e-11
+#> user.self 1.978e-01 1.000e-04 1.165e-02   1.090e-02    1.000e-04
+#> sys.self  0.000e+00 0.000e+00 0.000e+00   0.000e+00    0.000e+00
+#> elapsed   1.978e-01 1.000e-04 1.165e-02   1.090e-02    1.000e-04
 ```
 
 Next, we apply the method a number of times for a fixed of combination of number of observations, `n`, and number of random effects, `p`.
 
 ``` r
 # number of observations in the cluster
-n_vals <- c(2:5, 7L, 10L, 15L, 20L)
+n_vals <- c(2L, 5L, 10L, 20L)
 # number of random effects
-p_vals <- 2:5
+p_vals <- 2:3
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
@@ -612,6 +687,8 @@ local({
     nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
+  rnames[[2L]] <- gsub(
+    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
   
   # then flatten
   comp_times <- matrix(c(comp_times), nrow = NROW(rnames))
@@ -630,32 +707,28 @@ local({
 })
 ```
 
-| n   | method/p              |      2|      3|       4|       5|
-|:----|:----------------------|------:|------:|-------:|-------:|
-| 2   | GHQ                   |   0.03|   0.36|    2.52|   20.05|
-|     | CDF                   |   0.01|   0.02|    0.02|    0.02|
-|     | Genz & Monahan (1999) |   3.57|   6.96|   11.36|   11.77|
-| 3   | GHQ                   |   0.05|   0.38|    4.18|   53.78|
-|     | CDF                   |   0.17|   0.19|    0.19|    0.18|
-|     | Genz & Monahan (1999) |   2.22|  14.46|    8.83|   20.97|
-| 4   | GHQ                   |   0.05|   0.55|    6.68|   81.73|
-|     | CDF                   |   0.37|   0.40|    0.42|    0.38|
-|     | Genz & Monahan (1999) |   8.10|  10.71|   15.74|   14.26|
-| 5   | GHQ                   |   0.06|   1.19|   15.67|   92.01|
-|     | CDF                   |   0.75|   0.75|    0.79|    0.77|
-|     | Genz & Monahan (1999) |   4.49|  17.73|   23.24|   37.94|
-| 7   | GHQ                   |   0.10|   1.37|   31.76|  339.64|
-|     | CDF                   |   2.46|   2.51|    2.60|    2.46|
-|     | Genz & Monahan (1999) |  13.10|  20.75|   18.46|   53.02|
-| 10  | GHQ                   |   0.18|   2.33|   29.55|        |
-|     | CDF                   |  12.23|  12.81|   12.67|        |
-|     | Genz & Monahan (1999) |  18.80|  24.15|   24.10|        |
-| 15  | GHQ                   |   0.28|       |  154.91|        |
-|     | CDF                   |  28.41|  29.38|   28.81|        |
-|     | Genz & Monahan (1999) |  14.65|  31.97|   30.80|        |
-| 20  | GHQ                   |   0.36|   9.73|  215.64|        |
-|     | CDF                   |  38.56|  40.67|   38.16|        |
-|     | Genz & Monahan (1999) |  16.96|  35.80|   50.72|        |
+| n   | method/p                       |      2|      3|
+|:----|:-------------------------------|------:|------:|
+| 2   | GHQ                            |   0.01|   0.10|
+|     | ADHQ                           |   0.02|   0.05|
+|     | CDF                            |   0.01|   0.02|
+|     | Genz & Monahan (1999)          |   2.40|   5.38|
+|     | Genz & Monahan (1999) Adaptive |   0.94|       |
+| 5   | GHQ                            |   0.06|   1.43|
+|     | ADHQ                           |   0.01|   0.09|
+|     | CDF                            |   0.76|   0.89|
+|     | Genz & Monahan (1999)          |   3.24|  16.40|
+|     | Genz & Monahan (1999) Adaptive |   0.11|   1.75|
+| 10  | GHQ                            |       |   6.43|
+|     | ADHQ                           |   0.04|   0.12|
+|     | CDF                            |  13.84|  14.03|
+|     | Genz & Monahan (1999)          |  24.93|  21.11|
+|     | Genz & Monahan (1999) Adaptive |   0.89|   1.85|
+| 20  | GHQ                            |   0.70|   9.20|
+|     | ADHQ                           |   0.06|   0.17|
+|     | CDF                            |  41.60|  43.83|
+|     | Genz & Monahan (1999)          |  10.66|  26.19|
+|     | Genz & Monahan (1999) Adaptive |   0.23|   0.59|
 
 ``` r
 
@@ -681,6 +754,8 @@ local({
     nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
+  rnames[[2L]] <- gsub(
+    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
   
   # then flatten
   err <- matrix(c(err), nrow = NROW(rnames))
@@ -699,32 +774,28 @@ local({
 })
 ```
 
-| n   | method/p              |     2|     3|     4|     5|
-|:----|:----------------------|-----:|-----:|-----:|-----:|
-| 2   | GHQ                   |  0.06|  0.10|  0.06|  0.03|
-|     | CDF                   |  0.01|  0.00|  0.01|  0.01|
-|     | Genz & Monahan (1999) |  0.79|  0.80|  0.90|  0.79|
-| 3   | GHQ                   |  0.10|  0.08|  0.05|  0.10|
-|     | CDF                   |  0.00|  0.00|  0.00|  0.00|
-|     | Genz & Monahan (1999) |  0.46|  0.66|  0.33|  0.44|
-| 4   | GHQ                   |  0.16|  0.09|  0.14|  0.08|
-|     | CDF                   |  0.00|  0.00|  0.00|  0.01|
-|     | Genz & Monahan (1999) |  0.26|  0.35|  0.47|  0.35|
-| 5   | GHQ                   |  0.08|  0.13|  0.23|  0.07|
-|     | CDF                   |  0.00|  0.00|  0.01|  0.00|
-|     | Genz & Monahan (1999) |  0.24|  0.30|  0.30|  0.19|
-| 7   | GHQ                   |  0.01|  0.09|  0.08|  0.05|
-|     | CDF                   |  0.00|  0.00|  0.00|  0.00|
-|     | Genz & Monahan (1999) |  0.04|  0.10|  0.15|  0.08|
-| 10  | GHQ                   |  0.02|  0.02|  0.01|      |
-|     | CDF                   |  0.00|  0.00|  0.00|      |
-|     | Genz & Monahan (1999) |  0.05|  0.02|  0.02|      |
-| 15  | GHQ                   |  0.00|      |  0.00|      |
-|     | CDF                   |  0.00|  0.00|  0.00|      |
-|     | Genz & Monahan (1999) |  0.01|  0.01|  0.03|      |
-| 20  | GHQ                   |  0.01|  0.00|  0.00|      |
-|     | CDF                   |  0.00|  0.00|  0.00|      |
-|     | Genz & Monahan (1999) |  0.00|  0.00|  0.02|      |
+| n   | method/p                       |     2|     3|
+|:----|:-------------------------------|-----:|-----:|
+| 2   | GHQ                            |  0.11|  0.03|
+|     | ADHQ                           |  0.01|  0.01|
+|     | CDF                            |  0.00|  0.01|
+|     | Genz & Monahan (1999)          |  0.71|  0.70|
+|     | Genz & Monahan (1999) Adaptive |  0.34|      |
+| 5   | GHQ                            |  0.04|  0.12|
+|     | ADHQ                           |  0.02|  0.02|
+|     | CDF                            |  0.00|  0.00|
+|     | Genz & Monahan (1999)          |  0.18|  0.27|
+|     | Genz & Monahan (1999) Adaptive |  0.11|  0.20|
+| 10  | GHQ                            |      |  0.01|
+|     | ADHQ                           |  0.00|  0.00|
+|     | CDF                            |  0.00|  0.00|
+|     | Genz & Monahan (1999)          |  0.03|  0.03|
+|     | Genz & Monahan (1999) Adaptive |  0.07|  0.01|
+| 20  | GHQ                            |  0.00|  0.01|
+|     | ADHQ                           |  0.00|  0.00|
+|     | CDF                            |  0.00|  0.00|
+|     | Genz & Monahan (1999)          |  0.00|  0.01|
+|     | Genz & Monahan (1999) Adaptive |  0.00|  0.01|
 
 ``` r
 
@@ -770,48 +841,28 @@ local({
 })
 ```
 
-| n   | quantile/p |      2|      3|      4|      5|
-|:----|:-----------|------:|------:|------:|------:|
-| 2   | 0%         |  10.00|  10.00|  10.00|  10.00|
-|     | 25%        |  10.00|  10.00|  10.00|  10.00|
-|     | 50%        |  10.00|  10.00|  10.00|  10.00|
-|     | 75%        |  10.00|  10.00|  10.00|  10.00|
-|     | 100%       |  12.00|  19.00|  15.00|  10.00|
-| 3   | 0%         |  10.00|  10.00|  10.00|  10.00|
-|     | 25%        |  10.00|  10.00|  10.00|  10.00|
-|     | 50%        |  10.00|  10.00|  10.00|  10.00|
-|     | 75%        |  10.00|  11.00|  10.00|  11.00|
-|     | 100%       |  13.00|  16.00|  16.00|  16.00|
-| 4   | 0%         |  10.00|  10.00|  10.00|  10.00|
-|     | 25%        |  10.00|  10.00|  10.00|  10.00|
-|     | 50%        |  10.00|  10.00|  10.00|  10.00|
-|     | 75%        |  10.00|  10.25|  11.00|  12.00|
-|     | 100%       |  15.00|  18.00|  18.00|  15.00|
-| 5   | 0%         |  10.00|  10.00|  10.00|  10.00|
-|     | 25%        |  10.00|  10.00|  10.00|  10.00|
-|     | 50%        |  10.00|  10.00|  10.00|  10.00|
-|     | 75%        |  11.00|  15.75|  11.50|  12.00|
-|     | 100%       |  17.00|  20.00|  22.00|  15.00|
-| 7   | 0%         |  10.00|  10.00|  10.00|  10.00|
-|     | 25%        |  10.00|  10.00|  10.00|  10.00|
-|     | 50%        |  10.00|  11.50|  11.50|  11.00|
-|     | 75%        |  12.25|  14.00|  16.00|  13.00|
-|     | 100%       |  19.00|  18.00|  22.00|  20.00|
-| 10  | 0%         |  10.00|  10.00|  10.00|       |
-|     | 25%        |  10.00|  10.00|  10.00|       |
-|     | 50%        |  10.00|  12.00|  11.50|       |
-|     | 75%        |  14.75|  14.50|  14.25|       |
-|     | 100%       |  27.00|  21.00|  19.00|       |
-| 15  | 0%         |  10.00|       |  10.00|       |
-|     | 25%        |  10.00|       |  10.00|       |
-|     | 50%        |  11.00|       |  11.50|       |
-|     | 75%        |  16.25|       |  13.25|       |
-|     | 100%       |  29.00|       |  34.00|       |
-| 20  | 0%         |  10.00|  10.00|  10.00|       |
-|     | 25%        |  10.00|  12.75|  10.75|       |
-|     | 50%        |  11.50|  15.00|  14.50|       |
-|     | 75%        |  17.00|  19.50|  17.50|       |
-|     | 100%       |  26.00|  28.00|  31.00|       |
+| n   | quantile/p |      2|      3|
+|:----|:-----------|------:|------:|
+| 2   | 0%         |   3.00|   4.00|
+|     | 25%        |   5.00|   5.75|
+|     | 50%        |   6.00|   7.00|
+|     | 75%        |   9.00|   7.25|
+|     | 100%       |  16.00|  12.00|
+| 5   | 0%         |   4.00|   5.00|
+|     | 25%        |   5.00|   7.75|
+|     | 50%        |   6.00|  10.00|
+|     | 75%        |  11.00|  13.00|
+|     | 100%       |  31.00|  26.00|
+| 10  | 0%         |       |   3.00|
+|     | 25%        |       |   8.75|
+|     | 50%        |       |  11.00|
+|     | 75%        |       |  14.50|
+|     | 100%       |       |  45.00|
+| 20  | 0%         |   5.00|   7.00|
+|     | 25%        |   8.75|   9.00|
+|     | 50%        |  13.00|  12.00|
+|     | 75%        |  19.75|  17.00|
+|     | 100%       |  44.00|  33.00|
 
 The computation time is in 1000s of a second. The mean MSE is multiplied by ![10^{6}](https://latex.codecogs.com/svg.latex?10%5E%7B6%7D "10^{6}").
 

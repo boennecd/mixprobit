@@ -153,7 +153,7 @@ double approx_rec(
 
   return std::exp(func(par.begin(), true) + w_log);
 }
-}
+} // namespace
 
 namespace GaussHermite {
 HermiteData::HermiteData(unsigned const n): x(n), w(n) { }
@@ -181,11 +181,20 @@ HermiteData const& gaussHermiteDataCached(unsigned const n){
   return cached_vals.find(n)->second;
 }
 
-double approx(HermiteData const &rule,
-              integrand::base_integrand const &func){
+double approx(HermiteData const &rule, base_integrand const &func,
+              bool const is_adaptive){
+  unsigned const n_par = func.get_n_par();
+
+  if(is_adaptive){
+    integrand::mvn<base_integrand> func_w_mvn(func);
+    integrand::adaptive<integrand::mvn<base_integrand> >
+      new_func(func_w_mvn);
+
+    return approx(rule, new_func, false);
+  }
+
   arma::vec const w_logs = arma::log(rule.w),
                   x_use  = std::sqrt(2) * rule.x;
-  unsigned const n_par = func.get_n_par();
   arma::vec par(n_par);
 
   return approx_rec(x_use, w_logs, func, n_par, par) /

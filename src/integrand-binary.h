@@ -1,4 +1,3 @@
-#include "arma-wrap.h"
 #include "integrand.h"
 
 namespace integrand {
@@ -29,6 +28,9 @@ public:
 
   double operator()
   (double const*, bool const ret_log = false) const;
+
+  arma::vec gr(double const*) const;
+  arma::mat Hessian(double const*) const;
 
   std::size_t get_n_par() const {
     return n_par;

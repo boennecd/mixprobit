@@ -109,12 +109,15 @@ aprx <- within(list(), {
   #   Z: p by n matrix with random effect covariates. 
   #   S: n by n matrix with random effect covaraites.
   #   b: number of nodes to use with GHQ.
-  get_GHQ_cpp <- function(y, eta, Z, S, b){
+  #   is_adaptive: logical for whether to use adaptive GHQ.
+  get_GHQ_cpp <- function(y, eta, Z, S, b, is_adaptive = FALSE){
     mixprobit:::set_GH_rule_cached(b)
     function()
       mixprobit:::aprx_binary_mix_ghq(y = y, eta = eta, Z = Z, Sigma = S,
-                                      b = b)
+                                      b = b, is_adaptive = is_adaptive)
   }
+  get_AGHQ_cpp <- get_GHQ_cpp
+  formals(get_AGHQ_cpp)$is_adaptive <- TRUE
   
   #####
   # returns a function that returns the CDF approximation like in Pawitan 
@@ -179,13 +182,17 @@ aprx <- within(list(), {
   #   maxpts: maximum number of function values as integer. 
   #   abseps: bsolute error tolerance.
   #   releps: relative error tolerance.
-  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1)
+  #   is_adaptive: logical for whether to use adaptive GHQ.
+  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1, 
+                          is_adaptive = FALSE)
     # Args: 
     #   key: integer which determines degree of integration rule.
     function(key)
       mixprobit:::aprx_binary_mix(
         y = y, eta = eta, Z = Z, Sigma = S, maxpts = maxpts, key = key, 
-        abseps = abseps, releps = releps)
+        abseps = abseps, releps = releps, is_adaptive = is_adaptive)
+  get_Asim_mth <- get_sim_mth
+  formals(get_Asim_mth)$is_adaptive <- TRUE
 })
 ```
 
@@ -245,50 +252,63 @@ wd <- function(expr)
 
 #####
 # get the functions to use
-GHQ_R   <- wd(aprx$get_GHQ_R  (y = y, eta = eta, Z = Z, S = S, b = b))
-GHQ_cpp <- wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
+GHQ_R    <- wd(aprx$get_GHQ_R   (y = y, eta = eta, Z = Z, S = S, b = b))
+GHQ_cpp  <- wd(aprx$get_GHQ_cpp (y = y, eta = eta, Z = Z, S = S, b = b))
+AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
 
 cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
                                     maxpts = maxpts))
 cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
                                     maxpts = maxpts))
 
-sim_aprx <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
-                                maxpts = maxpts))
+sim_aprx <-  wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                 maxpts = maxpts))
+sim_Aaprx <- wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, 
+                                  maxpts = maxpts))
 
 #####
 # compare results. Start with the simulation based methods with a lot of
 # samples. We take this as the ground truth
 truth_maybe1 <- wd(
-  aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-                   abseps = 1e-11))()
+  aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                    abseps = 1e-11))()
 truth_maybe2 <- wd(
-  aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-                   abseps = 1e-11)(2L))
+  aprx$get_sim_mth (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                    abseps = 1e-11)(2L))
+truth_maybe2_A <- wd(
+  aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                    abseps = 1e-11)(2L))
 truth <- wd(
   mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
                                     n_sim = 1e8, n_threads = 6L))
 
 all.equal(truth, c(truth_maybe1))
 all.equal(truth, c(truth_maybe2))
+all.equal(truth, c(truth_maybe2_A))
 
 # compare with using fewer samples and GHQ
 all.equal(truth,   GHQ_R())
 all.equal(truth,   GHQ_cpp())
+all.equal(truth,   AGHQ_cpp())
 all.equal(truth, c(cdf_aprx_R()))
 all.equal(truth, c(cdf_aprx_cpp()))
 all.equal(truth, c(sim_aprx(1L)))
 all.equal(truth, c(sim_aprx(2L)))
 all.equal(truth, c(sim_aprx(3L)))
 all.equal(truth, c(sim_aprx(4L)))
+all.equal(truth, c(sim_Aaprx(1L)))
+all.equal(truth, c(sim_Aaprx(2L)))
+all.equal(truth, c(sim_Aaprx(3L)))
+all.equal(truth, c(sim_Aaprx(4L)))
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 microbenchmark::microbenchmark(
-  `GHQ (C++)` = GHQ_cpp(),
+  `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
   `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
   `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
+  `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 10)
 ```
 
@@ -344,38 +364,48 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
     abs((log(vals) - log(truth)) / log(truth)) < releps
   
   # get function to use with GHQ
-  b_use <- if(do_not_run)
-    NA_integer_
-  else local({
-    apx_func <- function(b)
-      wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))()
-    
-    # length of node values which have a relative error below the threshold
-    streak_length <- 3L
-    vals <- rep(NA_real_, streak_length)
-    
-    b <- 10L
-    for(i in 1:(streak_length - 1L))
-      vals[i + 1L] <- apx_func(b - streak_length + i)
-    repeat({
-      vals[1:(streak_length - 1L)] <- vals[-1]
-      vals[streak_length] <- apx_func(b)
+  get_b <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else local({
+      apx_func <- function(b)
+        wd(meth(y = y, eta = eta, Z = Z, S = S, b = b))()
       
-      if(all(is_ok_func(vals)))
-        break
+      # length of node values which have a relative error below the threshold
+      streak_length <- 3L
+      vals <- rep(NA_real_, streak_length)
       
-      b <- b + 1L
-      if(b > 50L){
-        warning("found no node value")
-        b <- NA_integer_
-        break
-      }
+      b <- streak_length
+      for(i in 1:(streak_length - 1L))
+        vals[i + 1L] <- apx_func(b - streak_length + i)
+      repeat({
+        vals[1:(streak_length - 1L)] <- vals[-1]
+        vals[streak_length] <- apx_func(b)
+        
+        if(all(is_ok_func(vals)))
+          break
+        
+        b <- b + 1L
+        if(b > 50L){
+          warning("found no node value")
+          b <- NA_integer_
+          break
+        }
+      })
+      b
     })
-    b
-  })
+  }
   
+  b_use <- get_b(aprx$get_GHQ_cpp)
   ghq_func <- if(!is.na(b_use))
     wd(aprx$get_GHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b_use))
+  else
+    NA
+  
+  # get function to use with AGHQ
+  b_use_A <- get_b(aprx$get_AGHQ_cpp)
+  aghq_func <- if(!is.na(b_use_A))
+    wd(aprx$get_AGHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b_use_A))
   else
     NA
   
@@ -410,41 +440,54 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
     NA
   
   # get function to use with Genz and Monahan method
-  sim_maxpts_use <- if(do_not_run)
-    NA_integer_
-  else local({
-    maxpts <- 100L
-    repeat {
-      func <- wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
-                                  maxpts = maxpts, abseps = -1, 
-                                  releps = releps / 10))
-      vals <- replicate(10, func(key_use))
-      if(all(is_ok_func(vals)))
-        break
-      
-      maxpts <- maxpts * 2L
-      if(maxpts > 1000000L){
-        warning("found no maxpts for sim method")
-        maxpts <- NA_integer_
-        break
+  get_sim_maxpts <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else local({
+      maxpts <- 100L
+      repeat {
+        func <- wd(meth(y = y, eta = eta, Z = Z, S = S, maxpts = maxpts, 
+                        abseps = -1, releps = releps / 10))
+        vals <- replicate(10, func(key_use))
+        if(all(is_ok_func(vals)))
+          break
+        
+        maxpts <- maxpts * 2L
+        if(maxpts > 1000000L){
+          warning("found no maxpts for sim method")
+          maxpts <- NA_integer_
+          break
+        }
       }
-    }
-    maxpts
-  })
+      maxpts
+    })
+  }
   
+  sim_maxpts_use <- get_sim_maxpts(aprx$get_sim_mth)
   sim_func <- if(!is.na(sim_maxpts_use))
     wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
                         maxpts = sim_maxpts_use, abseps = -1, 
                         releps = releps / 10))
   else 
     NA
-  
   if(is.function(sim_func))
     formals(sim_func)$key <- key_use
   
+  # do the same with the adaptive version
+  Asim_maxpts_use <- get_sim_maxpts(aprx$get_Asim_mth)
+  Asim_func <- if(!is.na(Asim_maxpts_use))
+    wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, 
+                         maxpts = Asim_maxpts_use, abseps = -1, 
+                         releps = releps / 10))
+  else 
+    NA
+  if(is.function(Asim_func))
+    formals(Asim_func)$key <- key_use
+  
   # perform the comparison
   out <- sapply(
-    list(GHQ = ghq_func, CDF = cdf_func, GenzMonahan = sim_func), 
+    list(GHQ = ghq_func, ADHQ = aghq_func, CDF = cdf_func, 
+         GenzMonahan = sim_func, GenzMonahanA = Asim_func), 
     function(func){
       if(!is.function(func) && is.na(func)){
         out <- rep(NA_real_, 6L)
@@ -463,8 +506,9 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
         ti[1:3] / n_runs)            
     })
   
-  list(b_use = b_use, cdf_maxpts_use = cdf_maxpts_use, 
-       sim_maxpts_use = sim_maxpts_use, vals_n_comp_time = out)
+  list(b_use = b_use, b_use_A = b_use_A, cdf_maxpts_use = cdf_maxpts_use, 
+       sim_maxpts_use = sim_maxpts_use, Asim_maxpts_use = Asim_maxpts_use, 
+       vals_n_comp_time = out)
 }
 ```
 
@@ -483,9 +527,9 @@ number of observations, `n`, and number of random effects, `p`.
 
 ```{r run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- c(2:5, 7L, 10L, 15L, 20L)
+n_vals <- c(2L, 5L, 10L, 20L)
 # number of random effects
-p_vals <- 2:5
+p_vals <- 2:3
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
@@ -560,6 +604,8 @@ local({
     nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
+  rnames[[2L]] <- gsub(
+    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
   
   # then flatten
   comp_times <- matrix(c(comp_times), nrow = NROW(rnames))
@@ -599,6 +645,8 @@ local({
     nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
+  rnames[[2L]] <- gsub(
+    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
   
   # then flatten
   err <- matrix(c(err), nrow = NROW(rnames))

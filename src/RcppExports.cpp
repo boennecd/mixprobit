@@ -40,8 +40,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix
-Rcpp::NumericVector aprx_binary_mix(arma::ivec const& y, arma::vec const& eta, arma::mat const& Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps, int const key);
-RcppExport SEXP _mixprobit_aprx_binary_mix(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP keySEXP) {
+Rcpp::NumericVector aprx_binary_mix(arma::ivec const& y, arma::vec const& eta, arma::mat const& Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps, int const key, bool const is_adaptive);
+RcppExport SEXP _mixprobit_aprx_binary_mix(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP keySEXP, SEXP is_adaptiveSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -53,7 +53,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
     Rcpp::traits::input_parameter< int const >::type key(keySEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix(y, eta, Z, Sigma, maxpts, abseps, releps, key));
+    Rcpp::traits::input_parameter< bool const >::type is_adaptive(is_adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix(y, eta, Z, Sigma, maxpts, abseps, releps, key, is_adaptive));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -115,8 +116,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_ghq
-double aprx_binary_mix_ghq(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const b);
-RcppExport SEXP _mixprobit_aprx_binary_mix_ghq(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP bSEXP) {
+double aprx_binary_mix_ghq(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const b, bool const is_adaptive);
+RcppExport SEXP _mixprobit_aprx_binary_mix_ghq(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP bSEXP, SEXP is_adaptiveSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -125,7 +126,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
     Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_ghq(y, eta, Z, Sigma, b));
+    Rcpp::traits::input_parameter< bool const >::type is_adaptive(is_adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_ghq(y, eta, Z, Sigma, b, is_adaptive));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -163,12 +165,12 @@ RcppExport SEXP run_testthat_tests();
 static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
     {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 6},
-    {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 8},
+    {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 9},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
     {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 3},
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
-    {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 5},
+    {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 6},
     {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 6},
     {"_mixprobit_for_rngnorm_wrapper_test", (DL_FUNC) &_mixprobit_for_rngnorm_wrapper_test, 2},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},

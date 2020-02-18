@@ -98,6 +98,8 @@ context("GaussHermite unit tests") {
     auto const &rule = GaussHermite::gaussHermiteDataCached(30L);
 
     expect_true(
-      std::abs(GaussHermite::approx(rule, integrand) - expec) < 1e-8);
+      std::abs(GaussHermite::approx(rule, integrand, false) - expec) < 1e-8);
+    expect_true(
+      std::abs(GaussHermite::approx(rule, integrand, true ) - expec) < 1e-8);
   }
 }

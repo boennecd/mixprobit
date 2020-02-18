@@ -42,7 +42,8 @@ HermiteData gaussHermiteData(unsigned const);
 /* throws an eror if cached is true when the first argument is large */
 HermiteData const& gaussHermiteDataCached(unsigned const);
 
-double approx(HermiteData const&, base_integrand const&);
+double approx(HermiteData const&, base_integrand const&,
+              bool const is_adaptive = false);
 }
 #endif
 

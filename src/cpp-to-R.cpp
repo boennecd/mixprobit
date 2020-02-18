@@ -52,15 +52,29 @@ Rcpp::List pmvnorm_cpp_restrict(
 Rcpp::NumericVector aprx_binary_mix(
     arma::ivec const &y, arma::vec const &eta, arma::mat const &Z,
     arma::mat const &Sigma, int const maxpts, double const abseps,
-    double const releps, int const key = 2L){
+    double const releps, int const key = 2L,
+    bool const is_adaptive = false){
   using namespace ranrth_aprx;
+  using namespace integrand;
   using Rcpp::NumericVector;
 
   parallelrng::set_rng_seeds(1L);
-  set_integrand(std::unique_ptr<integrand::base_integrand>(
-      new integrand::mix_binary(y, eta, Z, Sigma)));
-  auto const res = integral_arpx(
-    maxpts, key, abseps, releps);
+  auto const res = ([&](){
+    if(is_adaptive){
+      mix_binary bin(y, eta, Z, Sigma);
+      mvn<mix_binary > mix_bin(bin);
+
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<mix_binary> > (mix_bin)));
+
+      return integral_arpx(maxpts, key, abseps, releps);
+    }
+
+    set_integrand(std::unique_ptr<base_integrand>(
+        new mix_binary(y, eta, Z, Sigma)));
+
+    return integral_arpx(maxpts, key, abseps, releps);
+  })();
 
   NumericVector out = NumericVector::create(res.value);
   out.attr("error") = res.err;
@@ -299,11 +313,12 @@ Rcpp::List set_GH_rule_cached(unsigned const b){
 // [[Rcpp::export]]
 double aprx_binary_mix_ghq(
     arma::ivec const &y, arma::vec eta, arma::mat Z,
-    arma::mat const &Sigma, unsigned const b){
+    arma::mat const &Sigma, unsigned const b,
+    bool const is_adaptive = false){
   auto const &rule = GaussHermite::gaussHermiteDataCached(b);
   integrand::mix_binary integrand(y, eta, Z, Sigma);
 
-  return GaussHermite::approx(rule, integrand);
+  return GaussHermite::approx(rule, integrand, is_adaptive);
 }
 
 /* brute force MC estimate */
