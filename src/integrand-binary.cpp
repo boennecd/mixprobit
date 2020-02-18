@@ -1,5 +1,6 @@
 #include "integrand-binary.h"
 
+namespace integrand {
 double mix_binary::operator()(double const *par, bool const ret_log) const {
   memcpy(par_vec.begin(), par, sizeof(double) * n_par);
   double out(0);
@@ -13,4 +14,5 @@ double mix_binary::operator()(double const *par, bool const ret_log) const {
   if(ret_log)
     return out;
   return std::exp(out);
+}
 }

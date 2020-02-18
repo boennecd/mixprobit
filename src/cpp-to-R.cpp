@@ -57,8 +57,8 @@ Rcpp::NumericVector aprx_binary_mix(
   using Rcpp::NumericVector;
 
   parallelrng::set_rng_seeds(1L);
-  set_integrand(std::unique_ptr<integrand>(
-      new mix_binary(y, eta, Z, Sigma)));
+  set_integrand(std::unique_ptr<integrand::base_integrand>(
+      new integrand::mix_binary(y, eta, Z, Sigma)));
   auto const res = integral_arpx(
     maxpts, key, abseps, releps);
 
@@ -301,7 +301,7 @@ double aprx_binary_mix_ghq(
     arma::ivec const &y, arma::vec eta, arma::mat Z,
     arma::mat const &Sigma, unsigned const b){
   auto const &rule = GaussHermite::gaussHermiteDataCached(b);
-  mix_binary integrand(y, eta, Z, Sigma);
+  integrand::mix_binary integrand(y, eta, Z, Sigma);
 
   return GaussHermite::approx(rule, integrand);
 }
@@ -313,7 +313,7 @@ double aprx_binary_mix_brute(
     arma::mat const &Sigma, unsigned const n_sim,
     unsigned const n_threads = 1L){
   std::size_t const p = Sigma.n_cols;
-  mix_binary integrand(y, eta, Z, Sigma);
+  integrand::mix_binary integrand(y, eta, Z, Sigma);
   arma::vec par_vec(p);
 
   {

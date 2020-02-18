@@ -29,7 +29,7 @@
 #include "arma-wrap.h"
 
 namespace GaussHermite {
-using ranrth_aprx::integrand;
+using integrand::base_integrand;
 
 struct HermiteData {
   arma::vec x, w;
@@ -42,7 +42,7 @@ HermiteData gaussHermiteData(unsigned const);
 /* throws an eror if cached is true when the first argument is large */
 HermiteData const& gaussHermiteDataCached(unsigned const);
 
-double approx(HermiteData const&, integrand const&);
+double approx(HermiteData const&, base_integrand const&);
 }
 #endif
 

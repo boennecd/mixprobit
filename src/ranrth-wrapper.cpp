@@ -23,11 +23,12 @@ extern "C"
   }
 }
 
-static std::unique_ptr<ranrth_aprx::integrand> current_integrand;
+using integrand::base_integrand;
+static std::unique_ptr<base_integrand> current_integrand;
 
 namespace ranrth_aprx {
 void set_integrand
-  (std::unique_ptr<integrand> new_val){
+  (std::unique_ptr<base_integrand> new_val){
   current_integrand.swap(new_val);
 }
 

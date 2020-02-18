@@ -1,7 +1,9 @@
 #include "arma-wrap.h"
-#include "ranrth-wrapper.h"
+#include "integrand.h"
 
-class mix_binary final : public ranrth_aprx::integrand {
+namespace integrand {
+
+class mix_binary final : public base_integrand {
   arma::ivec const &y;
   arma::vec  const &eta;
   arma::mat  const Z;
@@ -32,3 +34,4 @@ public:
     return n_par;
   };
 };
+} // namespace integrand

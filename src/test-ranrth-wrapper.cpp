@@ -75,8 +75,8 @@ context("ranrth-wrapper unit tests") {
     constexpr double const expec  = 0.0041247747590393,
                            abseps = 1e-5;
     for(int key = 1L; key < 5L; ++key){
-      set_integrand(std::unique_ptr<integrand>(
-          new mix_binary(y, eta, Z, S)));
+      set_integrand(std::unique_ptr<integrand::base_integrand>(
+          new integrand::mix_binary(y, eta, Z, S)));
       auto res = integral_arpx(100000L, key, abseps, -1.);
 
       expect_true(res.err < 1e-3);

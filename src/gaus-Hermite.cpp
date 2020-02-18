@@ -137,7 +137,7 @@ int gaussHermiteDataGolubWelsch(arma::vec &x, arma::vec &w) {
 
 double approx_rec(
     arma::vec const &x, arma::vec const &w_logs,
-    GaussHermite::integrand const &func, unsigned const lvl,
+    integrand::base_integrand const &func, unsigned const lvl,
     arma::vec &par, double const w_log = 0.){
   if(lvl > 0L){
     unsigned const b = x.n_elem,
@@ -181,7 +181,8 @@ HermiteData const& gaussHermiteDataCached(unsigned const n){
   return cached_vals.find(n)->second;
 }
 
-double approx(HermiteData const &rule, integrand const &func){
+double approx(HermiteData const &rule,
+              integrand::base_integrand const &func){
   arma::vec const w_logs = arma::log(rule.w),
                   x_use  = std::sqrt(2) * rule.x;
   unsigned const n_par = func.get_n_par();

@@ -94,7 +94,7 @@ context("GaussHermite unit tests") {
 
     constexpr double const expec  = 0.0041247747590393;
 
-    mix_binary integrand(y, eta, Z, S);
+    integrand::mix_binary integrand(y, eta, Z, S);
     auto const &rule = GaussHermite::gaussHermiteDataCached(30L);
 
     expect_true(
