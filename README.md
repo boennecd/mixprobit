@@ -212,19 +212,19 @@ The variance of the linear predictor given the random effect is independent of t
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 1.97
+#> [1] 1.928
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
 #> [1] 1.973
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 2.018
+#> [1] 2
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 1.975
+#> [1] 2.001
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 1.956
+#> [1] 1.951
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 2.014
+#> [1] 1.975
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 2.087
+#> [1] 2.01
 ```
 
 Next we perform a quick example.
@@ -344,7 +344,7 @@ microbenchmark::microbenchmark(
 More Rigorous Comparison
 ------------------------
 
-We are interested in a more rigorous comparison. Therefor, we define a function below which for given number of observation in the cluster, `n`, and given number of random effects, `p`, performs a repeated number of runs with each of the methods and returns the computation time (among other output). To make a fair comparison, we fix the relative error of the methods before hand such that the relative error is below `releps`, ![5\\times 10^{-4}](https://latex.codecogs.com/svg.latex?5%5Ctimes%2010%5E%7B-4%7D "5\times 10^{-4}"). Ground truth is computed with brute for MC using `n_brute`, ![10^{8}](https://latex.codecogs.com/svg.latex?10%5E%7B8%7D "10^{8}"), samples.
+We are interested in a more rigorous comparison. Therefor, we define a function below which for given number of observation in the cluster, `n`, and given number of random effects, `p`, performs a repeated number of runs with each of the methods and returns the computation time (among other output). To make a fair comparison, we fix the relative error of the methods before hand such that the relative error is below `releps`, ![5\\times 10^{-4}](https://latex.codecogs.com/svg.latex?5%5Ctimes%2010%5E%7B-4%7D "5\times 10^{-4}"). Ground truth is computed with brute force MC using `n_brute`, ![10^{8}](https://latex.codecogs.com/svg.latex?10%5E%7B8%7D "10^{8}"), samples.
 
 Since GHQ is deterministic, we use a number of nodes such that this number of nodes or `streak_length`, 4, less value of nodes with GHQ gives a relative error which is below the threshold. We use a minimum of 4 nodes at the time of this writing. The error of the simulation based methods is approximated using `n_reps`, 5, replications.
 
@@ -700,7 +700,7 @@ Next, we apply the method a number of times for a of combination of number of ob
 
 ``` r
 # number of observations in the cluster
-n_vals <- 2^(1:4)
+n_vals <- 2^(1:5)
 # number of random effects
 p_vals <- 2:6
 # grid with all configurations
@@ -840,28 +840,33 @@ show_run_times(FALSE)
 
 **Blank cells have at least one failure**
 
-| n   | method/p                       |      2|      3|       4|       5|        6|
-|:----|:-------------------------------|------:|------:|-------:|-------:|--------:|
-| 2   | GHQ                            |   0.02|   0.12|    1.06|    6.93|    69.27|
-|     | AGHQ                           |   0.02|   0.09|    0.47|    3.00|    32.33|
-|     | CDF                            |   0.03|   0.03|    0.00|    0.02|     0.02|
-|     | Genz & Monahan (1999)          |       |  49.94|        |   74.98|         |
-|     | Genz & Monahan (1999) Adaptive |  18.60|   9.77|    6.89|   23.51|         |
-| 4   | GHQ                            |   0.07|   0.41|    3.95|   24.96|   206.69|
-|     | AGHQ                           |   0.02|   0.14|    0.60|    3.59|    35.34|
-|     | CDF                            |   0.42|   0.45|    0.42|    0.42|     0.46|
-|     | Genz & Monahan (1999)          |       |  85.60|  108.23|   91.98|         |
-|     | Genz & Monahan (1999) Adaptive |  14.73|  12.54|   26.44|    4.89|         |
-| 8   | GHQ                            |       |   1.49|    8.44|  142.16|   680.75|
-|     | AGHQ                           |   0.04|   0.19|    1.48|    7.91|    37.23|
-|     | CDF                            |   4.75|   4.62|    4.53|    4.69|     4.56|
-|     | Genz & Monahan (1999)          |       |       |        |        |         |
-|     | Genz & Monahan (1999) Adaptive |   1.64|   4.07|        |    4.17|     4.13|
-| 16  | GHQ                            |       |   4.84|   93.00|  542.17|  2610.50|
-|     | AGHQ                           |   0.06|   0.27|    1.73|    8.93|    62.87|
-|     | CDF                            |  31.90|  32.38|   32.23|   33.98|    33.66|
-|     | Genz & Monahan (1999)          |       |       |        |        |         |
-|     | Genz & Monahan (1999) Adaptive |   0.25|   1.59|    1.19|    1.29|     2.76|
+| n   | method/p                       |      2|      3|       4|        5|         6|
+|:----|:-------------------------------|------:|------:|-------:|--------:|---------:|
+| 2   | GHQ                            |   0.02|   0.12|    1.06|     6.93|     69.27|
+|     | AGHQ                           |   0.02|   0.09|    0.47|     3.00|     32.33|
+|     | CDF                            |   0.03|   0.03|    0.00|     0.02|      0.02|
+|     | Genz & Monahan (1999)          |       |  49.94|        |    74.98|          |
+|     | Genz & Monahan (1999) Adaptive |  18.60|   9.77|    6.89|    23.51|          |
+| 4   | GHQ                            |   0.07|   0.41|    3.95|    24.96|    206.69|
+|     | AGHQ                           |   0.02|   0.14|    0.60|     3.59|     35.34|
+|     | CDF                            |   0.42|   0.45|    0.42|     0.42|      0.46|
+|     | Genz & Monahan (1999)          |       |  85.60|  108.23|    91.98|          |
+|     | Genz & Monahan (1999) Adaptive |  14.73|  12.54|   26.44|     4.89|          |
+| 8   | GHQ                            |       |   1.49|    8.44|   142.16|    680.75|
+|     | AGHQ                           |   0.04|   0.19|    1.48|     7.91|     37.23|
+|     | CDF                            |   4.75|   4.62|    4.53|     4.69|      4.56|
+|     | Genz & Monahan (1999)          |       |       |        |         |          |
+|     | Genz & Monahan (1999) Adaptive |   1.64|   4.07|        |     4.17|      4.13|
+| 16  | GHQ                            |       |   4.84|   93.00|   542.17|   2610.50|
+|     | AGHQ                           |   0.06|   0.27|    1.73|     8.93|     62.87|
+|     | CDF                            |  31.90|  32.38|   32.23|    33.98|     33.66|
+|     | Genz & Monahan (1999)          |       |       |        |         |          |
+|     | Genz & Monahan (1999) Adaptive |   0.25|   1.59|    1.19|     1.29|      2.76|
+| 32  | GHQ                            |       |       |  260.15|  4491.88|  33577.08|
+|     | AGHQ                           |   0.16|   0.35|    1.66|     6.20|     59.00|
+|     | CDF                            |  75.88|  74.31|   73.43|    76.19|     73.61|
+|     | Genz & Monahan (1999)          |       |       |        |         |          |
+|     | Genz & Monahan (1999) Adaptive |   4.88|   0.45|    0.84|     0.63|      1.06|
 
 ``` r
 show_run_times(TRUE)
@@ -869,28 +874,33 @@ show_run_times(TRUE)
 
 **Only showing complete cases**
 
-| n   | method/p                       |       2|       3|       4|       5|        6|
-|:----|:-------------------------------|-------:|-------:|-------:|-------:|--------:|
-| 2   | GHQ                            |    0.02|    0.12|    0.79|    6.93|    40.46|
-|     | AGHQ                           |    0.03|    0.09|    0.43|    3.00|    26.33|
-|     | CDF                            |    0.04|    0.03|    0.00|    0.02|     0.02|
-|     | Genz & Monahan (1999)          |   13.88|   49.94|   43.96|   74.98|    74.73|
-|     | Genz & Monahan (1999) Adaptive |   13.68|    9.77|    6.18|   23.51|    22.44|
-| 4   | GHQ                            |    0.07|    0.41|    3.95|   24.96|   153.06|
-|     | AGHQ                           |    0.03|    0.14|    0.60|    3.59|    30.64|
-|     | CDF                            |    0.43|    0.45|    0.42|    0.42|     0.47|
-|     | Genz & Monahan (1999)          |   77.28|   85.60|  108.23|   91.98|   123.41|
-|     | Genz & Monahan (1999) Adaptive |    5.30|   12.54|   26.44|    4.89|    14.21|
-| 8   | GHQ                            |    0.10|    0.74|    7.41|   89.98|   331.24|
-|     | AGHQ                           |    0.05|    0.17|    1.36|    7.80|    34.50|
-|     | CDF                            |    4.74|    4.61|    4.55|    4.74|     4.59|
-|     | Genz & Monahan (1999)          |  103.63|  238.29|  244.12|  215.58|   193.56|
-|     | Genz & Monahan (1999) Adaptive |    1.91|    0.82|    1.20|    4.21|     3.34|
-| 16  | GHQ                            |    0.28|    4.42|  110.59|  538.85|  2793.15|
-|     | AGHQ                           |    0.06|    0.26|    1.74|    7.81|    60.53|
-|     | CDF                            |   31.71|   32.35|   32.07|   33.58|    33.39|
-|     | Genz & Monahan (1999)          |  141.72|  383.82|  439.39|  575.03|   561.41|
-|     | Genz & Monahan (1999) Adaptive |    0.24|    0.69|    1.26|    0.71|     2.99|
+| n   | method/p                       |       2|       3|       4|        5|         6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|---------:|
+| 2   | GHQ                            |    0.02|    0.12|    0.79|     6.93|     40.46|
+|     | AGHQ                           |    0.03|    0.09|    0.43|     3.00|     26.33|
+|     | CDF                            |    0.04|    0.03|    0.00|     0.02|      0.02|
+|     | Genz & Monahan (1999)          |   13.88|   49.94|   43.96|    74.98|     74.73|
+|     | Genz & Monahan (1999) Adaptive |   13.68|    9.77|    6.18|    23.51|     22.44|
+| 4   | GHQ                            |    0.07|    0.41|    3.95|    24.96|    153.06|
+|     | AGHQ                           |    0.03|    0.14|    0.60|     3.59|     30.64|
+|     | CDF                            |    0.43|    0.45|    0.42|     0.42|      0.47|
+|     | Genz & Monahan (1999)          |   77.28|   85.60|  108.23|    91.98|    123.41|
+|     | Genz & Monahan (1999) Adaptive |    5.30|   12.54|   26.44|     4.89|     14.21|
+| 8   | GHQ                            |    0.10|    0.74|    7.41|    89.98|    331.24|
+|     | AGHQ                           |    0.05|    0.17|    1.36|     7.80|     34.50|
+|     | CDF                            |    4.74|    4.61|    4.55|     4.74|      4.59|
+|     | Genz & Monahan (1999)          |  103.63|  238.29|  244.12|   215.58|    193.56|
+|     | Genz & Monahan (1999) Adaptive |    1.91|    0.82|    1.20|     4.21|      3.34|
+| 16  | GHQ                            |    0.28|    4.42|  110.59|   538.85|   2793.15|
+|     | AGHQ                           |    0.06|    0.26|    1.74|     7.81|     60.53|
+|     | CDF                            |   31.71|   32.35|   32.07|    33.58|     33.39|
+|     | Genz & Monahan (1999)          |  141.72|  383.82|  439.39|   575.03|    561.41|
+|     | Genz & Monahan (1999) Adaptive |    0.24|    0.69|    1.26|     0.71|      2.99|
+| 32  | GHQ                            |    0.98|   19.06|  172.64|  5023.05|  26964.95|
+|     | AGHQ                           |    0.14|    0.31|    0.84|     5.27|     47.69|
+|     | CDF                            |   75.26|   75.18|   74.61|    75.18|     74.35|
+|     | Genz & Monahan (1999)          |  465.74|  685.87|  702.84|   846.62|   1570.17|
+|     | Genz & Monahan (1999) Adaptive |    0.42|    0.45|    0.38|     0.54|      0.81|
 
 **Number of complete cases**
 
@@ -900,6 +910,7 @@ show_run_times(TRUE)
 | 4   |   19|   20|   20|   20|   18|
 | 8   |   17|   16|   18|   17|   18|
 | 16  |   17|   17|   16|   15|   16|
+| 32  |   17|   17|   14|   17|   15|
 
 ``` r
 
@@ -1001,6 +1012,11 @@ show_scaled_mean_rmse(FALSE)
 |     | CDF                            |   30.15|   27.96|   28.30|   46.09|   68.04|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |
 |     | Genz & Monahan (1999) Adaptive |  127.51|  286.55|  312.72|  353.72|  378.96|
+| 32  | GHQ                            |        |        |  282.43|  312.92|  266.08|
+|     | AGHQ                           |   34.23|   49.35|   99.43|   57.01|   83.81|
+|     | CDF                            |   76.19|   82.15|  125.72|   94.36|  125.81|
+|     | Genz & Monahan (1999)          |        |        |        |        |        |
+|     | Genz & Monahan (1999) Adaptive |  244.21|  274.19|  409.09|  387.13|  463.11|
 
 ``` r
 show_scaled_mean_rmse(TRUE)
@@ -1008,28 +1024,33 @@ show_scaled_mean_rmse(TRUE)
 
 **Only showing complete cases**
 
-| n   | method/p                       |       2|       3|       4|       5|       6|
-|:----|:-------------------------------|-------:|-------:|-------:|-------:|-------:|
-| 2   | GHQ                            |    8.06|    6.75|    8.26|    6.47|    5.67|
-|     | AGHQ                           |    6.22|    5.67|    8.84|    5.55|    5.34|
-|     | CDF                            |    6.15|    5.72|    8.88|    5.67|    5.36|
-|     | Genz & Monahan (1999)          |   37.81|   38.73|   67.95|   58.60|   57.10|
-|     | Genz & Monahan (1999) Adaptive |   29.09|   47.24|   46.43|   64.27|   46.52|
-| 4   | GHQ                            |   16.32|   12.51|   17.72|    9.58|   12.83|
-|     | AGHQ                           |    9.43|    9.58|   12.43|    8.67|   15.18|
-|     | CDF                            |   19.69|   18.70|   22.91|   24.32|   26.48|
-|     | Genz & Monahan (1999)          |  162.67|  131.94|  139.43|  127.33|  172.40|
-|     | Genz & Monahan (1999) Adaptive |   56.07|  162.08|   89.73|  132.42|  138.80|
-| 8   | GHQ                            |   56.11|   36.70|   42.10|   31.64|   21.65|
-|     | AGHQ                           |   14.96|   19.47|   20.94|   17.23|   18.97|
-|     | CDF                            |   17.83|   23.58|   25.84|   25.91|   22.78|
-|     | Genz & Monahan (1999)          |  236.28|  185.91|  200.49|  272.13|  252.81|
-|     | Genz & Monahan (1999) Adaptive |  119.25|  179.82|  175.57|  202.02|  212.55|
-| 16  | GHQ                            |  134.64|  160.54|  126.85|   93.83|   85.55|
-|     | AGHQ                           |   19.60|   16.63|   25.47|   34.65|   37.27|
-|     | CDF                            |   25.99|   27.36|   29.86|   43.33|   44.78|
-|     | Genz & Monahan (1999)          |  457.59|  486.99|  408.75|  569.23|  445.92|
-|     | Genz & Monahan (1999) Adaptive |  127.07|  286.81|  298.32|  370.65|  360.66|
+| n   | method/p                       |       2|       3|        4|       5|       6|
+|:----|:-------------------------------|-------:|-------:|--------:|-------:|-------:|
+| 2   | GHQ                            |    8.06|    6.75|     8.26|    6.47|    5.67|
+|     | AGHQ                           |    6.22|    5.67|     8.84|    5.55|    5.34|
+|     | CDF                            |    6.15|    5.72|     8.88|    5.67|    5.36|
+|     | Genz & Monahan (1999)          |   37.81|   38.73|    67.95|   58.60|   57.10|
+|     | Genz & Monahan (1999) Adaptive |   29.09|   47.24|    46.43|   64.27|   46.52|
+| 4   | GHQ                            |   16.32|   12.51|    17.72|    9.58|   12.83|
+|     | AGHQ                           |    9.43|    9.58|    12.43|    8.67|   15.18|
+|     | CDF                            |   19.69|   18.70|    22.91|   24.32|   26.48|
+|     | Genz & Monahan (1999)          |  162.67|  131.94|   139.43|  127.33|  172.40|
+|     | Genz & Monahan (1999) Adaptive |   56.07|  162.08|    89.73|  132.42|  138.80|
+| 8   | GHQ                            |   56.11|   36.70|    42.10|   31.64|   21.65|
+|     | AGHQ                           |   14.96|   19.47|    20.94|   17.23|   18.97|
+|     | CDF                            |   17.83|   23.58|    25.84|   25.91|   22.78|
+|     | Genz & Monahan (1999)          |  236.28|  185.91|   200.49|  272.13|  252.81|
+|     | Genz & Monahan (1999) Adaptive |  119.25|  179.82|   175.57|  202.02|  212.55|
+| 16  | GHQ                            |  134.64|  160.54|   126.85|   93.83|   85.55|
+|     | AGHQ                           |   19.60|   16.63|    25.47|   34.65|   37.27|
+|     | CDF                            |   25.99|   27.36|    29.86|   43.33|   44.78|
+|     | Genz & Monahan (1999)          |  457.59|  486.99|   408.75|  569.23|  445.92|
+|     | Genz & Monahan (1999) Adaptive |  127.07|  286.81|   298.32|  370.65|  360.66|
+| 32  | GHQ                            |  388.58|  407.13|   272.85|  331.03|  237.07|
+|     | AGHQ                           |   31.78|   47.17|    69.40|   52.50|   54.38|
+|     | CDF                            |   76.19|   74.42|   105.98|   91.77|  101.08|
+|     | Genz & Monahan (1999)          |  859.31|  903.12|  1052.99|  941.96|  840.60|
+|     | Genz & Monahan (1999) Adaptive |  243.57|  238.78|   362.14|  381.14|  398.06|
 
 **Number of complete cases**
 
@@ -1039,6 +1060,7 @@ show_scaled_mean_rmse(TRUE)
 | 4   |   19|   20|   20|   20|   18|
 | 8   |   17|   16|   18|   17|   18|
 | 16  |   17|   17|   16|   15|   16|
+| 32  |   17|   17|   14|   17|   15|
 
 ``` r
 
@@ -1116,6 +1138,11 @@ show_n_nodes(FALSE)
 |     | 50%        |  12.00|  13.00|  11.00|  11.50|  11.00|
 |     | 75%        |  16.50|  16.00|  12.25|  14.00|  11.00|
 |     | 100%       |  22.00|  26.00|  30.00|  17.00|  14.00|
+| 32  | 0%         |  11.00|   9.00|  11.00|   8.00|   8.00|
+|     | 25%        |  14.25|  12.50|  12.00|  11.75|  10.75|
+|     | 50%        |  17.50|  17.00|  14.00|  13.00|  12.50|
+|     | 75%        |  19.75|  23.00|  17.00|  15.75|  14.00|
+|     | 100%       |  28.00|  25.00|  30.00|  27.00|  21.00|
 
 **Number of complete cases**
 
@@ -1125,6 +1152,7 @@ show_n_nodes(FALSE)
 | 4   |   20|   20|   20|   20|   20|
 | 8   |   19|   20|   20|   20|   20|
 | 16  |   18|   20|   20|   20|   20|
+| 32  |   18|   19|   20|   20|   20|
 
 ``` r
 show_n_nodes(TRUE)
@@ -1154,6 +1182,11 @@ show_n_nodes(TRUE)
 |     | 50%        |   4.00|  5.50|  6.00|  6.00|  6.00|
 |     | 75%        |   4.00|  6.00|  6.00|  6.00|  6.00|
 |     | 100%       |   7.00|  7.00|  7.00|  6.00|  7.00|
+| 32  | 0%         |   4.00|  4.00|  4.00|  4.00|  4.00|
+|     | 25%        |   4.00|  4.00|  4.00|  4.00|  4.00|
+|     | 50%        |   4.00|  4.00|  4.00|  4.00|  5.00|
+|     | 75%        |   4.00|  4.00|  4.00|  5.00|  6.00|
+|     | 100%       |   9.00|  6.00|  7.00|  6.00|  6.00|
 
 **Number of complete cases**
 
@@ -1163,6 +1196,7 @@ show_n_nodes(TRUE)
 | 4   |   20|   20|   20|   20|   20|
 | 8   |   20|   20|   20|   20|   20|
 | 16  |   20|   20|   20|   20|   20|
+| 32  |   20|   20|   20|   20|   20|
 
 References
 ----------

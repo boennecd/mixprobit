@@ -8,7 +8,7 @@ nocite: |
   @Ochi84, @Liu94, @Hajivassiliou96, @Genz98, @Genz99, @Genz02, @Pawitan04, @Barrett15
 ---
 
-# Mixed Models with Probit Link
+# Mixed Models with a Probit Link
 
 ```{r setup, echo = FALSE, cache=FALSE}
 knitr::opts_chunk$set(
@@ -352,7 +352,7 @@ with each of the methods and returns the computation time (among other
 output). To make a fair 
 comparison, we fix the relative error of the methods before hand such that 
 the relative error is below `releps`, $`r ex_params$releps`$. 
-Ground truth is computed with brute for MC using `n_brute`, 
+Ground truth is computed with brute force MC using `n_brute`, 
 $`r ex_params$n_brute`$, samples.
 
 Since GHQ is deterministic, we use 
@@ -567,7 +567,7 @@ number of observations, `n`, and number of random effects, `p`.
 
 ```{r run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- 2^(1:4)
+n_vals <- 2^(1:5)
 # number of random effects
 p_vals <- 2:6
 # grid with all configurations
@@ -829,7 +829,7 @@ show_n_nodes <- function(adaptive){
   p_labs <- sprintf("%d", p_vals)
   colnames(table_out) <- c("n", "quantile/p", p_labs)
   
-  cat(.get_cap(TRUE, if(adaptive) " (Adaptive GHQ)" else "GHQ"))
+  cat(.get_cap(TRUE, if(adaptive) " (Adaptive GHQ)" else " (GHQ)"))
   
   options(knitr.kable.NA = "")
   print(knitr::kable(
