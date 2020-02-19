@@ -163,8 +163,8 @@ aprx <- within(list(), {
   #   maxpts: maximum number of function values as integer. 
   #   abseps: bsolute error tolerance.
   #   releps: relative error tolerance.
-  get_cdf_cpp <- function(y, eta, Z, S, maxpts, abseps = 1e-5, 
-                          releps = -1)
+  get_cdf_cpp <- function(y, eta, Z, S, maxpts, abseps = -1, 
+                          releps = 1e-3)
     function()
       mixprobit:::aprx_binary_mix_cdf(
         y = y, eta = eta, Z = Z, Sigma = S, maxpts = maxpts,
@@ -182,7 +182,7 @@ aprx <- within(list(), {
   #   maxpts: maximum number of function values as integer. 
   #   abseps: bsolute error tolerance.
   #   releps: relative error tolerance.
-  #   is_adaptive: logical for whether to use adaptive GHQ.
+  #   is_adaptive: logical for whether to use adaptive method.
   get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1, 
                           is_adaptive = FALSE)
     # Args: 
@@ -211,17 +211,31 @@ get_sim_dat <- function(n, p){
   out <- list(n = n, p = p)
   within(out, {
     Z <- do.call(                        # random effect design matrix
-      rbind, c(list(1), list(replicate(n, runif(p - 1L, -1, 1)))))
-    eta <- runif(n, -1, 1)               # fixed offsets/fixed effects
+      rbind, c(list(sqrt(1/p)), 
+               list(replicate(n, rnorm(p - 1L, sd = sqrt(1/p))))))
+    eta <- rnorm(n)                      # fixed offsets/fixed effects
     n <- NCOL(Z)                         # number of individuals
     p <- NROW(Z)                         # number of random effects
     S <- drop(                           # covariance matrix of random effects
-      rWishart(1, p, diag(sqrt(1/ 2 / p), p)))
+      rWishart(1, p, diag(1 / p, p)))
     S_chol <- chol(S)
     u <- drop(rnorm(p) %*% S_chol)       # random effects
     y <- runif(n) < pnorm(drop(u %*% Z)) # observed outcomes
   })
 }
+```
+
+The variance of the linear predictor given the random effect is independent 
+of the random effect dimension, `p`.
+
+```{r show_var_lp}
+var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
+var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
+var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
+var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
+var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
+var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
+var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
 ```
 
 Next we perform a quick example.
@@ -317,20 +331,43 @@ rm(list = setdiff(ls(), cur_vars))
 ```
 
 ## More Rigorous Comparison
+```{r default_params, cache = 1, echo = FALSE}
+# default parameters
+ex_params <- list(
+  streak_length = 4L, 
+  max_b = 30L, 
+  max_maxpts = 1000000L, 
+  releps = 5e-4,
+  min_releps = 5e-6,
+  key_use = 2L, 
+  n_reps = 5L, 
+  n_runs = 10L, 
+  n_brute = 1e8)
+```
+
 We are interested in a more rigorous comparison. Therefor, we define a 
 function below which for given number of observation in the cluster, `n`, 
 and given number of random effects, `p`, performs a repeated number of runs
 with each of the methods and returns the computation time (among other 
 output). To make a fair 
 comparison, we fix the relative error of the methods before hand such that 
-the relative error is below `releps`. Since GHQ is deterministic, we use 
-a number of nodes such that this number of nodes or `streak_length` less 
-(which is set to three at the time of this writing) 
-value of nodes with GHQ gives a relative error which is 
-below the threshold. We use a minimum of 10 nodes at the time of 
-this writing.
+the relative error is below `releps`, $`r ex_params$releps`$. 
+Ground truth is computed with brute for MC using `n_brute`, 
+$`r ex_params$n_brute`$, samples.
 
-```{r def_sim_experiment, cache = 1}
+Since GHQ is deterministic, we use 
+a number of nodes such that this number of nodes or `streak_length`, 
+`r ex_params$streak_length`, less 
+value of nodes with GHQ gives a relative error which is 
+below the threshold. We use a minimum of 
+`r ex_params$streak_length` nodes at the time of 
+this writing. The error of the simulation based methods is approximated 
+using `n_reps`, `r ex_params$n_reps`, replications.
+
+```{r show_default_params, ref.label = "default_params", eval = FALSE}
+```
+
+```{r def_sim_experiment, cache = 1, dependson = "default_params"}
 # perform a simulations run for a given number of observations and random 
 # effects. First we fix the relative error of each method such that it is
 # below a given threshold. Then we run each method a number of times to 
@@ -342,9 +379,10 @@ this writing.
 #   releps: required relative error. 
 #   key_use: integer which determines degree of integration rule for the 
 #            method from Genz and Monahan (1999).
-sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
-  # in some cases we do not want to run anything
-  do_not_run <- p >= 5L && n >= 10L
+sim_experiment <- function(n, p, releps = ex_params$releps, 
+                           key_use = ex_params$key_use){
+  # in some cases we may not want to run the simulation experiment
+  do_not_run <- FALSE
   
   # simulate data
   dat <- get_sim_dat(n = n, p = p)
@@ -357,7 +395,7 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
   truth <- if(do_not_run)
     NA
   else wd(mixprobit:::aprx_binary_mix_brute(
-    y = y, eta = eta, Z = Z, Sigma = S, n_sim = 1e7))
+    y = y, eta = eta, Z = Z, Sigma = S, n_sim = ex_params$n_brute))
   
   # function to test whether the value is ok
   is_ok_func <- function(vals)
@@ -372,7 +410,7 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
         wd(meth(y = y, eta = eta, Z = Z, S = S, b = b))()
       
       # length of node values which have a relative error below the threshold
-      streak_length <- 3L
+      streak_length <- ex_params$streak_length
       vals <- rep(NA_real_, streak_length)
       
       b <- streak_length
@@ -386,7 +424,7 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
           break
         
         b <- b + 1L
-        if(b > 50L){
+        if(b > ex_params$max_b){
           warning("found no node value")
           b <- NA_integer_
           break
@@ -410,32 +448,32 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
     NA
   
   # get function to use with CDF method
-  cdf_maxpts_use <- if(do_not_run)
+  cdf_releps <- if(do_not_run)
     NA_integer_
   else local({
-    maxpts <- 100L
+    releps_use <- releps * 100
     repeat {
       func <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
-                                  maxpts = maxpts, abseps = -1, 
-                                  releps = releps / 10))
-      vals <- replicate(10, func())
+                                  maxpts = ex_params$max_maxpts, 
+                                  abseps = -1, releps = releps_use))
+      vals <- replicate(ex_params$n_reps, func())
       if(all(is_ok_func(vals)))
         break
       
-      maxpts <- maxpts * 2L
-      if(maxpts > 1000000L){
-        warning("found no maxpts for CDF method")
-        maxpts <- NA_integer_
+      releps_use <- releps_use / 2
+      if(releps_use < ex_params$min_releps){
+        warning("found no releps for CDF method")
+        releps_use <- NA_integer_
         break
       }
     }
-    maxpts
+    releps_use
   })
   
-  cdf_func <- if(!is.na(cdf_maxpts_use))
+  cdf_func <- if(!is.na(cdf_releps))
     wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
-                        maxpts = cdf_maxpts_use, abseps = -1, 
-                        releps = releps / 10))
+                        maxpts = ex_params$max_maxpts, abseps = -1, 
+                        releps = cdf_releps))
   else 
     NA
   
@@ -448,12 +486,12 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
       repeat {
         func <- wd(meth(y = y, eta = eta, Z = Z, S = S, maxpts = maxpts, 
                         abseps = -1, releps = releps / 10))
-        vals <- replicate(10, func(key_use))
+        vals <- replicate(ex_params$n_reps, func(key_use))
         if(all(is_ok_func(vals)))
           break
         
         maxpts <- maxpts * 2L
-        if(maxpts > 1000000L){
+        if(maxpts > ex_params$max_maxpts){
           warning("found no maxpts for sim method")
           maxpts <- NA_integer_
           break
@@ -486,7 +524,7 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
   
   # perform the comparison
   out <- sapply(
-    list(GHQ = ghq_func, ADHQ = aghq_func, CDF = cdf_func, 
+    list(GHQ = ghq_func, AGHQ = aghq_func, CDF = cdf_func, 
          GenzMonahan = sim_func, GenzMonahanA = Asim_func), 
     function(func){
       if(!is.function(func) && is.na(func)){
@@ -497,7 +535,7 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
       }
       
       # number of runs used to estimate the computation time, etc.
-      n_runs <- 20L
+      n_runs <- ex_params$n_runs
       
       # perform the computations
       ti <- system.time(vals <- replicate(n_runs, func()))
@@ -506,7 +544,7 @@ sim_experiment <- function(n, p, releps = 5e-3, key_use = 2L){
         ti[1:3] / n_runs)            
     })
   
-  list(b_use = b_use, b_use_A = b_use_A, cdf_maxpts_use = cdf_maxpts_use, 
+  list(b_use = b_use, b_use_A = b_use_A, cdf_releps = cdf_releps, 
        sim_maxpts_use = sim_maxpts_use, Asim_maxpts_use = Asim_maxpts_use, 
        vals_n_comp_time = out)
 }
@@ -518,18 +556,20 @@ Here is a few quick examples where we use the function we just defined.
 set.seed(1)
 sim_experiment(n = 3L , p = 2L)
 sim_experiment(n = 10L, p = 2L)
-sim_experiment(n = 3L , p = 4L)
-sim_experiment(n = 10L, p = 4L)
+sim_experiment(n = 3L , p = 5L)
+sim_experiment(n = 8L , p = 5L)
+sim_experiment(n = 3L , p = 6L)
+sim_experiment(n = 8L , p = 6L)
 ```
 
-Next, we apply the method a number of times for a fixed of combination of 
+Next, we apply the method a number of times for a of combination of 
 number of observations, `n`, and number of random effects, `p`. 
 
 ```{r run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- c(2L, 5L, 10L, 20L)
+n_vals <- 2^(1:4)
 # number of random effects
-p_vals <- 2:3
+p_vals <- 2:6
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
@@ -545,7 +585,7 @@ ex_output <- (function(){
   library(parallel)
   cl <- makeCluster(4L)
   on.exit(stopCluster(cl))
-  clusterExport(cl, c("aprx", "get_sim_dat", "sim_experiment"))
+  clusterExport(cl, c("aprx", "get_sim_dat", "sim_experiment", "ex_params"))
   
   # run the experiment
   mapply(function(n, p){
@@ -575,29 +615,70 @@ ex_output <- (function(){
 })()
 ```
 
+```{r meta_create_table, echo = FALSE}
+comp_time_mult <- 1000 # millisecond
+err_mult <- 1e5
+```
+
+
 We create a table where we summarize the results below. First we start with 
-the average computation time, then we show the mean MSE, and we end by 
-looking at the number of nodes that we need to use with GHQ. The latter 
+the average computation time, then we show the mean scaled RMSE, and we end 
+by looking at the number of nodes that we need to use with GHQ. The latter 
 shows why GHQ becomes slower as the cluster size, `n`, increases.
+The computation time is in `r comp_time_mult`s of a second, 
+`comp_time_mult`. The mean scaled RMSE is multiplied by $`r err_mult`$,
+`err_mult`.
 
 ```{r create_table, results = "asis"}
 #####
 # table with computation times
-comp_time_mult <- 1000 # millisecond
+# util functions
+.get_cap <- function(remove_nas, sufix = ""){
+  cap <- if(remove_nas)
+    "**Only showing complete cases"
+  else 
+    "**Blank cells have at least one failure"
+  paste0(cap, sufix, "**")
+}
 
-local({
+.show_n_complete <- function(is_complete, n_labs, p_labs){
+  n_complete <- matrix(
+    colSums(is_complete), length(n_labs), length(p_labs), 
+    dimnames = list(n = n_labs, p = p_labs))
+  
+  cat("\n**Number of complete cases**")
+ print(knitr::kable(n_complete, align = rep("r", ncol(n_complete))))
+}
+
+# function to create the computation time table
+show_run_times <- function(remove_nas = FALSE){
   # get mean computations time for the methods and the configurations pairs
   comp_times <- sapply(ex_output, function(x)
     sapply(x[!names(x) %in% c("n", "p")], `[[`, "vals_n_comp_time", 
            simplify = "array"), 
     simplify = "array")
   comp_times <- comp_times["elapsed", , , ]
-  comp_times <- apply(comp_times, c(1, 3), mean) * comp_time_mult
+  
+  is_complete <- t(apply(comp_times, 2, function(x){
+    if(remove_nas)
+      apply(!is.na(x), 2, all)
+    else 
+      rep(TRUE, NCOL(x))
+  }))
+  dim(is_complete) <- dim(comp_times)[2:3]
+  
+  comp_times <- lapply(1:dim(comp_times)[3], function(i){
+    x <- comp_times[, , i]
+    x[, is_complete[, i]]
+  })
+  comp_times <- sapply(comp_times, rowMeans) * comp_time_mult
+  comp_times[is.nan(comp_times)] <- NA_real_
   
   # flatten the table. Start by getting the row labels
   meths <- rownames(comp_times)
+  n_labs <- sprintf("%2d", n_vals)
   rnames <- expand.grid(
-    Method = meths, n = sprintf("%2d", n_vals), stringsAsFactors = FALSE)
+    Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
   nvs <- rnames[[1L]]
   rnames[[1L]] <- c(
@@ -606,6 +687,9 @@ local({
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
   rnames[[2L]] <- gsub(
     "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
+  # fix stupid typo at one point
+  rnames[[2L]] <- gsub(
+    "^ADHQ$", "AGHQ", rnames[[2L]])
   
   # then flatten
   comp_times <- matrix(c(comp_times), nrow = NROW(rnames))
@@ -617,28 +701,58 @@ local({
   table_out <- cbind(as.matrix(rnames), comp_times)
   
   # add header 
-  colnames(table_out) <- c("n", "method/p", sprintf("%d", p_vals))
+  p_labs <- sprintf("%d", p_vals)
+  colnames(table_out) <- c("n", "method/p", p_labs)
   
+  cat(.get_cap(remove_nas))
+    
   options(knitr.kable.NA = "")
-  knitr::kable(table_out, align = c("l", "l", rep("r", length(p_vals))))
-})
+  print(knitr::kable(
+    table_out, align = c("l", "l", rep("r", length(p_vals)))))
+  
+  if(remove_nas)
+    .show_n_complete(is_complete, n_labs, p_labs)
+}
+
+show_run_times(FALSE)
+show_run_times(TRUE)
 
 #####
-# mean MSE table
-err_mult <- 1e6
-local({
-  # get mean mse for the methods and the configurations pairs
+# mean scaled RMSE table
+show_scaled_mean_rmse <- function(remove_nas){
+  # get mean scaled RMSE for the methods and the configurations pairs
   res <- sapply(ex_output, function(x)
     sapply(x[!names(x) %in% c("n", "p")], `[[`, "vals_n_comp_time", 
            simplify = "array"), 
     simplify = "array")
-  err <- res["mse", , , ]
-  err <- apply(err, c(1, 3), mean) * err_mult
+  err <- sqrt(res["mse", , , ])
+  
+  # scale by mean integral value
+  mean_integral <- apply(res["mean", , , ], 2:3, mean, na.rm = TRUE)
+  n_meth <- dim(err)[1]
+  err <- err / rep(mean_integral, each = n_meth)
+  
+  is_complete <- t(apply(err, 2, function(x){
+    if(remove_nas)
+      apply(!is.na(x), 2, all)
+    else 
+      rep(TRUE, NCOL(x))
+  }))
+  dim(is_complete) <- dim(err)[2:3]
+  
+  err <- lapply(1:dim(err)[3], function(i){
+    x <- err[, , i]
+    x[, is_complete[, i]]
+  })
+  
+  err <- sapply(err, rowMeans) * err_mult
+  err[is.nan(err)] <- NA_real_
   
   # flatten the table. Start by getting the row labels
   meths <- rownames(err)
+  n_labs <- sprintf("%2d", n_vals)
   rnames <- expand.grid(
-    Method = meths, n = sprintf("%2d", n_vals), stringsAsFactors = FALSE)
+    Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
   nvs <- rnames[[1L]]
   rnames[[1L]] <- c(
@@ -647,6 +761,9 @@ local({
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
   rnames[[2L]] <- gsub(
     "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
+  # fix stupid typo at one point
+  rnames[[2L]] <- gsub(
+    "^ADHQ$", "AGHQ", rnames[[2L]])
   
   # then flatten
   err <- matrix(c(err), nrow = NROW(rnames))
@@ -658,32 +775,42 @@ local({
   table_out <- cbind(as.matrix(rnames), err)
   
   # add header 
-  colnames(table_out) <- c("n", "method/p", sprintf("%d", p_vals))
+  p_labs <- sprintf("%d", p_vals)
+  colnames(table_out) <- c("n", "method/p", p_labs)
+  
+  cat(.get_cap(remove_nas))
   
   options(knitr.kable.NA = "")
-  knitr::kable(table_out, align = c("l", "l", rep("r", length(p_vals))))
-})
+  print(knitr::kable(
+    table_out, align = c("l", "l", rep("r", length(p_vals)))))
+  
+  if(remove_nas)
+    .show_n_complete(is_complete, n_labs, p_labs)
+}
+
+show_scaled_mean_rmse(FALSE)
+show_scaled_mean_rmse(TRUE)
 
 #####
-# GHQ node table
-local({
+# (A)GHQ node table
+show_n_nodes <- function(adaptive){
+  b_use_name <- if(adaptive) "b_use_A" else "b_use"
+  
   # get the number of nodes that we use
   res <- sapply(ex_output, function(x)
-    sapply(x[!names(x) %in% c("n", "p")], `[[`, "b_use"))
+    sapply(x[!names(x) %in% c("n", "p")], `[[`, b_use_name))
   
   # compute the quantiles
   probs <- seq(0, 1, length.out = 5)
-  qs <- matrix(NA_real_, nr = length(probs), nc = NCOL(res))
-  is_ok <- apply(!is.na(res), 2L, all)
-  qs_ok <- apply(res[, is_ok, drop = FALSE], 2L, quantile, prob = probs)
-  
-  qs[, is_ok] <- qs_ok
-  rownames(qs) <- rownames(qs_ok)
+  is_ok <- !is.na(res)
+  qs <- lapply(1:dim(res)[2], function(i) res[is_ok[, i], i])
+  qs <- sapply(qs, quantile, prob = probs)
   
   # flatten the table. Start by getting the row labels
   meths <- rownames(qs)
+  n_labs <- sprintf("%2d", n_vals)
   rnames <- expand.grid(
-    Method = meths, n = sprintf("%2d", n_vals), stringsAsFactors = FALSE)
+    Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
   nvs <- rnames[[1L]]
   rnames[[1L]] <- c(
@@ -699,14 +826,20 @@ local({
   table_out <- cbind(as.matrix(rnames), qs)
   
   # add header 
-  colnames(table_out) <- c("n", "quantile/p", sprintf("%d", p_vals))
+  p_labs <- sprintf("%d", p_vals)
+  colnames(table_out) <- c("n", "quantile/p", p_labs)
+  
+  cat(.get_cap(TRUE, if(adaptive) " (Adaptive GHQ)" else "GHQ"))
   
   options(knitr.kable.NA = "")
-  knitr::kable(table_out, align = c("l", "l", rep("r", length(p_vals))))
-})
-```
+  print(knitr::kable(
+    table_out, align = c("l", "l", rep("r", length(p_vals)))))
+  
+  .show_n_complete(is_ok, n_labs, p_labs)
+}
 
-The computation time is in `r comp_time_mult`s of a second. The mean MSE is 
-multiplied by $`r err_mult`$.
+show_n_nodes(FALSE)
+show_n_nodes(TRUE)
+```
 
 ## References
