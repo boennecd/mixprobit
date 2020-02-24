@@ -1,4 +1,5 @@
 #include "integrand-binary.h"
+#include "lapack.h"
 
 namespace integrand {
 double mix_binary::operator()(double const *par, bool const ret_log) const {
@@ -35,6 +36,9 @@ arma::vec mix_binary::gr(double const *par) const {
 arma::mat mix_binary::Hessian(double const *par) const {
   memcpy(par_vec.begin(), par, sizeof(double) * n_par);
   arma::mat He(n_par, n_par, arma::fill::zeros);
+  constexpr int const ONE(1L);
+  constexpr char const U('U');
+  int const n_pari = n_par;
 
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + arma::dot(Z.unsafe_col(i), par_vec);
@@ -46,10 +50,9 @@ arma::mat mix_binary::Hessian(double const *par) const {
                  F   = std::exp(Fl),
                  fac = - std::exp(fl - 2 * Fl) * (lpu * F + f);
 
-    /* TODO: replace with rank-one update */
-    He += (fac * Z.col(i)) * Z.col(i).t();
+    dsyr_call(&U, &n_pari, &fac, Z.colptr(i), &ONE, He.memptr(), &n_pari);
   }
 
-  return He;
+  return arma::symmatu(He);
 }
 }

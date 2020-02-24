@@ -30,9 +30,6 @@ inline void poly2_gr(int npar, double *point, double *grad, void *data){
 
 context("mix-optim unit tests") {
   test_that("optim works for second order polynomial") {
-    /* TODO: delete
-     * https://www.wolframalpha.com/input/?i=4+-+2+*+x+-+3+*+y++%2B+x+*+x+%2B+2+*+y+*+y+-+x+*+y */
-
     coef_data dat;
     dat[0] =  4;
     dat[1] = -2;

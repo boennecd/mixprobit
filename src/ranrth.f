@@ -323,6 +323,13 @@
       INTEGER KEY, M, NF, I, IS, J, K, N
       DOUBLE PRECISION R, V( M, * ), X(*), RESR(*), INTV(*)
       DOUBLE PRECISION MP, WV, WM, WC, WT, RM, RC, RT
+*     Avoid -Wmaybe-uninitialized
+      WM = 0
+      RM = 0
+      RC = 0
+      WC = 0
+      WT = 0
+      RT = 0
 *
 *     Determine Weights
 *
@@ -431,7 +438,8 @@
 *     Determine random M-simplex with vertices V and work vector X.
 *
       INTEGER I, J, K, M
-      DOUBLE PRECISION V( M, * ), X(*), AL, BT, RV, MP, NORRAN
+      DOUBLE PRECISION V( M, * ), X(*), RV, MP, NORRAN
+      DOUBLE PRECISION MU, BETA, SIGMA
       MP = M + 1
 *
 *     Determine standard unit simplex centered at origin
@@ -455,23 +463,50 @@
 *      with an Application to Condition Estimaors",
 *     SIAM J Numer. Anal. 17, pp. 403-408.
 *
+*     The Householder reflection is changed by
+*     Benjamin Christoffersen to use the method described
+*     in section 5.1 of
+*     Golub, G. H., & Van Loan, C. F. (2013).
+*     "Matrix computations"" (Vol. 4). JHU press.
+*
       DO K = M - 1, 1, -1
-         AL = 0
-         DO I = K, M
+*     draw and compute householder vector
+         SIGMA = 0
+         X(K) = NORRAN()
+         DO I = K + 1, M
             X(I) = NORRAN()
-            AL = AL + X(I)**2
+            SIGMA = SIGMA + X(I)**2
          END DO
-         AL = -SQRT(AL)
-         BT = 1/( AL*( AL + X(K) ) )
-         X(K) = X(K) + AL
-         DO J = K, M+1
-            AL = 0
+
+*     set BETA
+         IF (SIGMA .EQ. 0 .AND. X(K) .GE. 0) THEN
+            BETA = 0
+         ELSE IF (SIGMA .EQ. 0 .AND. X(K) .LT. 0) THEN
+            BETA = -2
+         ELSE
+            MU = SQRT(X(K)**2 + SIGMA)
+            IF (X(K) .LE. 0) THEN
+               X(K) = X(K) - MU
+            ELSE
+               X(K) = - SIGMA / (X(K) + MU)
+            END IF
+            BETA = 2 * X(K)**2 / (SIGMA + X(K)**2)
+         END IF
+
+         DO I = M, K, -1
+            X(I) = X(I) / X(K)
+         END DO
+
+*     apply Householder matrix
+         DO J = K, M + 1
+*     now, SIGMA is a temporary in a dot product
+            SIGMA = 0
             DO I = K, M
-               AL = AL + X(I)*V(I,J)
+               SIGMA = SIGMA + X(I) * V(I,J)
             END DO
-            AL = BT*AL
+            SIGMA = BETA * SIGMA
             DO I = K, M
-               V(I,J) = V(I,J) - X(I)*AL
+               V(I,J) = V(I,J) - X(I) * SIGMA
             END DO
          END DO
       END DO

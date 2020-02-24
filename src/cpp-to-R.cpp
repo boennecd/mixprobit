@@ -3,6 +3,7 @@
 #include "integrand-binary.h"
 #include "restrict-cdf.h"
 #include "threat-safe-random.h"
+#include "welfords.h"
 
 #include <vector>
 
@@ -321,14 +322,49 @@ double aprx_binary_mix_ghq(
   return GaussHermite::approx(rule, integrand, is_adaptive);
 }
 
+/* very simple importance sampler with so-called location and scaled
+ * balanced antithetic variables */
+template<typename I>
+class antithetic {
+  I const &integrand;
+public:
+  antithetic(I const &integrand): integrand(integrand) { }
+
+  double operator()(arma::vec &par_vec) const {
+    double new_term = integrand(par_vec.begin());
+    par_vec *= -1;
+    new_term += integrand(par_vec.begin());
+
+    double const old_scale = ([&]{
+      double out(0.);
+      for(auto x : par_vec)
+        out += x * x;
+      return out;
+    })();
+
+    double const p_val = R::pchisq(old_scale, (double)par_vec.n_elem,
+                                   1L, 0L),
+             new_scale = R::qchisq(1 - p_val, (double)par_vec.n_elem,
+                                   1L, 0L);
+
+    par_vec *= std::sqrt(new_scale / old_scale);
+    new_term += integrand(par_vec.begin());
+    par_vec *= -1;
+    new_term += integrand(par_vec.begin());
+    return new_term / 4.;
+  }
+};
+
 /* brute force MC estimate */
 // [[Rcpp::export]]
-double aprx_binary_mix_brute(
+Rcpp::NumericVector aprx_binary_mix_brute(
     arma::ivec const &y, arma::vec eta, arma::mat Z,
     arma::mat const &Sigma, unsigned const n_sim,
-    unsigned const n_threads = 1L){
+    unsigned const n_threads = 1L, bool const is_is = true){
+  using namespace integrand;
+
   std::size_t const p = Sigma.n_cols;
-  integrand::mix_binary integrand(y, eta, Z, Sigma);
+  mix_binary integrand(y, eta, Z, Sigma);
   arma::vec par_vec(p);
 
   {
@@ -339,19 +375,47 @@ double aprx_binary_mix_brute(
     parallelrng::set_rng_seeds(n_use);
   }
 
-  double out(0.);
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(+:out) firstprivate(par_vec, integrand)
-#endif
-  for(unsigned i = 0; i < n_sim; ++i){
-    for(unsigned j = 0; j < p; ++j)
-      par_vec[j] = rngnorm_wrapper();
+  welfords out;
 
-    out += integrand(par_vec.begin());
+  if(is_is){
+    struct integrand_worker {
+      mix_binary const bin;
+      mvn<mix_binary> const mvn_obj = mvn<mix_binary>(bin);
+      adaptive<mvn<mix_binary> > const ada =
+        adaptive<mvn<mix_binary> >(mvn_obj);
+
+      integrand_worker(mix_binary const &bin): bin(bin) { }
+      integrand_worker(integrand_worker const &other):
+        integrand_worker(other.bin) { }
+    };
+    integrand_worker const worker(integrand);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) reduction(welPlus:out) firstprivate(par_vec, worker)
+#endif
+    for(unsigned i = 0; i < n_sim; ++i){
+      for(unsigned j = 0; j < p; ++j)
+        par_vec[j] = rngnorm_wrapper();
+
+      out += antithetic<base_integrand>(worker.ada)(par_vec);
+    }
+
+  } else {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) reduction(welPlus:out) firstprivate(par_vec, integrand)
+#endif
+    for(unsigned i = 0; i < n_sim; ++i){
+      for(unsigned j = 0; j < p; ++j)
+        par_vec[j] = rngnorm_wrapper();
+
+      out += antithetic<base_integrand>(integrand)(par_vec);
+    }
   }
 
-  out /= (double)n_sim;
-  return out;
+  Rcpp::NumericVector R_out(1);
+  R_out[0] = out.mean();
+  R_out.attr("SE") = std::sqrt(out.var() / (double)n_sim);
+  return R_out;
 }
 
 // [[Rcpp::export]]

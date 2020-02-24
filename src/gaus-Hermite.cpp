@@ -183,12 +183,13 @@ HermiteData const& gaussHermiteDataCached(unsigned const n){
 
 double approx(HermiteData const &rule, base_integrand const &func,
               bool const is_adaptive){
+  using namespace integrand;
+
   unsigned const n_par = func.get_n_par();
 
   if(is_adaptive){
-    integrand::mvn<base_integrand> func_w_mvn(func);
-    integrand::adaptive<integrand::mvn<base_integrand> >
-      new_func(func_w_mvn);
+    mvn<base_integrand> func_w_mvn(func);
+    adaptive<mvn<base_integrand> > new_func(func_w_mvn);
 
     return approx(rule, new_func, false);
   }

@@ -15,3 +15,8 @@ void dstev_call(const char* jobz, const int* n, double* d, double* e,
       jobz, n, d, e,
       z, ldz, work, info FCONE);
 }
+
+void dsyr_call(const char *uplo, const int *n, const double *alpha,
+               const double *x, const int *incx, double *a, const int *lda){
+  F77_NAME(dsyr)(uplo, n, alpha, x, incx, a, lda FCONE);
+}

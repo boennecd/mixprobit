@@ -132,8 +132,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_brute
-double aprx_binary_mix_brute(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const n_sim, unsigned const n_threads);
-RcppExport SEXP _mixprobit_aprx_binary_mix_brute(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP n_simSEXP, SEXP n_threadsSEXP) {
+Rcpp::NumericVector aprx_binary_mix_brute(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const n_sim, unsigned const n_threads, bool const is_is);
+RcppExport SEXP _mixprobit_aprx_binary_mix_brute(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP n_simSEXP, SEXP n_threadsSEXP, SEXP is_isSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -143,7 +143,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type n_sim(n_simSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_brute(y, eta, Z, Sigma, n_sim, n_threads));
+    Rcpp::traits::input_parameter< bool const >::type is_is(is_isSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_brute(y, eta, Z, Sigma, n_sim, n_threads, is_is));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -171,7 +172,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 6},
-    {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 6},
+    {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 7},
     {"_mixprobit_for_rngnorm_wrapper_test", (DL_FUNC) &_mixprobit_for_rngnorm_wrapper_test, 2},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
