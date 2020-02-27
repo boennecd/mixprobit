@@ -686,7 +686,7 @@ number of observations, `n`, and number of random effects, `p`.
 
 ```{r run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- 2^(1:4)
+n_vals <- 2^(1:5)
 # number of random effects
 p_vals <- 2:7
 # grid with all configurations
@@ -756,6 +756,10 @@ The computation time is in `r comp_time_mult`s of a second,
 `comp_time_mult`. The mean scaled RMSE is multiplied by $`r err_mult`$,
 `err_mult`.
 
+```{r show_meta_create_table, eval = FALSE, ref.label = "meta_create_table"}
+```
+
+
 ```{r create_table, results = "asis"}
 #####
 # show number of complete cases
@@ -773,9 +777,6 @@ local({
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  nvs <- rnames[[1L]]
-  rnames[[1L]] <- c(
-    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
   rnames[[2L]] <- gsub(
@@ -790,6 +791,15 @@ local({
   
   # combine computation times and row labels
   table_out <- cbind(as.matrix(rnames), n_complete)
+  
+  keep <- apply(
+    matrix(as.integer(table_out[, -(1:2), drop = FALSE]), 
+           nr = NROW(table_out)) > 0L, 1, any)
+  table_out <- table_out[keep, , drop = FALSE]
+  
+  nvs <- table_out[, 1L]
+  table_out[, 1L] <- c(
+    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   
   # add header 
   p_labs <- sprintf("%d", p_vals)
@@ -857,9 +867,6 @@ show_run_times <- function(remove_nas = FALSE, na.rm = FALSE,
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  nvs <- rnames[[1L]]
-  rnames[[1L]] <- c(
-    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
   rnames[[2L]] <- gsub(
@@ -876,6 +883,15 @@ show_run_times <- function(remove_nas = FALSE, na.rm = FALSE,
   
   # combine computation times and row labels
   table_out <- cbind(as.matrix(rnames), comp_times)
+  
+  if(na.rm){
+    keep <- apply(!is.na(table_out[, -(1:2), drop = FALSE]), 1, any)
+    table_out <- table_out[keep, , drop = FALSE]
+  }
+  
+  nvs <- table_out[, 1L]
+  table_out[, 1L] <- c(
+    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   
   # add header 
   p_labs <- sprintf("%d", p_vals)
@@ -945,9 +961,6 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  nvs <- rnames[[1L]]
-  rnames[[1L]] <- c(
-    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   rnames[[2L]] <- gsub(
     "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
   rnames[[2L]] <- gsub(
@@ -964,6 +977,15 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
   
   # combine mean mse and row labels
   table_out <- cbind(as.matrix(rnames), err)
+  
+  if(na.rm){
+    keep <- apply(!is.na(table_out[, -(1:2), drop = FALSE]), 1, any)
+    table_out <- table_out[keep, , drop = FALSE]
+  }
+  
+  nvs <- table_out[, 1L]
+  table_out[, 1L] <- c(
+    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   
   # add header 
   p_labs <- sprintf("%d", p_vals)
@@ -1004,9 +1026,6 @@ show_n_nodes <- function(adaptive){
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  nvs <- rnames[[1L]]
-  rnames[[1L]] <- c(
-    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   
   # then flatten
   qs <- matrix(c(qs), nrow = NROW(rnames))
@@ -1016,6 +1035,12 @@ show_n_nodes <- function(adaptive){
   
   # combine mean mse and row labels
   table_out <- cbind(as.matrix(rnames), qs)
+  
+  keep <- apply(!is.na(table_out[, -(1:2), drop = FALSE]), 1, any)
+    table_out <- table_out[keep, , drop = FALSE]
+  nvs <- table_out[, 1L]
+  table_out[, 1L] <- c(
+    nvs[1L], ifelse(nvs[-1L] != head(nvs, -1L), nvs[-1L], NA_integer_))
   
   # add header 
   p_labs <- sprintf("%d", p_vals)
