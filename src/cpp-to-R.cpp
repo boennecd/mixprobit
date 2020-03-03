@@ -219,16 +219,20 @@ public:
       arma::vec const eta = my_data.X * beta;
       arma::mat const &Z = my_data.Z;
 
-      arma::vec Sigma_diag(p);
-      {
-        unsigned j(0L);
-        for(auto idx : my_data.var_idx)
-          Sigma_diag[j++] = vars[idx];
-      }
-      arma::mat Sigma = arma::diagmat(Sigma_diag);
+      arma::mat const S = ([&](){
+        arma::vec Sigma_diag(p);
+        {
+          unsigned j(0L);
+          for(auto idx : my_data.var_idx)
+            Sigma_diag[j++] = vars[idx];
+        }
 
-      arma::mat S = Z.t() * (Sigma * Z);
-      S.diag() += 1.;
+        arma::mat const Sigma = arma::diagmat(Sigma_diag);
+        arma::mat S_out = Z.t() * (Sigma * Z);
+        S_out.diag() += 1.;
+
+        return S_out;
+      })();
 
       if(gradient){
         auto output = restrictcdf::cdf<restrictcdf::deriv>
@@ -251,7 +255,6 @@ public:
         /* derivatives w.r.t. log standard deviations */
         arma::vec d_log_sds(out.memptr() + 1L + beta.n_elem,
                             log_sds.n_elem, false);
-        d_log_sds.zeros();
         unsigned pi(0L);
         /* TODO: maybe do something smarter... */
         arma::vec zi(n);
@@ -271,11 +274,10 @@ public:
           d_log_sds[idx] += 2. * vars[idx] * nv;
         }
 
-      } else {
+      } else
         out += arma::log(
           restrictcdf::cdf<restrictcdf::likelihood>
           (-eta, S).approximate(maxpts, abseps, releps).finest);
-      }
     }
 
     return out;

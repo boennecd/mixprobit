@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
-README_cache/markdown_github
+README_cache/*
+!README_cache/experiment
 README_cache/experiment/*
 !README_cache/experiment/.placeholder

@@ -91,6 +91,7 @@ struct adaptive final : public base_integrand {
     arma::vec mode;
     arma::mat neg_hes_inv_chol;
     double constant;
+    bool success = true;
 
     /* functions used in the optimization */
     static double optim_obj(int npar, double *point, void *data) {
@@ -110,6 +111,17 @@ struct adaptive final : public base_integrand {
       other_terms(other_terms) {
       arma::uword const n_par = other_terms.get_n_par();
       arma::vec start(n_par, arma::fill::zeros);
+
+      {
+        double const integrand_start_val =
+          optim_obj((int)n_par, start.begin(), (void*)this);
+        if(std::isnan(integrand_start_val)){
+          Rcpp::warning("adaptive: invalid starting value");
+          success = false;
+          return;
+        }
+      }
+
       auto const opt_res = optimizers::bfgs(
         start, optim_obj, optim_gr, (void*)this, max_it, 0L, abstol, reltol);
 
@@ -117,8 +129,14 @@ struct adaptive final : public base_integrand {
         throw std::runtime_error("integrand::adaptive: fail != 0L");
 
       mode = opt_res.par;
-      neg_hes_inv_chol =
-        arma::chol(arma::inv(-other_terms.Hessian(mode.memptr())));
+      if(!arma::chol(
+          neg_hes_inv_chol,
+          arma::inv(-other_terms.Hessian(mode.memptr())))){
+        Rcpp::warning("adaptive: Cholesky decomposition failed");
+        success = false;
+        return;
+
+      }
 
       static double const log2pi = std::log(2.0 * M_PI);
       constant = (double)neg_hes_inv_chol.n_cols / 2. * log2pi;
@@ -134,6 +152,9 @@ struct adaptive final : public base_integrand {
 
   double operator()
     (double const *par, bool const ret_log = false) const {
+    if(!dat.success)
+      return other_terms(par, ret_log);
+
     arma::vec x(par, other_terms.get_n_par());
     double out(arma::dot(x, x) / 2. + dat.constant);
 

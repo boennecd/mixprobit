@@ -50,7 +50,8 @@ section
 of this markdown. It contains an example where we vary the number of 
 observed outcomes, `n`, and the number of random effect, `p`, while 
 considering the computation time of various approximation methods for a 
-fixed relative error.
+fixed relative error. A real data application is provided in 
+[examples/salamander.md](examples/salamander.md).
 
 ## Quick Comparison
 

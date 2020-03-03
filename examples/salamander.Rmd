@@ -260,9 +260,12 @@ mix_prob_fit <- within(list(), {
         diag(Sigma)[-is_male] <- vars[1L]
         diag(Sigma)[ is_male] <- vars[2L]
         
-        out <- meth(
+        out <- try(meth(
             y = y, eta = eta, Sigma = Sigma, Z = Z, maxpts = maxpts, 
-            abseps = abseps, releps = releps)
+            abseps = abseps, releps = releps))
+        
+        if(inherits(out, "try-error"))
+          return(c(ll = NA_real_, err = NA_real_, inform = 99L))
         
         c(ll = log(c(out)), err = attr(out, "error"), 
           inform = attr(out, "inform"))
@@ -322,43 +325,50 @@ mix_prob_fit <- within(list(), {
     "BFGS", list(trace = 3L, fnscale = fnscale))
 
   # TODO: move this to a test of gradients to a unit test
-  tol <- .Machine$double.eps^(1/3)
-  cpp_grad <- drop(
-    ll_cpp_grad(par, maxpts = 250000L, releps = 1e-4))
-  num_grad <- drop(numDeriv::jacobian(
-    function(x) ll_cpp(x, maxpts = 250000L, releps = 1e-4), par, 
-    method.args = list(eps = tol)))
-  if(!isTRUE(
-    ae_res <- all.equal(cpp_grad, num_grad, tolerance = tol^(1/2)))){
-      msg <- c(sprintf("%s returned:", sQuote("all.equal")), 
-               paste0("  ", ae_res))
-      bx <- paste0(rep("=", max(nchar(msg))), collapse = "")
-      cat(bx, msg, bx, "", sep = "\n")
-    } else
-      cat("Gradient test passed\n")
+  local({
+    par <- par + rnorm(par, sd = .1)
+    tol <- .Machine$double.eps^(1/3)
+    cpp_grad <- drop(
+      ll_cpp_grad(par, maxpts = 250000L, releps = tol))
+    num_grad <- drop(numDeriv::jacobian(
+      function(x) ll_cpp(x, maxpts = 250000L, releps = 1e-4), par, 
+      method.args = list(eps = tol)))
+    if(!isTRUE(
+      ae_res <- all.equal(cpp_grad, num_grad, tolerance = tol^(1/2)))){
+        msg <- c(sprintf("%s returned:", sQuote("all.equal")), 
+                 paste0("  ", ae_res))
+        bx <- paste0(rep("=", max(nchar(msg))), collapse = "")
+        cat(bx, msg, bx, "", sep = "\n")
+      } else
+        cat("Gradient test passed\n")
+  })
   
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
     par, ll_cpp , maxpts = 5000L, releps = .1, gr = ll_cpp_grad))
+  
+  GM_meth <- mixprobit:::aprx_binary_mix
+  formals(GM_meth)$is_adaptive <- TRUE 
   fit_Genz_Monahan_fast <- take_time(opt_use(
-    par, ll_func, maxpts = 5000L, releps = .1,
-    meth = mixprobit:::aprx_binary_mix))
+    par, ll_func, maxpts = 1000L, releps = .1,
+    meth = GM_meth))
   
   # then use a lower error or more samples starting from the previous 
   # estimate
+  eps_use <- 1e-4
   cdf_par <- fit_CDF_cpp_fast$par
   fit_CDF_cpp <- take_time(opt_use(
-    cdf_par, ll_cpp , maxpts = 100000L, releps = 1e-3, gr = ll_cpp_grad))
+    cdf_par, ll_cpp , maxpts = 100000L, releps = eps_use, gr = ll_cpp_grad))
   fit_CDF_cpp_wo_grad <- take_time(opt_use(
-    cdf_par, ll_cpp , maxpts = 100000L, releps = 1e-3))
+    cdf_par, ll_cpp , maxpts = 100000L, releps = eps_use))
   fit_CDF <- take_time(opt_use(
-    cdf_par, ll_func, maxpts = 100000L, releps = 1e-3,
+    cdf_par, ll_func, maxpts = 100000L, releps = eps_use,
     meth = mixprobit:::aprx_binary_mix_cdf))
 
   gmo_start <- fit_Genz_Monahan_fast$par
   fit_Genz_Monahan <-  take_time(opt_use(
-    gmo_start, ll_func, maxpts = 100000L, releps = 1e-3,
-    meth = mixprobit:::aprx_binary_mix))
+    gmo_start, ll_func, maxpts = 10000L, releps = eps_use,
+    meth = GM_meth))
   
   # add q to output
   fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- 
@@ -393,7 +403,7 @@ local({
       
     cat(sprintf("\nLog-likelihood estimate %.2f\nComputation time %.2f/%.2f (seconds total/per function evaluation)\n", 
                 -fit$value, fit_time, fit_per_eval))
-    cat("The latter times are not comparable for methods that do not use numerical derivatives\n")
+    cat("The latter time is not comparable for methods that do not use numerical derivatives\n")
   }
   
   with(mix_prob_fit, {
