@@ -50,7 +50,7 @@ public:
   };
 
   static int get_n_integrands(arma::vec const&, arma::mat const&);
-  static arma::vec integrand(arma::vec const&, comp_dat const&);
+  static void integrand(arma::vec const&, comp_dat const&,arma::vec&);
   static void post_process(arma::vec&, comp_dat const&);
   constexpr static bool needs_last_unif() {
     return false;
@@ -76,7 +76,7 @@ public:
   };
 
   static int get_n_integrands(arma::vec const&, arma::mat const&);
-  static arma::vec integrand(arma::vec const&, comp_dat const&);
+  static void integrand(arma::vec const&, comp_dat const&, arma::vec&);
   static void post_process(arma::vec&, comp_dat const&);
   constexpr static bool needs_last_unif() {
     return true;
@@ -135,10 +135,8 @@ public:
       draw[j]  = draw_n_p[1];
     }
 
-
-    auto output_val = funcs::integrand(draw, *dat);
-    assert(out.n_elem == output_val.n_elem);
-    out = output_val * w;
+    funcs::integrand(draw, *dat, out);
+    out *= w;
   }
 
   /* Args:

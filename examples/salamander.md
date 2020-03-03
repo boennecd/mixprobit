@@ -554,7 +554,7 @@ local({
 #> 0.7073 0.6835 
 #> 
 #> Log-likelihood estimate -206.82
-#> Computation time 22.63/0.45 (seconds total/per function evaluation)
+#> Computation time 21.19/0.42 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -568,7 +568,7 @@ local({
 #> 0.7093 0.6795 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 44.22/0.08 (seconds total/per function evaluation)
+#> Computation time 45.71/0.08 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -582,7 +582,7 @@ local({
 #> 0.7094 0.6824 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 38.00/0.46 (seconds total/per function evaluation)
+#> Computation time 37.00/0.45 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -596,7 +596,7 @@ local({
 #> 0.7075 0.6817 
 #> 
 #> Log-likelihood estimate -206.83
-#> Computation time 5.98/0.66 (seconds total/per function evaluation)
+#> Computation time 5.76/0.64 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -610,7 +610,7 @@ local({
 #> 0.7089 0.6829 
 #> 
 #> Log-likelihood estimate -206.83
-#> Computation time 30.03/0.45 (seconds total/per function evaluation)
+#> Computation time 29.43/0.44 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -624,7 +624,7 @@ local({
 #> 0.7089 0.6800 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 6.84/0.17 (seconds total/per function evaluation)
+#> Computation time 7.13/0.17 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 
@@ -1029,7 +1029,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 7.92/0.13 (seconds total/per function evaluation)
+#> Computation time 7.36/0.12 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -1043,7 +1043,7 @@ local({
 #> 0.6221 0.4970 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 60.25/0.08 (seconds total/per function evaluation)
+#> Computation time 63.07/0.08 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -1057,7 +1057,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 2.66/0.19 (seconds total/per function evaluation)
+#> Computation time 2.96/0.21 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -1071,7 +1071,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 0.48/0.24 (seconds total/per function evaluation)
+#> Computation time 0.45/0.23 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -1085,7 +1085,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 2.03/0.15 (seconds total/per function evaluation)
+#> Computation time 1.95/0.14 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -1099,7 +1099,7 @@ local({
 #> 0.6221 0.4970 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 2.03/0.14 (seconds total/per function evaluation)
+#> Computation time 1.94/0.14 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 

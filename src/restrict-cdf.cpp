@@ -45,9 +45,10 @@ int likelihood::get_n_integrands
   return 1L;
 }
 
-arma::vec likelihood::integrand
-(arma::vec const &draw, likelihood::comp_dat const& dat){
-  return arma::vec(1L, arma::fill::ones);
+void likelihood::integrand
+(arma::vec const &draw, likelihood::comp_dat const& dat, arma::vec &out){
+  assert(out.n_elem == 1L);
+  out[0] = 1;
 }
 
 void likelihood::post_process(arma::vec &finest, comp_dat const &dat) { }
@@ -58,31 +59,32 @@ int deriv::get_n_integrands
   return 1 + p + (p * (p + 1)) / 2L;
 }
 
-arma::vec deriv::integrand
-(arma::vec const &draw, deriv::comp_dat const& dat){
+void deriv::integrand
+(arma::vec const &draw, deriv::comp_dat const& dat, arma::vec &out){
   assert(dat.mu);
-  arma::uword const p = dat.mu->n_elem;
-  arma::vec out(1L + p + (p * (p + 1L)) / 2L);
+  arma::uword const p = dat.mu->n_elem,
+               n_elem = 1L + p + (p * (p + 1L)) / 2L;
+  assert(out.n_elem == n_elem);
+  out.zeros();
 
   out[0L] = 1.;
-  arma::vec mean_part(out.memptr() + 1L, p, false);
+  double * const mean_part_begin = out.memptr() + 1L;
   /* Multiplying by the inverse matrix is fast but not smart numerically.
    * TODO: much of this computation can be done later */
   {
-    mean_part.zeros();
     for(unsigned c = 0; c < p; ++c)
       for(unsigned r = 0; r <= c; ++r)
-        mean_part[r] += dat.sigma_chol_inv.at(r, c) * draw[c];
+        *(mean_part_begin + r) += dat.sigma_chol_inv.at(r, c) * draw[c];
   }
 
   {
     double *o = out.memptr() + 1L + p;
-    for(unsigned c = 0; c < p; c++)
+    for(unsigned c = 0; c < p; c++){
+      double const mean_part_c = *(mean_part_begin + c);
       for(unsigned r = 0; r <= c; r++)
-        *o++ = mean_part[c] * mean_part[r];
+        *o++ = mean_part_c * *(mean_part_begin + r);
+    }
   }
-
-  return out;
 }
 
 void deriv::post_process(arma::vec &finest, comp_dat const &dat) {
