@@ -90,9 +90,9 @@ context("ranrth-wrapper unit tests") {
 
   test_that("ranrth-wrapper gives correct result with mix_binary for derivatives") {
     /*
-     set.seed(1)
+     set.seed(2)
      n <- 4L
-    p <- 2L
+    p <- 3L
     Z <- do.call(                        # random effect design matrix
     rbind, c(list(1), list(replicate(n, runif(p - 1L, -1, 1)))))
     n <- NCOL(Z)                         # number of individuals
@@ -100,7 +100,7 @@ context("ranrth-wrapper unit tests") {
     q <- 2L
     X <- matrix(runif(n * q, -.5, .5), nr = n)
     S <- drop(                           # covariance matrix of random effects
-    rWishart(1, p, diag(sqrt(1/ 2 / p), p)))
+    rWishart(1, 2 * p, diag(sqrt(1/ 2 / p), p)))
 
     S    <- round(S  , 3)
     Z    <- round(Z  , 3)
@@ -115,9 +115,9 @@ context("ranrth-wrapper unit tests") {
 #####
 # use GH quadrature
     library(fastGHQuad)
-    b <- 50L                             # number of nodes to use
+    b <- 25L                             # number of nodes to use
     rule <- fastGHQuad::gaussHermiteData(b)
-    f <- function(x, eta)
+    f <- function(x, eta, S_chol)
     sum(mapply(pnorm, q = eta +  sqrt(2) * drop(x %*% S_chol %*% Z),
                lower.tail = y, log.p = TRUE))
     idx <- do.call(expand.grid, replicate(p, 1:b, simplify = FALSE))
@@ -132,19 +132,27 @@ context("ranrth-wrapper unit tests") {
     })
 
 # function that makes the approximation
-    f1 <- function(b)
+    f1 <- function(par){
+    b <- head(par, q)
+    s <- tail(par, -q)
+    S <- matrix(nr = p, nc = p)
+    S[upper.tri(S, TRUE)] <- s
+    S[lower.tri(S)] <- t(S)[lower.tri(S)]
     sum(exp(ws_log + vapply(
-        xs, f, numeric(1L), eta = drop(X %*% b)))) / pi^(p / 2)
+        xs, f, numeric(1L), eta = drop(X %*% b), S_chol = chol(S)))) /
+    pi^(p / 2)
+    }
 
     dput(Z)
     dput(S)
     dput(eta)
     dput(as.integer(y))
     dput(t(X))
-    dput(f1(beta))
+    xx <- c(beta, S[upper.tri(S, TRUE)])
+    dput(f1(xx))
 
     library(numDeriv)
-    dput(jacobian(f1, beta))
+    dput(jacobian(f1, xx))
      */
     using namespace ranrth_aprx;
     using namespace integrand;
@@ -152,37 +160,37 @@ context("ranrth-wrapper unit tests") {
     parallelrng::set_rng_seeds(1L);
 
     constexpr arma::uword const n = 4L,
-                                p = 2L,
+                                p = 3L,
                                 q = 2L;
     arma::mat Z, S, X;
-    Z << 1 << -0.469 << 1 << -0.256 << 1 << 0.146 << 1 << 0.816;
+    Z << 1 << -0.63 << 0.405 << 1 << 0.147 << -0.664 << 1 << 0.888 << 0.887
+      << 1 << -0.742 << 0.667;
     Z.reshape(p, n);
-    S << 0.904 << 1.016 << 1.016 << 1.973;
+    S << 5.407 << -0.424 << -1.545 << -0.424 << 1.51 << 1.505 << -1.545
+      << 1.505 << 2.147;
     S.reshape(p, p);
-    X << -0.3 << 0.13 << 0.4 << -0.44 << 0.44 << -0.29 << 0.16 << -0.32;
+    X << -0.03 << 0.26 << 0.05 << -0.32 << 0.05 << -0.09 << -0.26 << 0.35;
     X.reshape(q, n);
     arma::vec eta;
-    eta << 0.43 << -0.84 << -0.73 << -0.48;
+    eta << 0.29 << -0.37 << -0.14 << 0.61;
     arma::ivec y;
-    y << 1L << 0L << 0L << 1L;
+    y << 0L << 0L << 0L << 0L;
 
     constexpr double const abseps = 1e-5;
     arma::vec expec;
-    expec << 0.0828866564251371 << -0.0452131647376384
-          << 0.0216941956246238;
+    expec << 0.223175338758645
+          << 0.0103246106433447 << -0.0160370124670925
+          << 0.021541576093451 << -0.0021754945059288
+          << -0.0211698036190797 << 0.0193386723207052
+          << 0.00618822615335066 << -0.00709493339802656;
+    arma::uword const ex_dim = 1L + q + (p * (p + 1L)) / 2L;
     for(int key = 1L; key < 5L; ++key){
-      /*mix_binary bin(y, eta, Z, S, &X);
-      mvn<mix_binary> m(bin);
-
-      set_integrand(std::unique_ptr<base_integrand>(
-          new adaptive<mvn<mix_binary > > (m))); */
-
       set_integrand(std::unique_ptr<base_integrand>(
           new mix_binary(y, eta, Z, S, &X)));
       auto run_test = [&]{
-        auto res = jac_arpx(20000L, key, abseps, -1.);
-        expect_true(res.value.n_elem == 3L);
-        expect_true(res.err.n_elem == 3L);
+        auto res = jac_arpx(500000L, key, abseps, -1.);
+        expect_true(res.value.n_elem == ex_dim);
+        expect_true(res.err.n_elem == ex_dim);
 
         for(unsigned i = 0; i < res.err.n_elem; ++i){
           double const e = res.err[i];

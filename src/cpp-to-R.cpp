@@ -86,6 +86,42 @@ Rcpp::NumericVector aprx_binary_mix(
 }
 
 // [[Rcpp::export]]
+Rcpp::NumericVector aprx_jac_binary_mix(
+    arma::ivec const &y, arma::vec const &eta, arma::mat const &X,
+    arma::mat const &Z, arma::mat const &Sigma, int const maxpts,
+    double const abseps, double const releps, int const key = 2L,
+    bool const is_adaptive = false){
+  using namespace ranrth_aprx;
+  using namespace integrand;
+  using Rcpp::NumericVector;
+
+  parallelrng::set_rng_seeds(1L);
+  auto const res = ([&](){
+    if(is_adaptive){
+      mix_binary bin(y, eta, Z, Sigma, &X);
+      mvn<mix_binary > mix_bin(bin);
+
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<mix_binary> > (mix_bin)));
+
+      return jac_arpx(maxpts, key, abseps, releps);
+    }
+
+    set_integrand(std::unique_ptr<base_integrand>(
+        new mix_binary(y, eta, Z, Sigma, &X)));
+
+    return jac_arpx(maxpts, key, abseps, releps);
+  })();
+
+  NumericVector out(Rcpp::wrap(res.value));
+  out.attr("error") = Rcpp::wrap(res.err);
+  out.attr("inform") = res.inform;
+  out.attr("inivls") = res.inivls;
+
+  return out;
+}
+
+// [[Rcpp::export]]
 Rcpp::NumericVector aprx_binary_mix_cdf(
     arma::ivec const &y, arma::vec eta, arma::mat Z,
     arma::mat const &Sigma, int const maxpts, double const abseps,

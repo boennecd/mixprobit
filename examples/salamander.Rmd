@@ -242,15 +242,17 @@ mix_prob_fit <- within(list(), {
   par <- c(beta, log(c(.1, .1)))
   
   # negative log-likelihood function
-  ll_func <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+  seed_arg <- 1L
+  ll_func <- function(par, seed = seed_arg, maxpts = 100000L, abseps = -1, 
                       releps = 1e-2, meth){
     if(!is.null(seed))
       set.seed(seed)
     clusterSetRNGStream(cl)
     beta <-          head(par,  q)
     vars  <- exp(2 * tail(par, -q))
-    clusterExport(cl, c("beta", "vars", "maxpts", "abseps", "releps"), 
-                  environment())
+    clusterExport(
+      cl, c("beta", "vars", "maxpts", "abseps", "releps", "meth"), 
+      environment())
     
     ll_terms <- parSapply(cl, dat, function(cl_dat){
       with(cl_dat, {
@@ -281,13 +283,66 @@ mix_prob_fit <- within(list(), {
     -sum(ll_terms["ll", ])
   }
   
+  # gradient of negative log-likelihood function
+  ll_func_gr <- function(par, seed = seed_arg, maxpts = 100000L, abseps = -1,
+                         releps = 1e-2, meth){
+    if(!is.null(seed))
+      set.seed(seed)
+    clusterSetRNGStream(cl)
+    beta <-          head(par,  q)
+    vars  <- exp(2 * tail(par, -q))
+    clusterExport(cl, c("beta", "vars", "maxpts", "abseps", "releps", "meth"),
+                  environment())
+  
+    ll_terms <- parSapply(cl, dat, function(cl_dat){
+      with(cl_dat, {
+        eta <- drop(X %*% beta)
+        Sigma <- diag(nrow(Z))
+  
+        diag(Sigma)[-is_male] <- vars[1L]
+        diag(Sigma)[ is_male] <- vars[2L]
+  
+        out <- try(meth(
+          y = y, eta = eta, X = t(X), Sigma = Sigma, Z = Z, maxpts = maxpts,
+          abseps = abseps, releps = releps))
+  
+        q <- NCOL(X)
+        if(inherits(out, "try-error"))
+          return(c(derivs = rep(NA_real_, q + 2L), inform = 99L))
+  
+        # get the needed elements
+        l_est <- out[1L]
+        derivs <- out[-1L] / l_est
+  
+        d_beta  <- head(derivs, q)
+  
+        d_Sigma <- tail(derivs, -q)
+        d_Sigma_diag <- d_Sigma[cumsum(1:nrow(Z))]
+        d_s_log <- numeric(2)
+        d_s_log[1L] <- sum(d_Sigma_diag[-is_male]) * 2 * vars[1L]
+        d_s_log[2L] <- sum(d_Sigma_diag[ is_male]) * 2 * vars[2L]
+  
+        c(derivs = c(d_beta, d_s_log), inform = attr(out, "inform"))
+      })
+    })
+  
+    inform <- ll_terms["inform", ]
+    if(any(inform > 0))
+      warning(paste(
+        "Got these inform values: ",
+        paste0(unique(inform), collapse = ", ")))
+  
+    nr <- NROW(ll_terms)
+    -rowSums(ll_terms[-nr, , drop = FALSE])
+  }
+  
   # C++ version
   cpp_ptr     <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
     data = dat, n_threads = n_threads)
   cpp_ptr_grad <- mixprobit:::aprx_binary_mix_cdf_get_ptr(
     data = dat, n_threads = n_threads, gradient = TRUE)
   
-  ll_cpp <- function(par, seed = 1L, maxpts = 100000L, abseps = -1, 
+  ll_cpp <- function(par, seed = seed_arg, maxpts = 100000L, abseps = -1, 
                      releps = 1e-2, gradient = FALSE){
     if(!is.null(seed))
       set.seed(seed)
@@ -341,16 +396,44 @@ mix_prob_fit <- within(list(), {
         cat(bx, msg, bx, "", sep = "\n")
       } else
         cat("Gradient test passed\n")
+    
+    GM_meth <- mixprobit:::aprx_binary_mix
+    formals(GM_meth)$is_adaptive <- TRUE
+    GM_meth_gr <- mixprobit:::aprx_jac_binary_mix
+    formals(GM_meth_gr)$is_adaptive <- TRUE
+    
+    ll_grad <- ll_func_gr(par, meth = GM_meth_gr, maxpts = 10000L)
+    num_grad <- drop(numDeriv::jacobian(
+      function(x) ll_func(x, meth = GM_meth, maxpts = 10000L), par))
+    if(!isTRUE(
+      ae_res <- all.equal(ll_grad, num_grad, tolerance = tol^(1/2), 
+                          check.attributes = FALSE))){
+        msg <- c(sprintf("%s returned (GM):", sQuote("all.equal")), 
+                 paste0("  ", ae_res))
+        bx <- paste0(rep("=", max(nchar(msg))), collapse = "")
+        cat(bx, msg, bx, "", sep = "\n")
+      } else
+        cat("Gradient test passed (GM)\n")
   })
   
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
     par, ll_cpp , maxpts = 5000L, releps = .1, gr = ll_cpp_grad))
   
+  # Setup method to use an adaptive approach and create a wrapper function
+  # for the gradient
   GM_meth <- mixprobit:::aprx_binary_mix
   formals(GM_meth)$is_adaptive <- TRUE 
+  GM_meth_gr <- mixprobit:::aprx_jac_binary_mix
+  formals(GM_meth_gr)$is_adaptive <- TRUE
+  gr <- function(...){
+    args <- list(...)
+    args$meth <- GM_meth_gr
+    do.call(ll_func_gr, args)
+  }
+  
   fit_Genz_Monahan_fast <- take_time(opt_use(
-    par, ll_func, maxpts = 1000L, releps = .1,
+    par, ll_func, gr, maxpts = 1000L, releps = .1,
     meth = GM_meth))
   
   # then use a lower error or more samples starting from the previous 
@@ -367,7 +450,7 @@ mix_prob_fit <- within(list(), {
 
   gmo_start <- fit_Genz_Monahan_fast$par
   fit_Genz_Monahan <-  take_time(opt_use(
-    gmo_start, ll_func, maxpts = 10000L, releps = eps_use,
+    gmo_start, ll_func, gr, maxpts = 10000L, releps = eps_use,
     meth = GM_meth))
   
   # add q to output

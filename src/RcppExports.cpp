@@ -58,6 +58,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// aprx_jac_binary_mix
+Rcpp::NumericVector aprx_jac_binary_mix(arma::ivec const& y, arma::vec const& eta, arma::mat const& X, arma::mat const& Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps, int const key, bool const is_adaptive);
+RcppExport SEXP _mixprobit_aprx_jac_binary_mix(SEXP ySEXP, SEXP etaSEXP, SEXP XSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP keySEXP, SEXP is_adaptiveSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ivec const& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
+    Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
+    Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
+    Rcpp::traits::input_parameter< int const >::type key(keySEXP);
+    Rcpp::traits::input_parameter< bool const >::type is_adaptive(is_adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_jac_binary_mix(y, eta, X, Z, Sigma, maxpts, abseps, releps, key, is_adaptive));
+    return rcpp_result_gen;
+END_RCPP
+}
 // aprx_binary_mix_cdf
 Rcpp::NumericVector aprx_binary_mix_cdf(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps);
 RcppExport SEXP _mixprobit_aprx_binary_mix_cdf(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
@@ -167,6 +187,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
     {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 6},
     {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 9},
+    {"_mixprobit_aprx_jac_binary_mix", (DL_FUNC) &_mixprobit_aprx_jac_binary_mix, 10},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
     {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 3},
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},

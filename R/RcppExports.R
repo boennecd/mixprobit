@@ -13,6 +13,10 @@ aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L, 
     .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, key, is_adaptive)
 }
 
+aprx_jac_binary_mix <- function(y, eta, X, Z, Sigma, maxpts, abseps, releps, key = 2L, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_jac_binary_mix', PACKAGE = 'mixprobit', y, eta, X, Z, Sigma, maxpts, abseps, releps, key, is_adaptive)
+}
+
 aprx_binary_mix_cdf <- function(y, eta, Z, Sigma, maxpts, abseps, releps) {
     .Call('_mixprobit_aprx_binary_mix_cdf', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps)
 }
