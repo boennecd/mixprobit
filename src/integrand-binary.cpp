@@ -55,4 +55,28 @@ arma::mat mix_binary::Hessian(double const *par) const {
 
   return arma::symmatu(He);
 }
+
+void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
+  memcpy(par_vec.begin(), par, sizeof(double) * n_par);
+  assert(X);
+  assert(jac.n_elem == get_n_jac());
+
+  jac.zeros();
+  double &integrand = jac[0];
+  arma::vec fix_part(jac.memptr() + 1L, X->n_rows, false);
+  for(unsigned i = 0; i < n; ++i){
+    double const lp = eta[i] + arma::dot(Z.unsafe_col(i), par_vec),
+               pnrm = y[i] > 0 ? R::pnorm5(lp, 0, 1, 1L, 1L) :
+                                 R::pnorm5(lp, 0, 1, 0L, 1L),
+               dnrm =            R::dnorm4(lp, 0, 1, 1L),
+               fac  = y[i] > 0 ?  std::exp(dnrm - pnrm) :
+                                 -std::exp(dnrm - pnrm);
+
+    integrand += pnrm;
+    fix_part  += fac * X->unsafe_col(i);
+  }
+
+  integrand = std::exp(integrand);
+  fix_part *= integrand;
+}
 }

@@ -29,6 +29,19 @@ public:
   /* returns the dimension of the integral */
   virtual std::size_t get_n_par() const = 0;
 
+  /* returns the integral approximation as the first element and the
+   * Jacobian w.r.t. the model parameters in the remaining elements */
+  virtual void Jacobian(double const*, arma::vec&) const {
+    throw std::logic_error("Function not yet implemented");
+  }
+
+  /* returns the dimension of the Jacobian */
+  virtual std::size_t get_n_jac() const {
+    throw std::logic_error("Function not yet implemented");
+
+    return 0L;
+  }
+
   ~base_integrand() = default;
 };
 
@@ -37,11 +50,7 @@ template <typename other_integrand>
 class mvn final : public base_integrand {
   other_integrand const &other_terms;
 
-public:
-  mvn(other_integrand const &other_terms): other_terms(other_terms) { }
-
-  double operator()
-  (double const *par, bool const ret_log = false) const {
+  double log_integrand_factor(double const *par) const {
     static double const log2pi = std::log(2.0 * M_PI);
 
     std::size_t const n_par = other_terms.get_n_par();
@@ -49,6 +58,15 @@ public:
     for(unsigned i = 0; i < n_par; ++i)
       out -= *(par + i) * *(par + i) / 2.;
 
+    return out;
+  }
+
+public:
+  mvn(other_integrand const &other_terms): other_terms(other_terms) { }
+
+  double operator()
+  (double const *par, bool const ret_log = false) const {
+    double out = log_integrand_factor(par);
     out += other_terms(par, true);
 
     if(ret_log)
@@ -76,13 +94,36 @@ public:
   std::size_t get_n_par() const {
     return other_terms.get_n_par();
   }
+
+  void Jacobian(double const *par, arma::vec &jac) const {
+    double const fac = std::exp(log_integrand_factor(par));
+    other_terms.Jacobian(par, jac);
+    jac *= fac;
+  }
+
+  std::size_t get_n_jac() const {
+    return other_terms.get_n_jac();
+  }
 };
 
 /* yields a new integrand of the form
  * pvnorm(x, mode, -Hessian^-1) * f(x) / pvnorm(x, mode, -Hessian^-1) =
      pvnorm(x) * f(mode - Hessian^-1/2 * x) / pvnorm(x) */
 template <typename other_integrand>
-struct adaptive final : public base_integrand {
+class adaptive final : public base_integrand {
+
+  /* compute terms from multivariate normal cumulative distribution
+   * function and transform the x vector for subsequent calls */
+  double log_integrand_factor(arma::vec &x) const {
+    double out(arma::dot(x, x) / 2. + dat.constant);
+
+    inplace_tri_mat_mult(x, dat.neg_hes_inv_chol);
+    x += dat.mode;
+
+    return out;
+  }
+
+public:
   other_integrand const &other_terms;
 
   struct opt_data {
@@ -156,10 +197,7 @@ struct adaptive final : public base_integrand {
       return other_terms(par, ret_log);
 
     arma::vec x(par, other_terms.get_n_par());
-    double out(arma::dot(x, x) / 2. + dat.constant);
-
-    inplace_tri_mat_mult(x, dat.neg_hes_inv_chol);
-    x += dat.mode;
+    double out = log_integrand_factor(x);
     out += other_terms(x.memptr(), true);
 
     if(ret_log)
@@ -169,6 +207,17 @@ struct adaptive final : public base_integrand {
 
   std::size_t get_n_par() const {
     return other_terms.get_n_par();
+  }
+
+  void Jacobian(double const *par, arma::vec &jac) const {
+    arma::vec x(par, other_terms.get_n_par());
+    double const fac = std::exp(log_integrand_factor(x));
+    other_terms.Jacobian(x.memptr(), jac);
+    jac *= fac;
+  }
+
+  std::size_t get_n_jac() const {
+    return other_terms.get_n_jac();
   }
 };
 } // namespace integrand

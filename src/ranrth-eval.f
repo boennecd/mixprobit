@@ -1,5 +1,5 @@
       SUBROUTINE RANRTHEVAL(M, MXVALS, EPSABS, EPSREL, KEY, VALUE,
-     &                      ERROR, INTVLS, INFORM, WK)
+     &                      ERROR, INTVLS, INFORM, WK, NF)
 
       EXTERNAL EVALINTEGRAND
       INTEGER M, MXVALS, KEY
@@ -10,7 +10,6 @@
 *   Local variables.
       INTEGER NF, RS
 
-      NF = 1
       RS = 0
 
       CALL RANRTH(M, NF, MXVALS, EVALINTEGRAND, EPSABS, EPSREL, RS,

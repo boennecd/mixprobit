@@ -15,6 +15,13 @@ struct integral_arpx_res {
 
 integral_arpx_res integral_arpx(int const, int const, double const,
                                 double const);
+
+struct jac_arpx_res {
+  arma::vec value, err;
+  int inivls, inform;
+};
+
+jac_arpx_res jac_arpx(int const, int const, double const, double const);
 }
 
 #endif
