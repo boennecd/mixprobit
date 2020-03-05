@@ -450,7 +450,7 @@ mix_prob_fit <- within(list(), {
 
   gmo_start <- fit_Genz_Monahan_fast$par
   fit_Genz_Monahan <-  take_time(opt_use(
-    gmo_start, ll_func, gr, maxpts = 10000L, releps = eps_use,
+    gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use,
     meth = GM_meth))
   
   # add q to output

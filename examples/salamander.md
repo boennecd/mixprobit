@@ -523,7 +523,7 @@ mix_prob_fit <- within(list(), {
 
   gmo_start <- fit_Genz_Monahan_fast$par
   fit_Genz_Monahan <-  take_time(opt_use(
-    gmo_start, ll_func, gr, maxpts = 10000L, releps = eps_use,
+    gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use,
     meth = GM_meth))
   
   # add q to output
@@ -546,11 +546,12 @@ mix_prob_fit <- within(list(), {
 #> Running:
 #>   opt_use(par, ll_func, gr, maxpts = 1000L, releps = 0.1, meth = GM_meth)
 #> 
-#> initial  value 0.993384 
-#> iter  10 value 0.935055
-#> iter  20 value 0.929201
-#> iter  30 value 0.928562
-#> final  value 0.928559 
+#> initial  value 0.993383 
+#> iter  10 value 0.934811
+#> iter  20 value 0.928878
+#> iter  30 value 0.928220
+#> iter  40 value 0.928215
+#> final  value 0.928215 
 #> converged
 #> 
 #> Running:
@@ -577,11 +578,11 @@ mix_prob_fit <- within(list(), {
 #> converged
 #> 
 #> Running:
-#>   opt_use(gmo_start, ll_func, gr, maxpts = 10000L, releps = eps_use, 
+#>   opt_use(gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use, 
 #>       meth = GM_meth)
 #> 
-#> initial  value 0.928576 
-#> final  value 0.928576 
+#> initial  value 0.928557 
+#> final  value 0.928557 
 #> converged
 ```
 
@@ -635,7 +636,7 @@ local({
 #> 0.7073 0.6835 
 #> 
 #> Log-likelihood estimate -206.82
-#> Computation time 20.94/0.42 (seconds total/per function evaluation)
+#> Computation time 21.28/0.43 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -643,13 +644,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6183     -0.4292     -1.7207      2.1258 
+#>      0.6182     -0.4287     -1.7216      2.1267 
 #> 
 #> Random effect standard deviations              
-#> 0.7101 0.6800 
+#> 0.7103 0.6807 
 #> 
-#> Log-likelihood estimate -206.87
-#> Computation time 10.97/0.02 (seconds total/per function evaluation)
+#> Log-likelihood estimate -206.79
+#> Computation time 14.45/0.03 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -663,7 +664,7 @@ local({
 #> 0.7094 0.6824 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 44.34/0.54 (seconds total/per function evaluation)
+#> Computation time 43.66/0.53 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -677,7 +678,7 @@ local({
 #> 0.7075 0.6817 
 #> 
 #> Log-likelihood estimate -206.83
-#> Computation time 6.04/0.67 (seconds total/per function evaluation)
+#> Computation time 5.92/0.66 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -691,7 +692,7 @@ local({
 #> 0.7089 0.6829 
 #> 
 #> Log-likelihood estimate -206.83
-#> Computation time 30.66/0.46 (seconds total/per function evaluation)
+#> Computation time 29.84/0.45 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -699,13 +700,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6183     -0.4292     -1.7207      2.1258 
+#>      0.6182     -0.4297     -1.7210      2.1268 
 #> 
 #> Random effect standard deviations              
-#> 0.7101 0.6800 
+#> 0.7095 0.6808 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 4.50/0.16 (seconds total/per function evaluation)
+#> Computation time 17.78/0.27 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 
@@ -1082,7 +1083,7 @@ mix_prob_fit <- within(list(), {
 
   gmo_start <- fit_Genz_Monahan_fast$par
   fit_Genz_Monahan <-  take_time(opt_use(
-    gmo_start, ll_func, gr, maxpts = 10000L, releps = eps_use,
+    gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use,
     meth = GM_meth))
   
   # add q to output
@@ -1106,12 +1107,12 @@ mix_prob_fit <- within(list(), {
 #>   opt_use(par, ll_func, gr, maxpts = 1000L, releps = 0.1, meth = GM_meth)
 #> 
 #> initial  value 0.998363 
-#> iter  10 value 0.992218
-#> iter  20 value 0.985669
-#> iter  30 value 0.983004
-#> iter  40 value 0.982463
-#> iter  50 value 0.982449
-#> final  value 0.982447 
+#> iter  10 value 0.992208
+#> iter  20 value 0.985610
+#> iter  30 value 0.982867
+#> iter  40 value 0.982308
+#> iter  50 value 0.982298
+#> final  value 0.982297 
 #> converged
 #> 
 #> Running:
@@ -1138,11 +1139,12 @@ mix_prob_fit <- within(list(), {
 #> converged
 #> 
 #> Running:
-#>   opt_use(gmo_start, ll_func, gr, maxpts = 10000L, releps = eps_use, 
+#>   opt_use(gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use, 
 #>       meth = GM_meth)
 #> 
-#> initial  value 0.982459 
-#> final  value 0.982459 
+#> initial  value 0.982465 
+#> iter  10 value 0.982463
+#> final  value 0.982463 
 #> converged
 ```
 
@@ -1194,7 +1196,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 7.90/0.12 (seconds total/per function evaluation)
+#> Computation time 7.48/0.12 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -1202,13 +1204,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4061     -0.1902     -1.2707      1.3941 
+#>      0.4080     -0.1928     -1.2725      1.3996 
 #> 
 #> Random effect standard deviations              
-#> 0.6223 0.4981 
+#> 0.6246 0.5026 
 #> 
-#> Log-likelihood estimate -92.03
-#> Computation time 17.90/0.02 (seconds total/per function evaluation)
+#> Log-likelihood estimate -92.01
+#> Computation time 18.84/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -1222,7 +1224,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 3.72/0.27 (seconds total/per function evaluation)
+#> Computation time 3.60/0.26 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -1236,7 +1238,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 0.45/0.23 (seconds total/per function evaluation)
+#> Computation time 0.46/0.23 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -1250,7 +1252,7 @@ local({
 #> 0.6206 0.4949 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 2.03/0.14 (seconds total/per function evaluation)
+#> Computation time 2.07/0.15 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -1258,13 +1260,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4068     -0.1890     -1.2717      1.3937 
+#>      0.4065     -0.1887     -1.2714      1.3936 
 #> 
 #> Random effect standard deviations              
-#> 0.6220 0.4973 
+#> 0.6216 0.4958 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 3.97/0.04 (seconds total/per function evaluation)
+#> Computation time 13.93/0.09 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 

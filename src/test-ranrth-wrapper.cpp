@@ -73,18 +73,15 @@ context("ranrth-wrapper unit tests") {
     y << 1L << 0L << 0L << 1L;
 
     constexpr double const expec  = 0.0041247747590393,
-                           abseps = 1e-5;
+                           abseps = 1e-4;
     for(int key = 1L; key < 5L; ++key){
       set_integrand(std::unique_ptr<integrand::base_integrand>(
           new integrand::mix_binary(y, eta, Z, S)));
-      auto res = integral_arpx(100000L, key, abseps, -1.);
+      auto res = integral_arpx(1000000L, key, abseps, -1.);
 
-      expect_true(res.err < 1e-3);
-      expect_true((res.inform == 0 || res.inform == 1));
-      if(res.inform == 0L)
-        expect_true(std::abs(res.value - expec) < 100. * abseps);
-      else
-        expect_true(std::abs(res.value - expec) < 100. * res.err);
+      expect_true(res.inform == 0L);
+      expect_true(res.err < 4 * abseps);
+      expect_true(std::abs(res.value - expec) < 4 * abseps);
     }
   }
 
@@ -176,7 +173,7 @@ context("ranrth-wrapper unit tests") {
     arma::ivec y;
     y << 0L << 0L << 0L << 0L;
 
-    constexpr double const abseps = 1e-5;
+    constexpr double const abseps = 1e-3;
     arma::vec expec;
     expec << 0.223175338758645
           << 0.0103246106433447 << -0.0160370124670925
@@ -188,17 +185,14 @@ context("ranrth-wrapper unit tests") {
       set_integrand(std::unique_ptr<base_integrand>(
           new mix_binary(y, eta, Z, S, &X)));
       auto run_test = [&]{
-        auto res = jac_arpx(500000L, key, abseps, -1.);
+        auto res = jac_arpx(1000000L, key, abseps, -1.);
         expect_true(res.value.n_elem == ex_dim);
         expect_true(res.err.n_elem == ex_dim);
 
+        expect_true(res.inform == 0L);
         for(unsigned i = 0; i < res.err.n_elem; ++i){
-          double const e = res.err[i];
-          expect_true(e  < 1e-3);
-          if(res.inform == 0L)
-            expect_true(std::abs(res.value[i] - expec[i]) < 100. * abseps);
-          else
-            expect_true(std::abs(res.value[i] - expec[i]) < 100. * e);
+          expect_true(res.err[i] < 4 * abseps);
+          expect_true(std::abs(res.value[i] - expec[i]) < 4 * abseps);
         }
       };
       run_test();

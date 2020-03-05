@@ -125,7 +125,8 @@
          END DO
       END IF
       CALL RANBAS( M, NF, F, MXVALS, KEY, WK, WK(I1), INTVLS,
-     &             WK(I2), WK(I3), WK(I4), WK(I5), WK(I6), WK(I7) )
+     &             WK(I2), WK(I3), WK(I4), WK(I5), WK(I6), WK(I7),
+     &             EPSABS, EPSREL )
       IF ( INTVLS .LE. MXVALS ) THEN
          INFORM = 0
          DO I = 1, NF
@@ -149,7 +150,8 @@
       END
 *
       SUBROUTINE RANBAS( M, NF, F, MXVALS, KEY, VALUE, ERROR,
-     &                   INTVLS, X, FUNS, FUNC, FUNV, WK, V )
+     &                   INTVLS, X, FUNS, FUNC, FUNV, WK, V ,
+     &                   EPSABS, EPSREL )
 *
 *     Stochastic Spherical Radial Rule, for
 *
@@ -217,17 +219,29 @@
       INTEGER M, NF, MXVALS, KEY, INTVLS, I, L, NS, NV
       DOUBLE PRECISION VALUE(*), ERROR(*)
       DOUBLE PRECISION X(*), FUNS(*), FUNC(*), FUNV(*), V(*), WK(*)
+      DOUBLE PRECISION EPSABS, EPSREL
+
+      INTEGER NSAMP, MIVALS
       DOUBLE PRECISION R, Q, RM, TH, WC, WV, DIFFER
-      DOUBLE PRECISION NORRAN, BETRAN, GAMRAN
+      DOUBLE PRECISION NORRAN, BETRAN, GAMRAN, ALPHA
+      DOUBLE PRECISION ABSERR
+      LOGICAL CRITPASSED
+
+*     .995 normal quantile
+      ALPHA = 2.575829
+      MIVALS = MIN(NF * 100, 1000)
+
       IF ( KEY .EQ. 2 ) THEN
          NS = MAX( 3, ( MXVALS - 1 )/( 2*( M + 1 ) ) )
-         INTVLS = 1 + NS*2*( M + 1 )
+         INTVLS = 1
+         NSAMP = 2 * ( M + 1 )
       ELSE IF ( KEY .EQ. 3 ) THEN
          NV = 2*( M + 1 )*( M + 2 )
          IF ( M .EQ. 2 ) NV = 12
          IF ( M .EQ. 3 ) NV = 28
          NS = MAX( 2, ( MXVALS - 1 )/NV )
-         INTVLS = 1 + NS*NV
+         INTVLS = 1
+         NSAMP = NV
       ELSE IF ( KEY .EQ. 4 ) THEN
          NV = 2*( M + 1 )*( M*M +8*M + 6 )/3
          IF ( M .EQ. 2 ) NV = 36
@@ -235,10 +249,12 @@
          IF ( M .EQ. 4 ) NV = 140
          IF ( M .EQ. 5 ) NV = 244
          NS = MAX( 2, ( MXVALS - 1 )/NV )
-         INTVLS = 1 + NS*NV
+         INTVLS = 1
+         NSAMP = NV
       ELSE
          NS = MAX( 10, MXVALS/2 )
-         INTVLS = 2*NS
+         INTVLS = 0
+         NSAMP = 2
          WV = 1
       END IF
       IF ( INTVLS .LE. MXVALS ) THEN
@@ -253,6 +269,7 @@
             CALL F( M, X, NF, FUNC )
          END IF
          DO L = 1, NS
+            INTVLS = INTVLS + NSAMP
             IF ( KEY .LE. 1 .OR. 5 .LE. KEY ) THEN
                DO I = 1, M
                   V(I) = NORRAN()
@@ -293,11 +310,21 @@
                   END DO
                END IF
             END IF
+*     update estiamtes and check that criterias are satisfied
+            CRITPASSED = INTVLS .GE. MIVALS
             DO I = 1, NF
                DIFFER = ( FUNV(I) - VALUE(I) )/L
                VALUE(I) = VALUE(I) + DIFFER
                ERROR(I) = ( L - 2 )*ERROR(I)/L + DIFFER**2
+               IF (CRITPASSED) THEN
+                  ABSERR = ALPHA * SQRT(ERROR(I))
+                  CRITPASSED = ABSERR .LT. MAX(EPSABS,
+     &               ABS(VALUE(I)) * EPSREL)
+               END IF
             END DO
+            IF (CRITPASSED) THEN
+               EXIT
+            END IF
          END DO
       END IF
       END
@@ -479,9 +506,9 @@
          END DO
 
 *     set BETA
-         IF (SIGMA .EQ. 0 .AND. X(K) .GE. 0) THEN
+         IF (SIGMA .LE. 0 .AND. X(K) .GE. 0) THEN
             BETA = 0
-         ELSE IF (SIGMA .EQ. 0 .AND. X(K) .LT. 0) THEN
+         ELSE IF (SIGMA .LE. 0 .AND. X(K) .LT. 0) THEN
             BETA = -2
          ELSE
             MU = SQRT(X(K)**2 + SIGMA)
