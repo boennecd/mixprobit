@@ -229,7 +229,7 @@
 
 *     .995 normal quantile
       ALPHA = 2.575829
-      MIVALS = MIN(NF * 100, 1000)
+      MIVALS = MIN(NF * 1000, 10000)
 
       IF ( KEY .EQ. 2 ) THEN
          NS = MAX( 3, ( MXVALS - 1 )/( 2*( M + 1 ) ) )

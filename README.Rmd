@@ -341,14 +341,14 @@ rm(list = setdiff(ls(), cur_vars))
 ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
-  max_maxpts = 2000000L, 
+  max_maxpts = 5000000L, 
   releps = 1e-4,
   min_releps = 1e-6,
   key_use = 3L, 
   n_reps = 25L, 
   n_runs = 5L, 
   n_brute = 1e7, 
-  n_brute_max = 2e8, 
+  n_brute_max = 1e8, 
   n_brute_sds = 4)
 ```
 
@@ -499,28 +499,46 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
     NA
   
   # get function to use with CDF method
-  cdf_releps <- if(do_not_run)
-    NA_integer_
-  else local({
-    releps_use <- releps * 10
-    repeat {
-      func <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
-                                  maxpts = ex_params$max_maxpts, 
-                                  abseps = -1, releps = releps_use))
-      vals <- replicate(ex_params$n_reps, func())
-      if(all(is_ok_func(vals)))
-        break
-      
-      releps_use <- releps_use / 2
-      if(releps_use < ex_params$min_releps){
-        warning("found no releps for CDF method")
-        releps_use <- NA_integer_
-        break
+  get_releps <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else {
+      releps_use <- releps * 100
+      repeat {
+        func <- wd(meth(y = y, eta = eta, Z = Z, S = S, 
+                        maxpts = ex_params$max_maxpts, 
+                        abseps = -1, releps = releps_use))
+        if("key" %in% names(formals(func)))
+          formals(func)$key <- ex_params$key_use
+        vals <- replicate(ex_params$n_reps, {
+          v <- func()
+          inivls <- if("inivls" %in% names(attributes(v)))
+            attr(v, "inivls") else NA_integer_
+          c(value = v, error = attr(v, "error"), inivls = inivls)
+        })
+        
+        inivls_ok <- all(
+          is.na(vals["inivls", ]) | 
+            vals["inivls", ] / ex_params$max_maxpts < .999)
+        
+        if(all(is_ok_func(vals["value", ])) && inivls_ok)
+          break
+        
+        releps_use <- if(!inivls_ok) 
+          # no point in doing any more computations
+          ex_params$min_releps / 10 else 
+            releps_use / 2
+        if(releps_use < ex_params$min_releps){
+          warning("found no releps for CDF method")
+          releps_use <- NA_integer_
+          break
+        }
       }
+      releps_use
     }
-    releps_use
-  })
+  }
   
+  cdf_releps <- get_releps(aprx$get_cdf_cpp)
   cdf_func <- if(!is.na(cdf_releps))
     wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
                         maxpts = ex_params$max_maxpts, abseps = -1, 
@@ -529,46 +547,23 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
     NA
   
   # get function to use with Genz and Monahan method
-  get_sim_maxpts <- function(meth){
-    if(do_not_run)
-      NA_integer_
-    else local({
-      maxpts <- 100L
-      repeat {
-        func <- wd(meth(y = y, eta = eta, Z = Z, S = S, maxpts = maxpts, 
-                        abseps = -1, releps = releps / 10))
-        vals <- replicate(ex_params$n_reps, func(key_use))
-        if(all(is_ok_func(vals)))
-          break
-        
-        maxpts <- maxpts * 4L
-        if(maxpts > ex_params$max_maxpts){
-          warning("found no maxpts for sim method")
-          maxpts <- NA_integer_
-          break
-        }
-      }
-      maxpts
-    })
-  }
-  
-  sim_maxpts_use <- if(is_to_large_for_ghq) 
-    NA_integer_ else get_sim_maxpts(aprx$get_sim_mth)
-  sim_func <- if(!is.na(sim_maxpts_use))
+  sim_releps <- if(is_to_large_for_ghq) 
+    NA_integer_ else get_releps(aprx$get_sim_mth)
+  sim_func <- if(!is.na(sim_releps))
     wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
-                        maxpts = sim_maxpts_use, abseps = -1, 
-                        releps = releps / 10))
+                        maxpts = ex_params$max_maxpts, abseps = -1, 
+                        releps = sim_releps))
   else 
     NA
   if(is.function(sim_func))
     formals(sim_func)$key <- key_use
   
   # do the same with the adaptive version
-  Asim_maxpts_use <- get_sim_maxpts(aprx$get_Asim_mth)
-  Asim_func <- if(!is.na(Asim_maxpts_use))
+  Asim_releps <- get_releps(aprx$get_Asim_mth)
+  Asim_func <- if(!is.na(Asim_releps))
     wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, 
-                         maxpts = Asim_maxpts_use, abseps = -1, 
-                         releps = releps / 10))
+                         maxpts = ex_params$max_maxpts, abseps = -1, 
+                         releps = Asim_releps))
   else 
     NA
   if(is.function(Asim_func))
@@ -632,7 +627,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
   
   structure(list(
     b_use = b_use, b_use_A = b_use_A, cdf_releps = cdf_releps, 
-    sim_maxpts_use = sim_maxpts_use, Asim_maxpts_use = Asim_maxpts_use, 
+    sim_releps = sim_releps, Asim_releps = Asim_releps, 
     ll_truth = log(truth), SE_truth = SE_truth, n_brute = n_brute, 
     n_fail = n_fail, vals_n_comp_time = out), 
     class = "sim_experiment")
@@ -652,8 +647,8 @@ print.sim_experiment <- function(x, ...){
     sprintf("                  # nodes  GHQ: %13d", x$b_use),
     sprintf("                  # nodes AGHQ: %13d", x$b_use_A),
     sprintf("                    CDF releps: %13.8f", x$cdf_releps), 
-    sprintf("         Genz & Monahan maxpts: %13d", x$sim_maxpts_use),
-    sprintf("Adaptive Genz & Monahan maxpts: %13d", x$Asim_maxpts_use), 
+    sprintf("         Genz & Monahan releps: %13.8f", x$sim_releps),
+    sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
     sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
             x$SE_truth), 
     "", sep = "\n")
@@ -680,6 +675,8 @@ sim_experiment(n = 10L, p = 5L, n_threads = 6L)
 
 sim_experiment(n = 3L , p = 7L, n_threads = 6L)
 sim_experiment(n = 10L, p = 7L, n_threads = 6L)
+
+sim_experiment(n = 20L, p = 7L, n_threads = 6L)
 ```
 
 Next, we apply the method a number of times for a of combination of 
@@ -703,12 +700,9 @@ ex_output <- (function(){
   
   # setup cluster to use
   library(parallel)
-  cl <- makeCluster(4L)
-  on.exit(stopCluster(cl))
-  clusterExport(cl, c("aprx", "get_sim_dat", "sim_experiment", "ex_params"))
   
   # run the experiment
-  mapply(function(n, p){
+  mcmapply(function(n, p){
     cache_file <- file.path(cache_dir, sprintf("n-%03d-p-%03d.Rds", n, p))
     if(!file.exists(cache_file)){
       message(sprintf("Running setup with   n %3d and p %3d", n, p))
@@ -721,10 +715,7 @@ ex_output <- (function(){
       on.exit(unlink(prg_file))
       
       set.seed(71771946)
-      clusterExport(cl, c("n", "p", "prg_file"), envir = environment())    
-      clusterSetRNGStream(cl)
-      
-      sim_out <- parLapply(cl, 1:n_runs, function(...){
+      sim_out <- lapply(1:n_runs, function(...){
         seed <- .Random.seed
         out <- sim_experiment(n = n, p = p)
         attr(out, "seed") <- seed
@@ -740,7 +731,8 @@ ex_output <- (function(){
       
     
     readRDS(cache_file)
-  }, n = gr_vals$n, p = gr_vals$p, SIMPLIFY = FALSE)
+  }, n = gr_vals$n, p = gr_vals$p, SIMPLIFY = FALSE, 
+  mc.cores = 4L, mc.preschedule = FALSE)
 })()
 ```
 
