@@ -18,9 +18,15 @@ set.seed(1L)
 options(digits = 4)
 
 # sample data
-p <- 4L
-sigma <- drop(rWishart(1, 2L * p, diag(p)))
-mu <- rnorm(p, sd = .1)
+get_sim <- function(){
+  within(list(), {
+    p <- 4L
+    sigma <- drop(rWishart(1, 2L * p, diag(p)))
+    mu <- drop(crossprod(chol(sigma), rnorm(p)))
+  })
+}
+
+invisible(list2env(get_sim(), envir = environment()))
 ```
 
 ```{r def_R_func}
@@ -240,16 +246,31 @@ cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n",
             mean(om), mean(om2), mean(cm), mean(cm2), 
             log(mean(om)), log(mean(om2)), log(mean(cm)), log(mean(cm2))))
 
-microbenchmark::microbenchmark(
-  pmvnorm              = cm_wrap(), 
-  `pmvnorm pkg`        = cm_wrap_2(), 
-  `my_pmvnorm_cpp`     = my_wrap  (),
-  `my_pmvnorm_cpp pkg` = my_wrap_2(),
-  times = 100L)
+# run benchmark 
+set.seed(2)
+bench_data <- replicate(100, {
+  list2env(get_sim(), parent.env(environment()))
+
+  sapply(list(
+    `pmvnorm`        = cm_wrap, 
+    `pmvnorm pkg`    = cm_wrap_2, 
+    `my pmvnorm`     = my_wrap, 
+    `my pmvnorm pkg` = my_wrap_2
+  ), function(func){
+    system.time(replicate(10L, func())) / 5L
+  })
+})
+
+# show computation times
+apply(bench_data["user.self", , ], 1, function(x)
+  c(mean = mean(x), sd = sd(x), quantile(x, seq(0, 1, length.out = 5))))
 ```
 
 Clearly, do not directly use the GHK method used by @Hajivassiliou96 or 
-@Genz92 (two very similar and maybe independent suggestions). Use what Alan 
+@Genz92 (two very similar and maybe independent suggestions). 
+The main difference between `my pmvnorm` and `my pmvnorm pkg` is that the 
+latter reorders the variables. 
+Use what Alan 
 Genz has implemented in `mvtnorm::pmvt`. See 
 @Niederreiter72, @Keast73, @Cranley76 and the `MVKBRV` subroutine in 
 the `mvt.f` file. Using this subroutine to approximate the derivatives 

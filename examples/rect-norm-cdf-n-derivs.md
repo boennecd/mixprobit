@@ -8,9 +8,15 @@ set.seed(1L)
 options(digits = 4)
 
 # sample data
-p <- 4L
-sigma <- drop(rWishart(1, 2L * p, diag(p)))
-mu <- rnorm(p, sd = .1)
+get_sim <- function(){
+  within(list(), {
+    p <- 4L
+    sigma <- drop(rWishart(1, 2L * p, diag(p)))
+    mu <- drop(crossprod(chol(sigma), rnorm(p)))
+  })
+}
+
+invisible(list2env(get_sim(), envir = environment()))
 ```
 
 ``` r
@@ -62,15 +68,15 @@ library(mvtnorm)
 my_pmvnorm(mu, sigma, 10000L)
 ```
 
-    ## [1] 0.0678
+    ## [1] 0.1959
 
 ``` r
 pmvnorm(upper = rep(0, p), mean = mu, sigma = sigma)
 ```
 
-    ## [1] 0.06746
+    ## [1] 0.195
     ## attr(,"error")
-    ## [1] 0.0001655
+    ## [1] 0.0005886
     ## attr(,"msg")
     ## [1] "Normal Completion"
 
@@ -81,7 +87,7 @@ my_pmvnorm(mu, sigma, 10000L, h = function(draw, mean, sigma_chol)
   forwardsolve(sigma_chol, draw, upper.tri = TRUE))
 ```
 
-    ## [1] -0.02723 -0.01722 -0.02594 -0.01064
+    ## [1] -0.081467 -0.021322 -0.007201 -0.034268
 
 ``` r
 library(numDeriv)
@@ -91,7 +97,7 @@ drop(jacobian(function(x){
 }, mu))
 ```
 
-    ## [1] -0.02721 -0.01730 -0.02598 -0.01097
+    ## [1] -0.081226 -0.021237 -0.007224 -0.034509
 
 Approximate derivative of log CDF w.r.t. the mean.
 
@@ -101,7 +107,7 @@ out <- my_pmvnorm(mu, sigma, 10000L, h = function(draw, mean, sigma_chol)
 out[-1] / out[1]
 ```
 
-    ## [1] -0.4065 -0.2534 -0.3874 -0.1623
+    ## [1] -0.42344 -0.10468 -0.04087 -0.17686
 
 ``` r
 drop(jacobian(function(x){
@@ -110,7 +116,7 @@ drop(jacobian(function(x){
 }, mu))
 ```
 
-    ## [1] -0.4027 -0.2560 -0.3845 -0.1623
+    ## [1] -0.41640 -0.10887 -0.03703 -0.17691
 
 Computation Times
 -----------------
@@ -244,29 +250,29 @@ cm_wrap_2 <- function()
 print(my_wrap  (), digits = 6)
 ```
 
-    ## [1] 0.0675398
+    ## [1] 0.195295
     ## attr(,"error")
-    ## [1] 3.87991e-05
+    ## [1] 3.88132e-05
     ## attr(,"n_sim")
-    ## [1] 46300
+    ## [1] 143700
 
 ``` r
 print(my_wrap_2(), digits = 6)
 ```
 
-    ## [1] 0.0675357
+    ## [1] 0.19528
     ## attr(,"error")
-    ## [1] 3.88178e-05
+    ## [1] 3.88137e-05
     ## attr(,"n_sim")
-    ## [1] 120600
+    ## [1] 75400
 
 ``` r
 print(cm_wrap  (), digits = 6)
 ```
 
-    ## [1] 0.0674869
+    ## [1] 0.195207
     ## attr(,"error")
-    ## [1] 6.78552e-05
+    ## [1] 7.94508e-05
     ## attr(,"msg")
     ## [1] "Normal Completion"
 
@@ -275,10 +281,10 @@ print(cm_wrap_2(), digits = 6)
 ```
 
     ## $value
-    ## [1] 0.0674821
+    ## [1] 0.195243
     ## 
     ## $error
-    ## [1] 3.5969e-05
+    ## [1] 3.1716e-05
     ## 
     ## $inform
     ## [1] 0
@@ -287,25 +293,25 @@ print(cm_wrap_2(), digits = 6)
 sd(om  <- replicate(30L, my_wrap  ()))
 ```
 
-    ## [1] 3.496e-05
+    ## [1] 4.889e-05
 
 ``` r
 sd(om2 <- replicate(30L, my_wrap_2()))
 ```
 
-    ## [1] 3.664e-05
+    ## [1] 4.051e-05
 
 ``` r
 sd(cm  <- replicate(30L, cm_wrap()))
 ```
 
-    ## [1] 2.954e-05
+    ## [1] 2.622e-05
 
 ``` r
 sd(cm2 <- replicate(30L, cm_wrap_2()$value))
 ```
 
-    ## [1] 2.685e-05
+    ## [1] 2.524e-05
 
 ``` r
 cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n", 
@@ -313,32 +319,46 @@ cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n",
             log(mean(om)), log(mean(om2)), log(mean(cm)), log(mean(cm2))))
 ```
 
-    ## 0.06748464
-    ## 0.06749476
-    ## 0.06749380
-    ## 0.06748732
-    ## -2.69585525
-    ## -2.69570529
-    ## -2.69571957
-    ## -2.69581548
+    ## 0.19524147
+    ## 0.19524973
+    ## 0.19524527
+    ## 0.19524364
+    ## -1.63351819
+    ## -1.63347589
+    ## -1.63349873
+    ## -1.63350708
 
 ``` r
-microbenchmark::microbenchmark(
-  pmvnorm              = cm_wrap(), 
-  `pmvnorm pkg`        = cm_wrap_2(), 
-  `my_pmvnorm_cpp`     = my_wrap  (),
-  `my_pmvnorm_cpp pkg` = my_wrap_2(),
-  times = 100L)
+# run benchmark 
+set.seed(2)
+bench_data <- replicate(100, {
+  list2env(get_sim(), parent.env(environment()))
+
+  sapply(list(
+    `pmvnorm`        = cm_wrap, 
+    `pmvnorm pkg`    = cm_wrap_2, 
+    `my pmvnorm`     = my_wrap, 
+    `my pmvnorm pkg` = my_wrap_2
+  ), function(func){
+    system.time(replicate(10L, func())) / 5L
+  })
+})
+
+# show computation times
+apply(bench_data["user.self", , ], 1, function(x)
+  c(mean = mean(x), sd = sd(x), quantile(x, seq(0, 1, length.out = 5))))
 ```
 
-    ## Unit: microseconds
-    ##                expr     min      lq    mean  median      uq   max neval
-    ##             pmvnorm   861.5  1804.5  2151.8  1874.6  1977.5  3413   100
-    ##         pmvnorm pkg   304.4   759.7   905.9   768.9   821.5  1530   100
-    ##      my_pmvnorm_cpp 22044.3 22346.8 22563.0 22516.0 22694.4 23651   100
-    ##  my_pmvnorm_cpp pkg 49397.2 50081.3 50369.6 50309.9 50639.1 51717   100
+    ##       pmvnorm pmvnorm pkg my pmvnorm my pmvnorm pkg
+    ## mean 0.002130   0.0010100    0.09235        0.02871
+    ## sd   0.001411   0.0007797    0.28950        0.12158
+    ## 0%   0.001600   0.0006000    0.00000        0.00000
+    ## 25%  0.001800   0.0008000    0.00040        0.00020
+    ## 50%  0.001800   0.0008000    0.00640        0.00130
+    ## 75%  0.001800   0.0010000    0.05380        0.01535
+    ## 100% 0.014200   0.0076000    1.98780        1.09320
 
-Clearly, do not directly use the GHK method used by Hajivassiliou, McFadden, and Ruud (1996) or Genz (1992) (two very similar and maybe independent suggestions). Use what Alan Genz has implemented in `mvtnorm::pmvt`. See Niederreiter (1972), Keast (1973), Cranley and Patterson (1976) and the `MVKBRV` subroutine in the `mvt.f` file. Using this subroutine to approximate the derivatives should be fairly straight forward.
+Clearly, do not directly use the GHK method used by Hajivassiliou, McFadden, and Ruud (1996) or Genz (1992) (two very similar and maybe independent suggestions). The main difference between `my pmvnorm` and `my pmvnorm pkg` is that the latter reorders the variables. Use what Alan Genz has implemented in `mvtnorm::pmvt`. See Niederreiter (1972), Keast (1973), Cranley and Patterson (1976) and the `MVKBRV` subroutine in the `mvt.f` file. Using this subroutine to approximate the derivatives should be fairly straight forward.
 
 References
 ----------
