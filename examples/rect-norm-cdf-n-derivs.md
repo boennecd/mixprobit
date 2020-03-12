@@ -125,8 +125,9 @@ Make C++ example and compare computations times.
 // [[Rcpp::depends("RcppArmadillo")]]
 #include <RcppArmadillo.h>
 
+template<bool draw>
 inline std::array<double, 2> draw_trunc_mean
-  (double const b, const double u, const bool draw){
+  (double const b, const double u){
   double const qb = R::pnorm5(b, 0, 1, 1L, 0L);
   if(draw)
     return { qb, R::qnorm5(qb * u, 0, 1, 1L, 0L) };
@@ -156,37 +157,49 @@ Rcpp::NumericVector my_pmvnorm_cpp(
   arma::mat const sigma_chol = arma::chol(sigma);
   
   double out(0.), di(0.), M(0.);
-  arma::vec draw(p);
+  arma::vec draw(p), u(p);
   unsigned i;
-  unsigned const min_run = p * 10L;
-  constexpr double alpha(2.5);
+  unsigned const min_run(p * 25L);
+  constexpr double alpha(2.576);
   for(i = 0; i < nsim;){
     unsigned const i_max = i + min_run;
-    for(; i < i_max; i += 2L){
+    for(; i < i_max; ++i){
       auto func = [&](arma::vec const &u){
         double w(1.);
-        for(unsigned j = 0; j < p; ++j){
+        unsigned j;
+        for(j = 0; j < p - 1; ++j){
           double b(-mean[j]);
           for(unsigned k = 0; k < j; ++k)
             b -= sigma_chol.at(k, j) * draw[k];
           b /= sigma_chol.at(j, j);
           
-          auto const draw_n_p = draw_trunc_mean(b, u[j], j + 1 < p);
+          auto const draw_n_p = draw_trunc_mean<true>(b, u[j]);
           w       *= draw_n_p[0];
           draw[j]  = draw_n_p[1];
         }
         
-        /* use Welfords online algorithm */
-        double const old_diff = (w - out);
-        di  += 1.;
-        out += old_diff / di;
-        M   += old_diff * (w - out);
+        double b(-mean[j]);
+        for(unsigned k = 0; k < j; ++k)
+          b -= sigma_chol.at(k, j) * draw[k];
+        b /= sigma_chol.at(j, j);
+        
+        auto const draw_n_p = draw_trunc_mean<false>(b, u[j]);
+        w *= draw_n_p[0];
+        
+        return w;
       };
       
-      arma::vec u(p);
-      u.transform([](double val) { return unif_rand(); });
-      func(u);
-      func(1 - u);
+      u.for_each([](double &val) { return val = unif_rand(); });
+      double w = func(u);
+      u.for_each([](double &val) { return val = 1 - val; });
+      w += func(u);
+      w /= 2;
+      
+      /* use Welfords online algorithm */
+      double const old_diff = (w - out);
+      di  += 1.;
+      out += old_diff / di;
+      M   += old_diff * (w - out);
       
     }
     
@@ -196,109 +209,134 @@ Rcpp::NumericVector my_pmvnorm_cpp(
   
   Rcpp::NumericVector ret_val(1L);
   ret_val[0L] = out;
-  ret_val.attr("error") = alpha * std::sqrt(M / di / di);
+  ret_val.attr("error") = std::sqrt(M / di / di);
   ret_val.attr("n_sim") = i;
   return ret_val;
 }
 ```
 
-Test the C++ function.
+We also use the implementation in the package. Test the C++ function.
 
 ``` r
 # approximate CDF
 library(mvtnorm)
 library(mixprobit)
-my_wrap <- function(n_sim)
-  my_pmvnorm_cpp(mu, sigma, n_sim, 25e-5)
+abs_eps <- 1e-4
+n_sim <- 10000000L
+
+my_wrap <- function()
+  my_pmvnorm_cpp(mu, sigma, n_sim, abs_eps)
 cm_wrap <- function()
   pmvnorm(
     upper = rep(0, p), mean = mu, sigma = sigma, 
-    algorithm = GenzBretz(abseps = 1e-3, releps = -1))
+    algorithm = GenzBretz(abseps = abs_eps, releps = -1, 
+                          maxpts = n_sim))
 # differs by using R's pnorm and qnorm
+my_wrap_2 <- function()
+  mixprobit:::my_pmvnorm_cpp(mean_in = mu, sigma_in = sigma, 
+                             eps = abs_eps, nsim = n_sim)
 cm_wrap_2 <- function()
   mixprobit:::pmvnorm_cpp(
     lower = rep(-Inf, p), 
     upper = rep(0, p), mean = mu, cov = sigma, 
-    abseps = 1e-3, releps = -1, maxpts = 25000L)
+    abseps = abs_eps, releps = -1, maxpts = n_sim)
 
-my_wrap(100000L)
+print(my_wrap  (), digits = 6)
 ```
 
-    ## [1] 0.06751
+    ## [1] 0.0675398
     ## attr(,"error")
-    ## [1] 0.0002499
+    ## [1] 3.87991e-05
     ## attr(,"n_sim")
-    ## [1] 51040
+    ## [1] 46300
 
 ``` r
-cm_wrap()
+print(my_wrap_2(), digits = 6)
 ```
 
-    ## [1] 0.06759
+    ## [1] 0.0675357
     ## attr(,"error")
-    ## [1] 0.0001496
+    ## [1] 3.88178e-05
+    ## attr(,"n_sim")
+    ## [1] 120600
+
+``` r
+print(cm_wrap  (), digits = 6)
+```
+
+    ## [1] 0.0674869
+    ## attr(,"error")
+    ## [1] 6.78552e-05
     ## attr(,"msg")
     ## [1] "Normal Completion"
 
 ``` r
-cm_wrap_2()
+print(cm_wrap_2(), digits = 6)
 ```
 
     ## $value
-    ## [1] 0.0676
+    ## [1] 0.0674821
     ## 
     ## $error
-    ## [1] 0.0001504
+    ## [1] 3.5969e-05
     ## 
     ## $inform
     ## [1] 0
 
 ``` r
-sd(om  <- replicate(1000L, my_wrap(100000L)))
+sd(om  <- replicate(30L, my_wrap  ()))
 ```
 
-    ## [1] 5.251e-05
+    ## [1] 3.496e-05
 
 ``` r
-sd(cm  <- replicate(1000L, cm_wrap()))
+sd(om2 <- replicate(30L, my_wrap_2()))
 ```
 
-    ## [1] 5.675e-05
+    ## [1] 3.664e-05
 
 ``` r
-sd(cm2 <- replicate(1000L, cm_wrap_2()$value))
+sd(cm  <- replicate(30L, cm_wrap()))
 ```
 
-    ## [1] 5.844e-05
+    ## [1] 2.954e-05
 
 ``` r
-cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n", 
-            mean(om), mean(cm), mean(cm2), 
-            log(mean(om)), log(mean(cm)), log(mean(cm2))))
+sd(cm2 <- replicate(30L, cm_wrap_2()$value))
 ```
 
-    ## 0.06749068
-    ## 0.06748494
-    ## 0.06748627
-    ## -2.69576579
-    ## -2.69585082
-    ## -2.69583107
+    ## [1] 2.685e-05
+
+``` r
+cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n", 
+            mean(om), mean(om2), mean(cm), mean(cm2), 
+            log(mean(om)), log(mean(om2)), log(mean(cm)), log(mean(cm2))))
+```
+
+    ## 0.06748464
+    ## 0.06749476
+    ## 0.06749380
+    ## 0.06748732
+    ## -2.69585525
+    ## -2.69570529
+    ## -2.69571957
+    ## -2.69581548
 
 ``` r
 microbenchmark::microbenchmark(
-  pmvnorm                 = cm_wrap(), 
-  `pmvnorm (R funcs)`     = cm_wrap_2(), 
-  `my_pmvnorm_cpp 10000`  = my_wrap(10000L ),
-  `my_pmvnorm_cpp 100000` = my_wrap(100000L),
+  pmvnorm              = cm_wrap(), 
+  `pmvnorm pkg`        = cm_wrap_2(), 
+  `my_pmvnorm_cpp`     = my_wrap  (),
+  `my_pmvnorm_cpp pkg` = my_wrap_2(),
   times = 100L)
 ```
 
     ## Unit: microseconds
-    ##                   expr     min      lq    mean  median      uq     max neval
-    ##                pmvnorm   805.9   816.9   853.1   835.6   864.8  1262.9   100
-    ##      pmvnorm (R funcs)   301.8   306.7   318.3   313.4   325.0   420.1   100
-    ##   my_pmvnorm_cpp 10000  2470.5  2479.2  2530.2  2498.1  2553.1  2855.9   100
-    ##  my_pmvnorm_cpp 100000 12442.1 12647.8 12823.0 12765.4 12926.5 13992.8   100
+    ##                expr     min      lq    mean  median      uq   max neval
+    ##             pmvnorm   861.5  1804.5  2151.8  1874.6  1977.5  3413   100
+    ##         pmvnorm pkg   304.4   759.7   905.9   768.9   821.5  1530   100
+    ##      my_pmvnorm_cpp 22044.3 22346.8 22563.0 22516.0 22694.4 23651   100
+    ##  my_pmvnorm_cpp pkg 49397.2 50081.3 50369.6 50309.9 50639.1 51717   100
 
 Clearly, do not directly use the GHK method used by Hajivassiliou, McFadden, and Ruud (1996) or Genz (1992) (two very similar and maybe independent suggestions). Use what Alan Genz has implemented in `mvtnorm::pmvt`. See Niederreiter (1972), Keast (1973), Cranley and Patterson (1976) and the `MVKBRV` subroutine in the `mvt.f` file. Using this subroutine to approximate the derivatives should be fairly straight forward.
 

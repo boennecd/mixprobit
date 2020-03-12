@@ -22,4 +22,38 @@ inline void inplace_tri_mat_mult(arma::vec &x, arma::mat const &trimat){
  */
 arma::mat dchol(arma::mat const&, bool const upper = false);
 
+/* very simple importance sampler with so-called location and scaled
+ * balanced antithetic variables for multivariate normal distributed
+ * variables */
+template<typename I>
+class antithetic {
+  I const &integrand;
+public:
+  antithetic(I const &integrand): integrand(integrand) { }
+
+  double operator()(arma::vec &par_vec) const {
+    double new_term = integrand(par_vec.begin());
+    par_vec *= -1;
+    new_term += integrand(par_vec.begin());
+
+    double const old_scale = ([&]{
+      double out(0.);
+      for(auto x : par_vec)
+        out += x * x;
+      return out;
+    })();
+
+    double const p_val = R::pchisq(old_scale, (double)par_vec.n_elem,
+                                   1L, 0L),
+             new_scale = R::qchisq(1 - p_val, (double)par_vec.n_elem,
+                                   1L, 0L);
+
+    par_vec *= std::sqrt(new_scale / old_scale);
+    new_term += integrand(par_vec.begin());
+    par_vec *= -1;
+    new_term += integrand(par_vec.begin());
+    return new_term / 4.;
+  }
+};
+
 #endif

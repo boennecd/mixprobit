@@ -45,3 +45,7 @@ for_rngnorm_wrapper_test <- function(n, n_threads) {
     .Call('_mixprobit_for_rngnorm_wrapper_test', PACKAGE = 'mixprobit', n, n_threads)
 }
 
+my_pmvnorm_cpp <- function(mean_in, sigma_in, nsim, eps) {
+    .Call('_mixprobit_my_pmvnorm_cpp', PACKAGE = 'mixprobit', mean_in, sigma_in, nsim, eps)
+}
+

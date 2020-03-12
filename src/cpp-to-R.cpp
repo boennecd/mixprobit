@@ -4,6 +4,7 @@
 #include "restrict-cdf.h"
 #include "threat-safe-random.h"
 #include "welfords.h"
+#include "my_pmvnorm.h"
 
 #include <vector>
 
@@ -360,39 +361,6 @@ double aprx_binary_mix_ghq(
   return GaussHermite::approx(rule, integrand, is_adaptive);
 }
 
-/* very simple importance sampler with so-called location and scaled
- * balanced antithetic variables */
-template<typename I>
-class antithetic {
-  I const &integrand;
-public:
-  antithetic(I const &integrand): integrand(integrand) { }
-
-  double operator()(arma::vec &par_vec) const {
-    double new_term = integrand(par_vec.begin());
-    par_vec *= -1;
-    new_term += integrand(par_vec.begin());
-
-    double const old_scale = ([&]{
-      double out(0.);
-      for(auto x : par_vec)
-        out += x * x;
-      return out;
-    })();
-
-    double const p_val = R::pchisq(old_scale, (double)par_vec.n_elem,
-                                   1L, 0L),
-             new_scale = R::qchisq(1 - p_val, (double)par_vec.n_elem,
-                                   1L, 0L);
-
-    par_vec *= std::sqrt(new_scale / old_scale);
-    new_term += integrand(par_vec.begin());
-    par_vec *= -1;
-    new_term += integrand(par_vec.begin());
-    return new_term / 4.;
-  }
-};
-
 /* brute force MC estimate */
 // [[Rcpp::export]]
 Rcpp::NumericVector aprx_binary_mix_brute(
@@ -476,4 +444,17 @@ Rcpp::NumericVector for_rngnorm_wrapper_test
     out[i] =  rngnorm_wrapper();
 
   return out;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector my_pmvnorm_cpp
+  (arma::vec const &mean_in, arma::mat const &sigma_in,
+   unsigned const nsim, double const eps) {
+  auto const out = my_pmvnorm(mean_in, sigma_in, nsim, eps);
+
+  Rcpp::NumericVector ret_val(1L);
+  ret_val[0L] = out.est;
+  ret_val.attr("error") = out.se;
+  ret_val.attr("n_sim") = out.nsim;
+  return ret_val;
 }

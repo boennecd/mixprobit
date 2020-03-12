@@ -180,6 +180,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// my_pmvnorm_cpp
+Rcpp::NumericVector my_pmvnorm_cpp(arma::vec const& mean_in, arma::mat const& sigma_in, unsigned const nsim, double const eps);
+RcppExport SEXP _mixprobit_my_pmvnorm_cpp(SEXP mean_inSEXP, SEXP sigma_inSEXP, SEXP nsimSEXP, SEXP epsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec const& >::type mean_in(mean_inSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type sigma_in(sigma_inSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< double const >::type eps(epsSEXP);
+    rcpp_result_gen = Rcpp::wrap(my_pmvnorm_cpp(mean_in, sigma_in, nsim, eps));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP run_testthat_tests();
 
@@ -195,6 +209,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 6},
     {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 7},
     {"_mixprobit_for_rngnorm_wrapper_test", (DL_FUNC) &_mixprobit_for_rngnorm_wrapper_test, 2},
+    {"_mixprobit_my_pmvnorm_cpp", (DL_FUNC) &_mixprobit_my_pmvnorm_cpp, 4},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };

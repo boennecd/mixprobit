@@ -110,8 +110,9 @@ Make C++ example and compare computations times.
 // [[Rcpp::depends("RcppArmadillo")]]
 #include <RcppArmadillo.h>
 
+template<bool draw>
 inline std::array<double, 2> draw_trunc_mean
-  (double const b, const double u, const bool draw){
+  (double const b, const double u){
   double const qb = R::pnorm5(b, 0, 1, 1L, 0L);
   if(draw)
     return { qb, R::qnorm5(qb * u, 0, 1, 1L, 0L) };
@@ -141,37 +142,49 @@ Rcpp::NumericVector my_pmvnorm_cpp(
   arma::mat const sigma_chol = arma::chol(sigma);
   
   double out(0.), di(0.), M(0.);
-  arma::vec draw(p);
+  arma::vec draw(p), u(p);
   unsigned i;
-  unsigned const min_run = p * 10L;
-  constexpr double alpha(2.5);
+  unsigned const min_run(p * 25L);
+  constexpr double alpha(2.576);
   for(i = 0; i < nsim;){
     unsigned const i_max = i + min_run;
-    for(; i < i_max; i += 2L){
+    for(; i < i_max; ++i){
       auto func = [&](arma::vec const &u){
         double w(1.);
-        for(unsigned j = 0; j < p; ++j){
+        unsigned j;
+        for(j = 0; j < p - 1; ++j){
           double b(-mean[j]);
           for(unsigned k = 0; k < j; ++k)
             b -= sigma_chol.at(k, j) * draw[k];
           b /= sigma_chol.at(j, j);
           
-          auto const draw_n_p = draw_trunc_mean(b, u[j], j + 1 < p);
+          auto const draw_n_p = draw_trunc_mean<true>(b, u[j]);
           w       *= draw_n_p[0];
           draw[j]  = draw_n_p[1];
         }
         
-        /* use Welfords online algorithm */
-        double const old_diff = (w - out);
-        di  += 1.;
-        out += old_diff / di;
-        M   += old_diff * (w - out);
+        double b(-mean[j]);
+        for(unsigned k = 0; k < j; ++k)
+          b -= sigma_chol.at(k, j) * draw[k];
+        b /= sigma_chol.at(j, j);
+        
+        auto const draw_n_p = draw_trunc_mean<false>(b, u[j]);
+        w *= draw_n_p[0];
+        
+        return w;
       };
       
-      arma::vec u(p);
-      u.transform([](double val) { return unif_rand(); });
-      func(u);
-      func(1 - u);
+      u.for_each([](double &val) { return val = unif_rand(); });
+      double w = func(u);
+      u.for_each([](double &val) { return val = 1 - val; });
+      w += func(u);
+      w /= 2;
+      
+      /* use Welfords online algorithm */
+      double const old_diff = (w - out);
+      di  += 1.;
+      out += old_diff / di;
+      M   += old_diff * (w - out);
       
     }
     
@@ -181,48 +194,57 @@ Rcpp::NumericVector my_pmvnorm_cpp(
   
   Rcpp::NumericVector ret_val(1L);
   ret_val[0L] = out;
-  ret_val.attr("error") = alpha * std::sqrt(M / di / di);
+  ret_val.attr("error") = std::sqrt(M / di / di);
   ret_val.attr("n_sim") = i;
   return ret_val;
 }
 ```
 
-Test the C++ function.
+We also use the implementation in the package. Test the C++ function.
 
 ```{r test_cpp}
 # approximate CDF
 library(mvtnorm)
 library(mixprobit)
-my_wrap <- function(n_sim)
-  my_pmvnorm_cpp(mu, sigma, n_sim, 25e-5)
+abs_eps <- 1e-4
+n_sim <- 10000000L
+
+my_wrap <- function()
+  my_pmvnorm_cpp(mu, sigma, n_sim, abs_eps)
 cm_wrap <- function()
   pmvnorm(
     upper = rep(0, p), mean = mu, sigma = sigma, 
-    algorithm = GenzBretz(abseps = 1e-3, releps = -1))
+    algorithm = GenzBretz(abseps = abs_eps, releps = -1, 
+                          maxpts = n_sim))
 # differs by using R's pnorm and qnorm
+my_wrap_2 <- function()
+  mixprobit:::my_pmvnorm_cpp(mean_in = mu, sigma_in = sigma, 
+                             eps = abs_eps, nsim = n_sim)
 cm_wrap_2 <- function()
   mixprobit:::pmvnorm_cpp(
     lower = rep(-Inf, p), 
     upper = rep(0, p), mean = mu, cov = sigma, 
-    abseps = 1e-3, releps = -1, maxpts = 25000L)
+    abseps = abs_eps, releps = -1, maxpts = n_sim)
 
-my_wrap(100000L)
-cm_wrap()
-cm_wrap_2()
+print(my_wrap  (), digits = 6)
+print(my_wrap_2(), digits = 6)
+print(cm_wrap  (), digits = 6)
+print(cm_wrap_2(), digits = 6)
 
-sd(om  <- replicate(1000L, my_wrap(100000L)))
-sd(cm  <- replicate(1000L, cm_wrap()))
-sd(cm2 <- replicate(1000L, cm_wrap_2()$value))
+sd(om  <- replicate(30L, my_wrap  ()))
+sd(om2 <- replicate(30L, my_wrap_2()))
+sd(cm  <- replicate(30L, cm_wrap()))
+sd(cm2 <- replicate(30L, cm_wrap_2()$value))
 
-cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n", 
-            mean(om), mean(cm), mean(cm2), 
-            log(mean(om)), log(mean(cm)), log(mean(cm2))))
+cat(sprintf("%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n%.8f\n", 
+            mean(om), mean(om2), mean(cm), mean(cm2), 
+            log(mean(om)), log(mean(om2)), log(mean(cm)), log(mean(cm2))))
 
 microbenchmark::microbenchmark(
-  pmvnorm                 = cm_wrap(), 
-  `pmvnorm (R funcs)`     = cm_wrap_2(), 
-  `my_pmvnorm_cpp 10000`  = my_wrap(10000L ),
-  `my_pmvnorm_cpp 100000` = my_wrap(100000L),
+  pmvnorm              = cm_wrap(), 
+  `pmvnorm pkg`        = cm_wrap_2(), 
+  `my_pmvnorm_cpp`     = my_wrap  (),
+  `my_pmvnorm_cpp pkg` = my_wrap_2(),
   times = 100L)
 ```
 
