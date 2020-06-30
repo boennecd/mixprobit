@@ -5,6 +5,7 @@
 #include "threat-safe-random.h"
 #include "welfords.h"
 #include "my_pmvnorm.h"
+#include "sobol.h"
 
 #include <vector>
 
@@ -457,4 +458,29 @@ Rcpp::NumericVector my_pmvnorm_cpp
   ret_val.attr("error") = out.se;
   ret_val.attr("n_sim") = out.nsim;
   return ret_val;
+}
+
+// [[Rcpp::export(rng = false)]]
+SEXP get_sobol_obj
+  (int const dimen, int const scrambling = 0L, int const seed = 4711L){
+  return Rcpp::XPtr<sobol_gen>(new sobol_gen(dimen, scrambling, seed));
+}
+
+// [[Rcpp::export(rng = false)]]
+arma::mat eval_sobol(unsigned const n, SEXP ptr){
+  Rcpp::XPtr<sobol_gen> functor(ptr);
+  size_t const dimen = functor->dimen;
+
+  if(n > 0L){
+    arma::mat out(dimen, n);
+    arma::vec wrk(dimen);
+    for(size_t i = 0; i < n; ++i){
+      functor->operator()(wrk);
+      for(size_t j = 0; j < dimen; ++j)
+        out.at(j, i) = wrk[j];
+    }
+    return out;
+  }
+
+  return arma::mat(functor->dimen, 0L);
 }

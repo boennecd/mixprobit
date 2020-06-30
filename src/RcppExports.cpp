@@ -194,6 +194,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// get_sobol_obj
+SEXP get_sobol_obj(int const dimen, int const scrambling, int const seed);
+RcppExport SEXP _mixprobit_get_sobol_obj(SEXP dimenSEXP, SEXP scramblingSEXP, SEXP seedSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int const >::type dimen(dimenSEXP);
+    Rcpp::traits::input_parameter< int const >::type scrambling(scramblingSEXP);
+    Rcpp::traits::input_parameter< int const >::type seed(seedSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_sobol_obj(dimen, scrambling, seed));
+    return rcpp_result_gen;
+END_RCPP
+}
+// eval_sobol
+arma::mat eval_sobol(unsigned const n, SEXP ptr);
+RcppExport SEXP _mixprobit_eval_sobol(SEXP nSEXP, SEXP ptrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< unsigned const >::type n(nSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(eval_sobol(n, ptr));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP run_testthat_tests();
 
@@ -210,6 +233,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 7},
     {"_mixprobit_for_rngnorm_wrapper_test", (DL_FUNC) &_mixprobit_for_rngnorm_wrapper_test, 2},
     {"_mixprobit_my_pmvnorm_cpp", (DL_FUNC) &_mixprobit_my_pmvnorm_cpp, 4},
+    {"_mixprobit_get_sobol_obj", (DL_FUNC) &_mixprobit_get_sobol_obj, 3},
+    {"_mixprobit_eval_sobol", (DL_FUNC) &_mixprobit_eval_sobol, 2},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };

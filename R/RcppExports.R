@@ -49,3 +49,11 @@ my_pmvnorm_cpp <- function(mean_in, sigma_in, nsim, eps) {
     .Call('_mixprobit_my_pmvnorm_cpp', PACKAGE = 'mixprobit', mean_in, sigma_in, nsim, eps)
 }
 
+get_sobol_obj <- function(dimen, scrambling = 0L, seed = 4711L) {
+    .Call('_mixprobit_get_sobol_obj', PACKAGE = 'mixprobit', dimen, scrambling, seed)
+}
+
+eval_sobol <- function(n, ptr) {
+    .Call('_mixprobit_eval_sobol', PACKAGE = 'mixprobit', n, ptr)
+}
+

@@ -134,26 +134,27 @@ int gaussHermiteDataGolubWelsch(arma::vec &x, arma::vec &w) {
 
   return 0;
 }
+} // namespace
 
-double approx_rec(
+inline double approx_rec(
     arma::vec const &x, arma::vec const &w_logs,
     integrand::base_integrand const &func, unsigned const lvl,
     arma::vec &par, double const w_log = 0.){
-  if(lvl > 0L){
-    unsigned const b = x.n_elem,
-               c_lvl = lvl - 1L;
-    double out(0.);
-    for(unsigned j = 0; j < b; ++j){
-      par[c_lvl] = x[j];
-      out += approx_rec(x, w_logs, func, c_lvl, par, w_log + w_logs[j]);
-    }
+  bool const is_final = lvl < 2L;
 
-    return out;
+  unsigned const b = x.n_elem,
+             c_lvl = par.n_elem - lvl;
+  double out(0.);
+  for(unsigned j = 0; j < b; ++j){
+    par[c_lvl] = x[j];
+    out += is_final ?
+      std::exp(func(par.begin(), true) + w_log + w_logs[j]) :
+      approx_rec(x, w_logs, func, lvl - 1L, par, w_log + w_logs[j]);
+
   }
 
-  return std::exp(func(par.begin(), true) + w_log);
+  return out;
 }
-} // namespace
 
 namespace GaussHermite {
 HermiteData::HermiteData(unsigned const n): x(n), w(n) { }

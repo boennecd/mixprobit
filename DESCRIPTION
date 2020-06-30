@@ -7,15 +7,19 @@ Authors@R: c(
          email = "boennecd@gmail.com", 
          role = c("cre", "aut")), 
   person("Alan", "Genz", 
-         role = c("aut", "cph")),
+         role = c("cph")),
   person("Frank", "Bretz", 
-         role = c("aut", "cph")),
+         role = c("cph")),
   person("Bjoern", "Bornkamp", 
-         role = c("aut", "cph")), 
+         role = c("cph")), 
   person("Torsten", "Hothorn", 
-         role = c("aut", "cph")), 
+         role = c("cph")), 
   person("Alexander", "Blocker", 
-         role = c("aut", "cph")))
+         role = c("cph")),
+  person("Diethelm", "Wuertz", 
+         role = c("cph")),
+  person("Christophe", "Dutang", 
+         role = c("cph")))
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: GPL-2

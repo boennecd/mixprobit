@@ -14,7 +14,9 @@ class mix_binary final : public base_integrand {
                     wk_mem  = arma::vec(X ? n_par : 0L);
 
   static arma::mat set_Z(arma::mat const &Zin, arma::mat const &S){
+#ifndef NDEBUG
     std::size_t const k = Zin.n_rows;
+#endif
     assert(S.n_rows == k);
     assert(S.n_cols == k);
 

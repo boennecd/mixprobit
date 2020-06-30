@@ -1052,4 +1052,89 @@ show_n_nodes(FALSE)
 show_n_nodes(TRUE)
 ```
 
+## Quasi-Monte Carlo method
+
+We use the Fortran code to from the `randtoolbox` package to generate the 
+Sobol sequences which we use for Quasi-Monte Carlo method. However, there is 
+a big overhead which can be avoided in the package so we have created our 
+own interface to the Fortran functions. As we show below, the difference in 
+computation time is quite substantial. 
+
+```{r show_randtoolbox_diff}
+# assign function to get Sobol sequences from this package
+library(randtoolbox)
+get_sobol_seq <- function(dim, scrambling = 0L, seed = formals(sobol)$seed){
+  ptr <- mixprobit:::get_sobol_obj(dimen = dim, scrambling = scrambling, 
+                                   seed = seed)
+  
+  function(n)
+    mixprobit:::eval_sobol(n, ptr = ptr)
+}
+
+#####
+# differences when initializing
+dim <- 3L
+n   <- 10L
+all.equal(get_sobol_seq(dim)(n), t(sobol(n = n, dim = dim)))
+microbenchmark::microbenchmark(
+  mixprobit = get_sobol_seq(dim)(n), 
+  randtoolbox = sobol(n = n, dim = dim), times = 1000)
+
+# w/ larger dim
+dim <- 50L
+all.equal(get_sobol_seq(dim)(n), t(sobol(n = n, dim = dim)))
+microbenchmark::microbenchmark(
+  mixprobit = get_sobol_seq(dim)(n), 
+  randtoolbox = sobol(n = n, dim = dim), times = 1000)
+
+#####
+# after having initialized
+dim <- 3L
+sobol_obj <- get_sobol_seq(dim)
+invisible(sobol_obj(1L))
+invisible(sobol(n = 1L, dim = dim))
+
+n <- 10L
+all.equal(sobol_obj(n), t(sobol(n = n, dim = dim, init = FALSE)))
+microbenchmark::microbenchmark(
+  `mixprobit   (1 point)`        = sobol_obj(1L), 
+  `randtoolbox (1 point)`        = sobol(n = 1L, dim = dim, init = FALSE), 
+  `mixprobit   (100 points)`     = sobol_obj(100L), 
+  `randtoolbox (100 points)`     = sobol(n = 100L, dim = dim, init = FALSE), 
+  `mixprobit   (10000 points)`   = sobol_obj(10000L), 
+  `randtoolbox (10000 points)`   = sobol(n = 10000L, dim = dim, init = FALSE), 
+  
+  times = 1000)
+
+#####
+# similar conclusions apply w/ scrambling
+dim <- 10L
+n <- 10L
+all.equal(get_sobol_seq(dim, scrambling = 1L)(n), 
+          t(sobol(n = n, dim = dim, scrambling = 1L)))
+
+microbenchmark::microbenchmark(
+  mixprobit = get_sobol_seq(dim, scrambling = 1L)(n), 
+  randtoolbox = sobol(n = n, dim = dim, scrambling = 1L), times = 1000)
+
+sobol_obj <- get_sobol_seq(dim, scrambling = 1L)
+invisible(sobol_obj(1L))
+invisible(sobol(n = 1L, dim = dim, scrambling = 1L))
+
+all.equal(sobol_obj(n), t(sobol(n = n, dim = dim, init = FALSE)))
+microbenchmark::microbenchmark(
+  `mixprobit   (1 point)`        = sobol_obj(1L), 
+  `randtoolbox (1 point)`        = sobol(n = 1L, dim = dim, init = FALSE), 
+  `mixprobit   (100 points)`     = sobol_obj(100L), 
+  `randtoolbox (100 points)`     = sobol(n = 100L, dim = dim, init = FALSE), 
+  `mixprobit   (10000 points)`   = sobol_obj(10000L), 
+  `randtoolbox (10000 points)`   = sobol(n = 10000L, dim = dim, init = FALSE), 
+  
+  times = 1000)
+```
+
+Lastly, the C++ interface we have created allow us to call the Fortran from 
+C++ directly. This was the primary motivation for creating our own 
+interface.
+
 ## References

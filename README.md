@@ -1,7 +1,12 @@
 Mixed Models with a Probit Link
 ===============================
 
-We make a comparison below of making an approximation of a marginal likelihood factor that is typical in many mixed effect models with a probit link function. The particular model we use here is mixed probit model where the observed outcomes are binary. In this model, a marginal factor, ![L](https://latex.codecogs.com/svg.latex?L "L"), for a given cluster is
+We make a comparison below of making an approximation of a marginal
+likelihood factor that is typical in many mixed effect models with a
+probit link function. The particular model we use here is mixed probit
+model where the observed outcomes are binary. In this model, a marginal
+factor, ![L](https://latex.codecogs.com/svg.latex?L "L"), for a given
+cluster is
 
 ![\\begin{align\*}
 L &= \\int \\phi^{(p)}(\\vec u; \\vec 0, \\Sigma)
@@ -31,9 +36,26 @@ L &= \int \phi^{(p)}(\vec u; \vec 0, \Sigma)
 \Phi(x) &= \int_0^x\phi^{(1)}(z;0,1)dz
 \end{align*}")
 
-where ![\\eta\_i](https://latex.codecogs.com/svg.latex?%5Ceta_i "\eta_i") can be a fixed effect like ![\\vec x\_i^\\top\\vec\\beta](https://latex.codecogs.com/svg.latex?%5Cvec%20x_i%5E%5Ctop%5Cvec%5Cbeta "\vec x_i^\top\vec\beta") for some fixed effect covariate ![\\vec x\_i](https://latex.codecogs.com/svg.latex?%5Cvec%20x_i "\vec x_i") and fixed effect coefficients ![\\vec\\beta](https://latex.codecogs.com/svg.latex?%5Cvec%5Cbeta "\vec\beta") and ![\\vec u](https://latex.codecogs.com/svg.latex?%5Cvec%20u "\vec u") is an unobserved random effect for the cluster.
+where
+![\\eta\_i](https://latex.codecogs.com/svg.latex?%5Ceta_i "\eta_i") can
+be a fixed effect like
+![\\vec x\_i^\\top\\vec\\beta](https://latex.codecogs.com/svg.latex?%5Cvec%20x_i%5E%5Ctop%5Cvec%5Cbeta "\vec x_i^\top\vec\beta")
+for some fixed effect covariate
+![\\vec x\_i](https://latex.codecogs.com/svg.latex?%5Cvec%20x_i "\vec x_i")
+and fixed effect coefficients
+![\\vec\\beta](https://latex.codecogs.com/svg.latex?%5Cvec%5Cbeta "\vec\beta")
+and ![\\vec u](https://latex.codecogs.com/svg.latex?%5Cvec%20u "\vec u")
+is an unobserved random effect for the cluster.
 
-The [quick comparison](#quick-comparison) section may be skipped unless you want to get a grasp at what is implemented and see the definitions of the functions that is used in this markdown. The [more rigorous comparison](#more-rigorous-comparison) section is the main section of this markdown. It contains an example where we vary the number of observed outcomes, `n`, and the number of random effect, `p`, while considering the computation time of various approximation methods for a fixed relative error. A real data application is provided in [examples/salamander.md](examples/salamander.md).
+The [quick comparison](#quick-comparison) section may be skipped unless
+you want to get a grasp at what is implemented and see the definitions
+of the functions that is used in this markdown. The [more rigorous
+comparison](#more-rigorous-comparison) section is the main section of
+this markdown. It contains an example where we vary the number of
+observed outcomes, `n`, and the number of random effect, `p`, while
+considering the computation time of various approximation methods for a
+fixed relative error. A real data application is provided in
+[examples/salamander.md](examples/salamander.md).
 
 Quick Comparison
 ----------------
@@ -180,7 +202,8 @@ aprx <- within(list(), {
 })
 ```
 
-Then we assign a function to get a simulated data set for a single cluster within a mixed probit model with binary outcomes.
+Then we assign a function to get a simulated data set for a single
+cluster within a mixed probit model with binary outcomes.
 
 ``` r
 #####
@@ -208,23 +231,24 @@ get_sim_dat <- function(n, p){
 }
 ```
 
-The variance of the linear predictor given the random effect is independent of the random effect dimension, `p`.
+The variance of the linear predictor given the random effect is
+independent of the random effect dimension, `p`.
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 1.981
+#> [1] 1.886
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
-#> [1] 1.976
+#> [1] 2.047
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 2.004
+#> [1] 2.018
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 1.953
+#> [1] 1.985
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 1.979
+#> [1] 1.995
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 2.025
+#> [1] 2.059
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 2.01
+#> [1] 1.957
 ```
 
 Next we perform a quick example.
@@ -350,9 +374,22 @@ microbenchmark::microbenchmark(
 More Rigorous Comparison
 ------------------------
 
-We are interested in a more rigorous comparison. Therefor, we define a function below which for given number of observation in the cluster, `n`, and given number of random effects, `p`, performs a repeated number of runs with each of the methods and returns the computation time (among other output). To make a fair comparison, we fix the relative error of the methods before hand such that the relative error is below `releps`, ![10^{-4}](https://latex.codecogs.com/svg.latex?10%5E%7B-4%7D "10^{-4}"). Ground truth is computed with brute force MC using `n_brute`, ![10^{7}](https://latex.codecogs.com/svg.latex?10%5E%7B7%7D "10^{7}"), samples.
+We are interested in a more rigorous comparison. Therefor, we define a
+function below which for given number of observation in the cluster,
+`n`, and given number of random effects, `p`, performs a repeated number
+of runs with each of the methods and returns the computation time (among
+other output). To make a fair comparison, we fix the relative error of
+the methods before hand such that the relative error is below `releps`,
+![10^{-4}](https://latex.codecogs.com/svg.latex?10%5E%7B-4%7D "10^{-4}").
+Ground truth is computed with brute force MC using `n_brute`,
+![10^{7}](https://latex.codecogs.com/svg.latex?10%5E%7B7%7D "10^{7}"),
+samples.
 
-Since GHQ is deterministic, we use a number of nodes such that this number of nodes or `streak_length`, 4, less value of nodes with GHQ gives a relative error which is below the threshold. We use a minimum of 4 nodes at the time of this writing. The error of the simulation based methods is approximated using `n_reps`, 25, replications.
+Since GHQ is deterministic, we use a number of nodes such that this
+number of nodes or `streak_length`, 4, less value of nodes with GHQ
+gives a relative error which is below the threshold. We use a minimum of
+4 nodes at the time of this writing. The error of the simulation based
+methods is approximated using `n_reps`, 25, replications.
 
 ``` r
 # default parameters
@@ -837,7 +874,8 @@ sim_experiment(n = 20L, p = 7L, n_threads = 6L)
 #>           NA       1.3632       0.0820           NA       0.2950
 ```
 
-Next, we apply the method a number of times for a of combination of number of observations, `n`, and number of random effects, `p`.
+Next, we apply the method a number of times for a of combination of
+number of observations, `n`, and number of random effects, `p`.
 
 ``` r
 # number of observations in the cluster
@@ -893,7 +931,14 @@ ex_output <- (function(){
 })()
 ```
 
-We create a table where we summarize the results below. First we start with the average computation time, then we show the mean scaled RMSE, and we end by looking at the number of nodes that we need to use with GHQ. The latter shows why GHQ becomes slower as the cluster size, `n`, increases. The computation time is in 1000s of a second, `comp_time_mult`. The mean scaled RMSE is multiplied by ![10^{5}](https://latex.codecogs.com/svg.latex?10%5E%7B5%7D "10^{5}"), `err_mult`.
+We create a table where we summarize the results below. First we start
+with the average computation time, then we show the mean scaled RMSE,
+and we end by looking at the number of nodes that we need to use with
+GHQ. The latter shows why GHQ becomes slower as the cluster size, `n`,
+increases. The computation time is in 1000s of a second,
+`comp_time_mult`. The mean scaled RMSE is multiplied by
+![10^{5}](https://latex.codecogs.com/svg.latex?10%5E%7B5%7D "10^{5}"),
+`err_mult`.
 
 ``` r
 comp_time_mult <- 1000 # millisecond
@@ -1688,21 +1733,181 @@ show_n_nodes(TRUE)
 | 16  |  100|  100|  100|  100|  100|  100|
 | 32  |  100|  100|  100|  100|  100|  100|
 
+Quasi-Monte Carlo method
+------------------------
+
+We use the Fortran code to from the `randtoolbox` package to generate
+the Sobol sequences which we use for Quasi-Monte Carlo method. However,
+there is a big overhead which can be avoided in the package so we have
+created our own interface to the Fortran functions. As we show below,
+the difference in computation time is quite substantial.
+
+``` r
+# assign function to get Sobol sequences from this package
+library(randtoolbox)
+#> Loading required package: rngWELL
+#> This is randtoolbox. For an overview, type 'help("randtoolbox")'.
+get_sobol_seq <- function(dim, scrambling = 0L, seed = formals(sobol)$seed){
+  ptr <- mixprobit:::get_sobol_obj(dimen = dim, scrambling = scrambling, 
+                                   seed = seed)
+  
+  function(n)
+    mixprobit:::eval_sobol(n, ptr = ptr)
+}
+
+#####
+# differences when initializing
+dim <- 3L
+n   <- 10L
+all.equal(get_sobol_seq(dim)(n), t(sobol(n = n, dim = dim)))
+#> [1] TRUE
+microbenchmark::microbenchmark(
+  mixprobit = get_sobol_seq(dim)(n), 
+  randtoolbox = sobol(n = n, dim = dim), times = 1000)
+#> Unit: microseconds
+#>         expr    min     lq  mean median    uq  max neval
+#>    mixprobit  8.457  9.596 13.28  11.42 12.77 1963  1000
+#>  randtoolbox 56.957 59.830 63.83  61.56 63.42 1764  1000
+
+# w/ larger dim
+dim <- 50L
+all.equal(get_sobol_seq(dim)(n), t(sobol(n = n, dim = dim)))
+#> [1] TRUE
+microbenchmark::microbenchmark(
+  mixprobit = get_sobol_seq(dim)(n), 
+  randtoolbox = sobol(n = n, dim = dim), times = 1000)
+#> Unit: microseconds
+#>         expr   min    lq  mean median    uq     max neval
+#>    mixprobit 16.89 18.88 21.44  21.68 23.56   69.05  1000
+#>  randtoolbox 73.82 78.22 84.11  80.89 83.74 1940.49  1000
+
+#####
+# after having initialized
+dim <- 3L
+sobol_obj <- get_sobol_seq(dim)
+invisible(sobol_obj(1L))
+invisible(sobol(n = 1L, dim = dim))
+
+n <- 10L
+all.equal(sobol_obj(n), t(sobol(n = n, dim = dim, init = FALSE)))
+#> [1] TRUE
+microbenchmark::microbenchmark(
+  `mixprobit   (1 point)`        = sobol_obj(1L), 
+  `randtoolbox (1 point)`        = sobol(n = 1L, dim = dim, init = FALSE), 
+  `mixprobit   (100 points)`     = sobol_obj(100L), 
+  `randtoolbox (100 points)`     = sobol(n = 100L, dim = dim, init = FALSE), 
+  `mixprobit   (10000 points)`   = sobol_obj(10000L), 
+  `randtoolbox (10000 points)`   = sobol(n = 10000L, dim = dim, init = FALSE), 
+  
+  times = 1000)
+#> Unit: microseconds
+#>                        expr     min      lq    mean  median      uq     max
+#>       mixprobit   (1 point)   3.485   4.289   5.470   5.652   6.264   11.04
+#>       randtoolbox (1 point)  38.761  40.878  43.072  42.212  43.940  176.43
+#>    mixprobit   (100 points)   5.277   6.332   7.607   7.619   8.349   39.19
+#>    randtoolbox (100 points)  43.096  45.513  49.254  47.046  48.572 1451.18
+#>  mixprobit   (10000 points) 145.186 161.977 178.892 163.980 166.219 1704.37
+#>  randtoolbox (10000 points) 375.016 385.779 429.628 389.470 396.074 2071.34
+#>  neval
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+
+#####
+# similar conclusions apply w/ scrambling
+dim <- 10L
+n <- 10L
+all.equal(get_sobol_seq(dim, scrambling = 1L)(n), 
+          t(sobol(n = n, dim = dim, scrambling = 1L)))
+#> [1] TRUE
+
+microbenchmark::microbenchmark(
+  mixprobit = get_sobol_seq(dim, scrambling = 1L)(n), 
+  randtoolbox = sobol(n = n, dim = dim, scrambling = 1L), times = 1000)
+#> Unit: microseconds
+#>         expr   min    lq  mean median    uq    max neval
+#>    mixprobit 273.8 281.4 287.2  283.8 286.7 2066.3  1000
+#>  randtoolbox 325.6 337.5 343.1  341.0 344.1  547.8  1000
+
+sobol_obj <- get_sobol_seq(dim, scrambling = 1L)
+invisible(sobol_obj(1L))
+invisible(sobol(n = 1L, dim = dim, scrambling = 1L))
+
+all.equal(sobol_obj(n), t(sobol(n = n, dim = dim, init = FALSE)))
+#> [1] TRUE
+microbenchmark::microbenchmark(
+  `mixprobit   (1 point)`        = sobol_obj(1L), 
+  `randtoolbox (1 point)`        = sobol(n = 1L, dim = dim, init = FALSE), 
+  `mixprobit   (100 points)`     = sobol_obj(100L), 
+  `randtoolbox (100 points)`     = sobol(n = 100L, dim = dim, init = FALSE), 
+  `mixprobit   (10000 points)`   = sobol_obj(10000L), 
+  `randtoolbox (10000 points)`   = sobol(n = 10000L, dim = dim, init = FALSE), 
+  
+  times = 1000)
+#> Unit: microseconds
+#>                        expr     min      lq     mean   median       uq      max
+#>       mixprobit   (1 point)   3.490   4.530    6.778    6.119    7.587    34.38
+#>       randtoolbox (1 point)  38.778  42.260   47.724   45.105   48.883   167.11
+#>    mixprobit   (100 points)   6.496   8.142   10.572    9.724   11.347    38.72
+#>    randtoolbox (100 points)  49.053  52.989   58.766   56.175   60.607   170.77
+#>  mixprobit   (10000 points) 261.668 314.072  393.210  328.074  344.222  4960.77
+#>  randtoolbox (10000 points) 940.208 995.834 1311.712 1012.693 1102.582 33082.79
+#>  neval
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+```
+
+Lastly, the C++ interface we have created allow us to call the Fortran
+from C++ directly. This was the primary motivation for creating our own
+interface.
+
 References
 ----------
 
-Barrett, Jessica, Peter Diggle, Robin Henderson, and David Taylor-Robinson. 2015. “Joint Modelling of Repeated Measurements and Time-to-Event Outcomes: Flexible Model Specification and Exact Likelihood Inference.” *Journal of the Royal Statistical Society: Series B (Statistical Methodology)* 77 (1): 131–48. doi:[10.1111/rssb.12060](https://doi.org/10.1111/rssb.12060).
+Barrett, Jessica, Peter Diggle, Robin Henderson, and David
+Taylor-Robinson. 2015. “Joint Modelling of Repeated Measurements and
+Time-to-Event Outcomes: Flexible Model Specification and Exact
+Likelihood Inference.” *Journal of the Royal Statistical Society: Series
+B (Statistical Methodology)* 77 (1): 131–48.
+<https://doi.org/10.1111/rssb.12060>.
 
-Genz, Alan, and Frank Bretz. 2002. “Comparison of Methods for the Computation of Multivariate T Probabilities.” *Journal of Computational and Graphical Statistics* 11 (4). Taylor & Francis: 950–71. doi:[10.1198/106186002394](https://doi.org/10.1198/106186002394).
+Genz, Alan, and Frank Bretz. 2002. “Comparison of Methods for the
+Computation of Multivariate T Probabilities.” *Journal of Computational
+and Graphical Statistics* 11 (4). Taylor & Francis: 950–71.
+<https://doi.org/10.1198/106186002394>.
 
-Genz, Alan, and John Monahan. 1999. “A Stochastic Algorithm for High-Dimensional Integrals over Unbounded Regions with Gaussian Weight.” *Journal of Computational and Applied Mathematics* 112 (1): 71–81. doi:[https://doi.org/10.1016/S0377-0427(99)00214-9](https://doi.org/https://doi.org/10.1016/S0377-0427(99)00214-9).
+Genz, Alan., and John. Monahan. 1998. “Stochastic Integration Rules for
+Infinite Regions.” *SIAM Journal on Scientific Computing* 19 (2):
+426–39. <https://doi.org/10.1137/S1064827595286803>.
 
-Genz, Alan., and John. Monahan. 1998. “Stochastic Integration Rules for Infinite Regions.” *SIAM Journal on Scientific Computing* 19 (2): 426–39. doi:[10.1137/S1064827595286803](https://doi.org/10.1137/S1064827595286803).
+Genz, Alan, and John Monahan. 1999. “A Stochastic Algorithm for
+High-Dimensional Integrals over Unbounded Regions with Gaussian Weight.”
+*Journal of Computational and Applied Mathematics* 112 (1): 71–81.
+<https://doi.org/https://doi.org/10.1016/S0377-0427(99)00214-9>.
 
-Hajivassiliou, Vassilis, Daniel McFadden, and Paul Ruud. 1996. “Simulation of Multivariate Normal Rectangle Probabilities and Their Derivatives Theoretical and Computational Results.” *Journal of Econometrics* 72 (1): 85–134. doi:[https://doi.org/10.1016/0304-4076(94)01716-6](https://doi.org/https://doi.org/10.1016/0304-4076(94)01716-6).
+Hajivassiliou, Vassilis, Daniel McFadden, and Paul Ruud. 1996.
+“Simulation of Multivariate Normal Rectangle Probabilities and Their
+Derivatives Theoretical and Computational Results.” *Journal of
+Econometrics* 72 (1): 85–134.
+<https://doi.org/https://doi.org/10.1016/0304-4076(94)01716-6>.
 
-Liu, Qing, and Donald A. Pierce. 1994. “A Note on Gauss-Hermite Quadrature.” *Biometrika* 81 (3). \[Oxford University Press, Biometrika Trust\]: 624–29. <http://www.jstor.org/stable/2337136>.
+Liu, Qing, and Donald A. Pierce. 1994. “A Note on Gauss-Hermite
+Quadrature.” *Biometrika* 81 (3). \[Oxford University Press, Biometrika
+Trust\]: 624–29. <http://www.jstor.org/stable/2337136>.
 
-Ochi, Y., and Ross L. Prentice. 1984. “Likelihood Inference in a Correlated Probit Regression Model.” *Biometrika* 71 (3). \[Oxford University Press, Biometrika Trust\]: 531–43. <http://www.jstor.org/stable/2336562>.
+Ochi, Y., and Ross L. Prentice. 1984. “Likelihood Inference in a
+Correlated Probit Regression Model.” *Biometrika* 71 (3). \[Oxford
+University Press, Biometrika Trust\]: 531–43.
+<http://www.jstor.org/stable/2336562>.
 
-Pawitan, Y., M. Reilly, E. Nilsson, S. Cnattingius, and P. Lichtenstein. 2004. “Estimation of Genetic and Environmental Factors for Binary Traits Using Family Data.” *Statistics in Medicine* 23 (3): 449–65. doi:[10.1002/sim.1603](https://doi.org/10.1002/sim.1603).
+Pawitan, Y., M. Reilly, E. Nilsson, S. Cnattingius, and P. Lichtenstein.
+2004. “Estimation of Genetic and Environmental Factors for Binary Traits
+Using Family Data.” *Statistics in Medicine* 23 (3): 449–65.
+<https://doi.org/10.1002/sim.1603>.
