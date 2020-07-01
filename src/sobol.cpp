@@ -35,6 +35,12 @@ void sobol_gen::operator()(arma::vec &out){
   F77_CALL(nextsobol)(
       &dimen, quasi.get(), &ll, &count, sv.get());
 
-  for(size_t i = 0; i < out.n_elem; ++i)
-    out[i] = *(quasi.get() + i);
+  for(size_t i = 0; i < out.n_elem; ++i){
+    double val = *(quasi.get() + i);
+    if(__builtin_expect(val < std::numeric_limits<double>::min(), 0))
+      val = std::numeric_limits<double>::min();
+    if(__builtin_expect(val >= 1., 0))
+      val = 1. - std::numeric_limits<double>::epsilon();
+    out[i] = val;
+  }
 }

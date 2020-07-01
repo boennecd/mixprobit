@@ -37,6 +37,10 @@ aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b, is_adaptive = FALSE) {
     .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b, is_adaptive)
 }
 
+aprx_binary_mix_qmc <- function(y, eta, Z, Sigma, n_max, seeds, releps, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_binary_mix_qmc', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_max, seeds, releps, is_adaptive)
+}
+
 aprx_binary_mix_brute <- function(y, eta, Z, Sigma, n_sim, n_threads = 1L, is_is = TRUE) {
     .Call('_mixprobit_aprx_binary_mix_brute', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_sim, n_threads, is_is)
 }

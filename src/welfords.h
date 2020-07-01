@@ -8,7 +8,10 @@ class welfords {
   double M = 0.,
       mea  = 0.;
   unsigned n = 0L;
+  bool const update_var;
 public:
+  welfords(bool const update_var = true): update_var(update_var) { }
+
   double mean() const {
     return mea;
   }
@@ -19,7 +22,8 @@ public:
   welfords& operator+=(double const x){
     double const old_diff = x - mea;
     mea += old_diff / (double)++n;
-    M += (x - mea) * old_diff;
+    if(update_var)
+      M += (x - mea) * old_diff;
 
     return *this;
   }

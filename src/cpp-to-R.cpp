@@ -6,6 +6,7 @@
 #include "welfords.h"
 #include "my_pmvnorm.h"
 #include "sobol.h"
+#include "qmc.h"
 
 #include <vector>
 
@@ -360,6 +361,24 @@ double aprx_binary_mix_ghq(
   integrand::mix_binary integrand(y, eta, Z, Sigma);
 
   return GaussHermite::approx(rule, integrand, is_adaptive);
+}
+
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericVector aprx_binary_mix_qmc(
+    arma::ivec const &y, arma::vec eta, arma::mat Z,
+    arma::mat const &Sigma, unsigned const n_max,
+    arma::ivec const &seeds, double const releps,
+    bool const is_adaptive = false){
+  using Rcpp::NumericVector;
+  integrand::mix_binary integrand(y, eta, Z, Sigma);
+
+  auto const res = qmc::approx(
+    integrand, is_adaptive, n_max, seeds, releps);
+  NumericVector out = NumericVector::create(res.value);
+  out.attr("intvls") = res.intvls;
+  out.attr("error")  = res.err;
+
+  return out;
 }
 
 /* brute force MC estimate */

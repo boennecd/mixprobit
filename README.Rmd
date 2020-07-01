@@ -194,6 +194,32 @@ aprx <- within(list(), {
         abseps = abseps, releps = releps, is_adaptive = is_adaptive)
   get_Asim_mth <- get_sim_mth
   formals(get_Asim_mth)$is_adaptive <- TRUE
+  
+  #####
+  # returns a function that uses Quasi-monte carlo integration to 
+  # approximate the integrals. 
+  # 
+  # Args:
+  #   y: n length logical vector with for whether the observation has an 
+  #      event.
+  #   eta: n length numeric vector with offset on z-scale.
+  #   Z: p by n matrix with random effect covariates. 
+  #   S: n by n matrix with random effect covaraites.
+  #   maxpts: integer with maximum number of points to use. 
+  #   is_adaptive: logical for whether to use an adaptive method.
+  #   releps: relative error tolerance.
+  #   n_seqs: number of randomized sobol sequences.
+  #   abseps: unused.
+  get_qmc <- function(y, eta, Z, S, maxpts, is_adaptive = FALSE, 
+                      releps = 1e-4, n_seqs = 15L, abseps)
+    function(){
+      seeds <- sample.int(2147483646L, n_seqs)
+      mixprobit:::aprx_binary_mix_qmc(
+        y = y, eta = eta, Z = Z, Sigma = S, n_max = maxpts, 
+        is_adaptive = is_adaptive, seeds = seeds, releps = releps)
+    }
+  get_Aqmc <- get_qmc
+  formals(get_Aqmc)$is_adaptive <- TRUE
 })
 ```
 
@@ -276,6 +302,11 @@ cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S,
 cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
                                     maxpts = maxpts))
 
+qmc_aprx <- wd(
+  aprx$get_qmc(y = y, eta = eta, Z = Z, S = S, maxpts = maxpts))
+qmc_Aaprx <- wd(
+  aprx$get_Aqmc(y = y, eta = eta, Z = Z, S = S, maxpts = maxpts))
+
 sim_aprx <-  wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
                                  maxpts = maxpts))
 sim_Aaprx <- wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, 
@@ -284,15 +315,25 @@ sim_Aaprx <- wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S,
 #####
 # compare results. Start with the simulation based methods with a lot of
 # samples. We take this as the ground truth
-truth_maybe1 <- wd( 
+truth_maybe_cdf <- wd( 
   aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                     abseps = 1e-11))()
-truth_maybe2 <- wd(
+
+truth_maybe_qmc <- wd(
+  aprx$get_qmc(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+               releps = 1e-11)())
+
+truth_maybe_Aqmc <- wd(
+  aprx$get_Aqmc(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+                releps = 1e-11)())
+
+truth_maybe_mc <- wd(
   aprx$get_sim_mth (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                     abseps = 1e-11)(2L))
-truth_maybe2_A <- wd(
+truth_maybe_Amc <- wd(
   aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                     abseps = 1e-11)(2L))
+
 truth <- wd(
   mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
                                     n_sim = 1e8, n_threads = 6L))
@@ -301,15 +342,19 @@ c(Estiamte = truth, SE = attr(truth, "SE"),
   `Estimate (log)` = log(c(truth)),  
   `SE (log)` = abs(attr(truth, "SE") / truth))
 truth <- c(truth)
-all.equal(truth, c(truth_maybe1))
-all.equal(truth, c(truth_maybe2))
-all.equal(truth, c(truth_maybe2_A))
+all.equal(truth, c(truth_maybe_cdf))
+all.equal(truth, c(truth_maybe_qmc))
+all.equal(truth, c(truth_maybe_Aqmc))
+all.equal(truth, c(truth_maybe_mc))
+all.equal(truth, c(truth_maybe_Amc))
 
 # compare with using fewer samples and GHQ
 all.equal(truth,   GHQ_R())
 all.equal(truth,   GHQ_cpp())
 all.equal(truth,   AGHQ_cpp())
 all.equal(truth, c(cdf_aprx_R()))
+all.equal(truth, c(qmc_aprx()))
+all.equal(truth, c(qmc_Aaprx()))
 all.equal(truth, c(cdf_aprx_cpp()))
 all.equal(truth, c(sim_aprx(1L)))
 all.equal(truth, c(sim_aprx(2L)))
@@ -325,6 +370,7 @@ system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
+  QMC = qmc_aprx(), `QMC Adaptive` = qmc_Aaprx(),
   `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
   `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
@@ -447,9 +493,13 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
   }
   
   # function to test whether the value is ok
-  is_ok_func <- function(vals)
-    abs((log(vals) - log(truth)) / log(truth)) < releps
-  
+  is_ok_func <- function(vals){
+    test_val <- abs((log(vals) - log(truth)) / log(truth)) 
+    if(!all(is.finite(test_val)))
+      stop("non-finite 'vals'")
+    test_val < releps
+  }
+      
   # get function to use with GHQ
   get_b <- function(meth){
     if(do_not_run)
@@ -483,7 +533,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
     })
   }
   
-  is_to_large_for_ghq <- n >= 16L || p >= 5L
+  is_to_large_for_ghq <- n > 16L || p >= 5L
   b_use <- if(is_to_large_for_ghq)
     NA_integer_ else get_b(aprx$get_GHQ_cpp)
   ghq_func <- if(!is.na(b_use))
@@ -519,7 +569,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
         
         inivls_ok <- all(
           is.na(vals["inivls", ]) | 
-            vals["inivls", ] / ex_params$max_maxpts < .999)
+            vals["inivls", ] / ex_params$max_maxpts < .999999)
         
         if(all(is_ok_func(vals["value", ])) && inivls_ok)
           break
@@ -547,8 +597,10 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
     NA
   
   # get function to use with Genz and Monahan method
-  sim_releps <- if(is_to_large_for_ghq) 
-    NA_integer_ else get_releps(aprx$get_sim_mth)
+  # sim_releps <- if(is_to_large_for_ghq) 
+  #   NA_integer_ else get_releps(aprx$get_sim_mth)
+  sim_releps <- NA_integer_ # just do not use it. It is __very__ slow in  
+                            # some cases
   sim_func <- if(!is.na(sim_releps))
     wd(aprx$get_sim_mth(y = y, eta = eta, Z = Z, S = S, 
                         maxpts = ex_params$max_maxpts, abseps = -1, 
@@ -569,10 +621,30 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
   if(is.function(Asim_func))
     formals(Asim_func)$key <- key_use
   
+  # get function to use with QMC
+  qmc_releps <- if(is_to_large_for_ghq)
+    NA_integer_ else get_releps(aprx$get_qmc)
+  qmc_func <- if(!is.na(qmc_releps))
+     wd(aprx$get_qmc(y = y, eta = eta, Z = Z, S = S, 
+                     maxpts = ex_params$max_maxpts, abseps = -1,
+                     releps = qmc_releps))
+  else 
+    NA
+
+  # get function to use with adaptive QMC
+  Aqmc_releps <- get_releps(aprx$get_Aqmc)
+  Aqmc_func <- if(!is.null(Aqmc_releps))
+    wd(aprx$get_Aqmc(y = y, eta = eta, Z = Z, S = S, 
+                     maxpts = ex_params$max_maxpts, abseps = -1,
+                     releps = Aqmc_releps))
+  else 
+    NA
+    
   # perform the comparison
   out <- sapply(
     list(GHQ = ghq_func, AGHQ = aghq_func, CDF = cdf_func, 
-         GenzMonahan = sim_func, GenzMonahanA = Asim_func), 
+         GenzMonahan = sim_func, GenzMonahanA = Asim_func, 
+         QMC = qmc_func, QMCA = Aqmc_func), 
     function(func){
       if(!is.function(func) && is.na(func)){
         out <- rep(NA_real_, 6L)
@@ -628,6 +700,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
   structure(list(
     b_use = b_use, b_use_A = b_use_A, cdf_releps = cdf_releps, 
     sim_releps = sim_releps, Asim_releps = Asim_releps, 
+    qmc_releps = qmc_releps, Aqmc_releps = Aqmc_releps,
     ll_truth = log(truth), SE_truth = SE_truth, n_brute = n_brute, 
     n_fail = n_fail, vals_n_comp_time = out), 
     class = "sim_experiment")
@@ -649,6 +722,8 @@ print.sim_experiment <- function(x, ...){
     sprintf("                    CDF releps: %13.8f", x$cdf_releps), 
     sprintf("         Genz & Monahan releps: %13.8f", x$sim_releps),
     sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
+    sprintf("                    QMC releps: %13.8f", x$qmc_releps),
+    sprintf("           Adaptive QMC releps: %13.8f", x$Aqmc_releps), 
     sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
             x$SE_truth), 
     "", sep = "\n")
@@ -684,13 +759,13 @@ number of observations, `n`, and number of random effects, `p`.
 
 ```{r run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- 2^(1:5)
+n_vals <- 2^1:3
 # number of random effects
-p_vals <- 2:7
+p_vals <- 2:3
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 100L
+n_runs <- 20L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -756,6 +831,17 @@ The computation time is in `r comp_time_mult`s of a second,
 ```{r create_table, results = "asis"}
 #####
 # show number of complete cases
+.get_nice_names <- function(x){
+  x <- gsub(
+    "^GenzMonahan$", "Genz & Monahan (1999)", x)
+  x <- gsub(
+    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", x)
+  # fix stupid typo at one point
+  x <- gsub("^ADHQ$", "AGHQ", x)
+  x <- gsub("^QMCA$", "Adaptive QMC", x)
+  x
+}
+
 local({
   comp_times <- sapply(ex_output, function(x)
     sapply(x[!names(x) %in% c("n", "p")], `[[`, "vals_n_comp_time", 
@@ -770,13 +856,7 @@ local({
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  rnames[[2L]] <- gsub(
-    "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
-  rnames[[2L]] <- gsub(
-    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
-  # fix stupid typo at one point
-  rnames[[2L]] <- gsub(
-    "^ADHQ$", "AGHQ", rnames[[2L]])
+  rnames[[2L]] <- .get_nice_names(rnames[[2L]])
   
   # then flatten
   n_complete <- matrix(c(n_complete), nrow = NROW(rnames))
@@ -860,13 +940,7 @@ show_run_times <- function(remove_nas = FALSE, na.rm = FALSE,
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  rnames[[2L]] <- gsub(
-    "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
-  rnames[[2L]] <- gsub(
-    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
-  # fix stupid typo at one point
-  rnames[[2L]] <- gsub(
-    "^ADHQ$", "AGHQ", rnames[[2L]])
+  rnames[[2L]] <- .get_nice_names(rnames[[2L]])
   
   # then flatten
   comp_times <- matrix(c(comp_times), nrow = NROW(rnames))
@@ -954,13 +1028,7 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
   rnames <- expand.grid(
     Method = meths, n = n_labs, stringsAsFactors = FALSE)
   rnames[2:1] <- rnames[1:2]
-  rnames[[2L]] <- gsub(
-    "^GenzMonahan$", "Genz & Monahan (1999)", rnames[[2L]])
-  rnames[[2L]] <- gsub(
-    "^GenzMonahanA$", "Genz & Monahan (1999) Adaptive", rnames[[2L]])
-  # fix stupid typo at one point
-  rnames[[2L]] <- gsub(
-    "^ADHQ$", "AGHQ", rnames[[2L]])
+  rnames[[2L]] <- .get_nice_names(rnames[[2L]])
   
   # then flatten
   err <- matrix(c(err), nrow = NROW(rnames))
@@ -1052,7 +1120,7 @@ show_n_nodes(FALSE)
 show_n_nodes(TRUE)
 ```
 
-## Quasi-Monte Carlo method
+## Quasi-Monte Carlo Method
 
 We use the Fortran code to from the `randtoolbox` package to generate the 
 Sobol sequences which we use for Quasi-Monte Carlo method. However, there is 

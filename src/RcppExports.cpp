@@ -151,6 +151,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// aprx_binary_mix_qmc
+Rcpp::NumericVector aprx_binary_mix_qmc(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const n_max, arma::ivec const& seeds, double const releps, bool const is_adaptive);
+RcppExport SEXP _mixprobit_aprx_binary_mix_qmc(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP n_maxSEXP, SEXP seedsSEXP, SEXP relepsSEXP, SEXP is_adaptiveSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< arma::ivec const& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type n_max(n_maxSEXP);
+    Rcpp::traits::input_parameter< arma::ivec const& >::type seeds(seedsSEXP);
+    Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
+    Rcpp::traits::input_parameter< bool const >::type is_adaptive(is_adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_qmc(y, eta, Z, Sigma, n_max, seeds, releps, is_adaptive));
+    return rcpp_result_gen;
+END_RCPP
+}
 // aprx_binary_mix_brute
 Rcpp::NumericVector aprx_binary_mix_brute(arma::ivec const& y, arma::vec eta, arma::mat Z, arma::mat const& Sigma, unsigned const n_sim, unsigned const n_threads, bool const is_is);
 RcppExport SEXP _mixprobit_aprx_binary_mix_brute(SEXP ySEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP n_simSEXP, SEXP n_threadsSEXP, SEXP is_isSEXP) {
@@ -230,6 +247,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 6},
+    {"_mixprobit_aprx_binary_mix_qmc", (DL_FUNC) &_mixprobit_aprx_binary_mix_qmc, 8},
     {"_mixprobit_aprx_binary_mix_brute", (DL_FUNC) &_mixprobit_aprx_binary_mix_brute, 7},
     {"_mixprobit_for_rngnorm_wrapper_test", (DL_FUNC) &_mixprobit_for_rngnorm_wrapper_test, 2},
     {"_mixprobit_my_pmvnorm_cpp", (DL_FUNC) &_mixprobit_my_pmvnorm_cpp, 4},
