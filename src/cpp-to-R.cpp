@@ -69,7 +69,7 @@ Rcpp::NumericVector aprx_binary_mix(
       mvn<mix_binary > mix_bin(bin);
 
       set_integrand(std::unique_ptr<base_integrand>(
-          new adaptive<mvn<mix_binary> > (mix_bin)));
+          new adaptive<mvn<mix_binary> > (mix_bin, true)));
 
       return integral_arpx(maxpts, key, abseps, releps);
     }
@@ -105,7 +105,7 @@ Rcpp::NumericVector aprx_jac_binary_mix(
       mvn<mix_binary > mix_bin(bin);
 
       set_integrand(std::unique_ptr<base_integrand>(
-          new adaptive<mvn<mix_binary> > (mix_bin)));
+          new adaptive<mvn<mix_binary> > (mix_bin, true)));
 
       return jac_arpx(maxpts, key, abseps, releps);
     }
@@ -408,7 +408,7 @@ Rcpp::NumericVector aprx_binary_mix_brute(
       mix_binary const bin;
       mvn<mix_binary> const mvn_obj = mvn<mix_binary>(bin);
       adaptive<mvn<mix_binary> > const ada =
-        adaptive<mvn<mix_binary> >(mvn_obj);
+        adaptive<mvn<mix_binary> >(mvn_obj, true);
 
       integrand_worker(mix_binary const &bin): bin(bin) { }
       integrand_worker(integrand_worker const &other):
@@ -492,12 +492,8 @@ arma::mat eval_sobol(unsigned const n, SEXP ptr){
 
   if(n > 0L){
     arma::mat out(dimen, n);
-    arma::vec wrk(dimen);
-    for(size_t i = 0; i < n; ++i){
-      functor->operator()(wrk);
-      for(size_t j = 0; j < dimen; ++j)
-        out.at(j, i) = wrk[j];
-    }
+    for(size_t i = 0; i < n; ++i)
+      functor->operator()(out.colptr(i));
     return out;
   }
 

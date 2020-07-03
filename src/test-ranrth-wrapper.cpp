@@ -202,7 +202,7 @@ context("ranrth-wrapper unit tests") {
       mvn<mix_binary> m(bin);
 
       set_integrand(std::unique_ptr<base_integrand>(
-          new adaptive<mvn<mix_binary > > (m)));
+          new adaptive<mvn<mix_binary > > (m, true)));
       run_test();
     }
   }

@@ -19,16 +19,16 @@ qmc_approx_output approx(
   using namespace integrand;
   if(is_adaptive){
     mvn<base_integrand> func_w_mvn(func);
-    adaptive<mvn<base_integrand> > new_func(func_w_mvn);
+    adaptive<mvn<base_integrand> > new_func(func_w_mvn, true);
 
     return approx(new_func, false, n_max, seeds, releps);
   }
 
-  constexpr size_t n_min = 50L;
+  constexpr size_t n_min = 100L;
   size_t const n_par = func.get_n_par(),
              n_seeds = seeds.n_elem,
                  inc = n_seeds * n_min;
-  arma::vec par(n_par);
+  arma::mat par(n_par, n_min);
 
   /* get object to store quasi random number generators */
   std::vector<sobol_gen> generators;
@@ -62,12 +62,14 @@ qmc_approx_output approx(
       auto &my_gen = generators[k];
       auto &my_est = estimates[k];
 
+      for(size_t j = 0; j < n_min; ++j)
+        my_gen(par.colptr(j));
+      par.for_each([](arma::mat::elem_type &val){
+        val = R::qnorm5(val, 0, 1, 1L, 0L);
+      });
+
       for(size_t j = 0; j < n_min; ++j){
-        my_gen(par);
-        par.for_each([](arma::mat::elem_type &val){
-          val = R::qnorm5(val, 0, 1, 1L, 0L);
-        });
-        double const integrand = func(par.begin(), false);
+        double const integrand = func(par.colptr(j), false);
         if(!std::isfinite(integrand))
           throw std::runtime_error("qmc::approx(): non-finite integrand");
         my_est += integrand;

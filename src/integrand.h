@@ -108,16 +108,20 @@ public:
 
 /* yields a new integrand of the form
  * pvnorm(x, mode, -Hessian^-1) * f(x) / pvnorm(x, mode, -Hessian^-1) =
-     pvnorm(x) * f(mode - Hessian^-1/2 * x) / pvnorm(x) */
+     pvnorm(x) * f(mode + (-Hessian)^-1/2 * x) / pvnorm(x) */
 template <typename other_integrand>
 class adaptive final : public base_integrand {
+  bool const use_chol; /* eitehr we use a Cholesky or a SV-decomposition */
 
   /* compute terms from multivariate normal cumulative distribution
    * function and transform the x vector for subsequent calls */
   double log_integrand_factor(arma::vec &x) const {
     double out(arma::dot(x, x) / 2. + dat.constant);
 
-    inplace_tri_mat_mult(x, dat.neg_hes_inv_chol);
+    if(use_chol)
+      inplace_tri_mat_mult(x, dat.neg_hes_inv_half);
+    else
+      x = dat.neg_hes_inv_half * x;
     x += dat.mode;
 
     return out;
@@ -130,7 +134,7 @@ public:
     typedef adaptive<other_integrand>::opt_data my_kind;
     other_integrand const &other_terms;
     arma::vec mode;
-    arma::mat neg_hes_inv_chol;
+    arma::mat neg_hes_inv_half;
     double constant;
     bool success = true;
 
@@ -147,8 +151,8 @@ public:
     }
 
     /* mode, negative Hessian, etc. are set in the constructor */
-    opt_data(other_integrand const &other_terms, int const max_it = 10000L,
-             double const abstol = -1, double const reltol = 1e-5):
+    opt_data(other_integrand const &other_terms, int const max_it,
+             double const abstol, double const reltol, bool const use_chol):
       other_terms(other_terms) {
       arma::uword const n_par = other_terms.get_n_par();
       arma::vec start(n_par, arma::fill::zeros);
@@ -165,31 +169,67 @@ public:
 
       auto const opt_res = optimizers::bfgs(
         start, optim_obj, optim_gr, (void*)this, max_it, 0L, abstol, reltol);
-
       if(opt_res.fail != 0L)
         throw std::runtime_error("integrand::adaptive: fail != 0L");
 
       mode = opt_res.par;
-      if(!arma::chol(
-          neg_hes_inv_chol,
-          arma::inv(-other_terms.Hessian(mode.memptr())))){
-        Rcpp::warning("adaptive: Cholesky decomposition failed");
-        success = false;
-        return;
+      arma::mat Hes = other_terms.Hessian(mode.memptr());
+      if(use_chol){
+        mode = opt_res.par;
+        Hes *= -1.;
+        if(!arma::chol(neg_hes_inv_half, arma::inv(Hes))){
+          Rcpp::warning("adaptive: Cholesky decomposition failed");
+          success = false;
+          return;
 
+        }
+        constant = 0.;
+        for(unsigned i = 0; i < n_par; ++i)
+          constant += std::log(neg_hes_inv_half.at(i, i));
+
+      } else {
+        arma::vec eig_val;
+        Hes *= -1.;
+        if(!arma::eig_sym(eig_val, neg_hes_inv_half, Hes)){
+          Rcpp::warning("adaptive: Eigenvalue decomposition failed");
+          success = false;
+          return;
+        }
+
+        /* we need the inverse of -Hessian */
+        eig_val.for_each(
+          [](arma::mat::elem_type &val) { val = 1. / val; } );
+
+        constant = 0.;
+        for(auto e : eig_val){
+          if(e <= 0.){
+            Rcpp::warning(
+              "adaptive: Non-positive definite negative Hessian");
+            success = false;
+            return;
+          }
+
+          constant += log(e);
+        }
+        constant /= 2.;
+
+        eig_val.for_each(
+          [](arma::mat::elem_type &val) { val = std::sqrt(val); } );
+        neg_hes_inv_half.each_col() %= eig_val;
+        arma::inplace_trans(neg_hes_inv_half);
       }
 
-      static double const log2pi = std::log(2.0 * M_PI);
-      constant = (double)neg_hes_inv_chol.n_cols / 2. * log2pi;
-      for(unsigned i = 0; i < n_par; ++i)
-        constant += std::log(neg_hes_inv_chol.at(i, i));
+      static double const log2pi = std::log(2. * M_PI);
+      constant += static_cast<double>(n_par) / 2. * log2pi;
     }
   };
   opt_data const dat;
 
-  adaptive(other_integrand const &other_terms, int const max_it = 10000L,
-           double const abstol = -1, double const reltol = 1e-5):
-    other_terms(other_terms), dat(other_terms, max_it, abstol, reltol) { }
+  adaptive(other_integrand const &other_terms, bool const use_chol,
+           int const max_it = 10000L, double const abstol = -1,
+           double const reltol = 1e-5):
+    use_chol(use_chol), other_terms(other_terms),
+    dat(other_terms, max_it, abstol, reltol, use_chol) { }
 
   double operator()
     (double const *par, bool const ret_log = false) const {

@@ -28,19 +28,17 @@ sobol_gen::sobol_gen
       &dimen, quasi.get(), &ll, &count, sv.get(), &scramb, &iseed);
 }
 
-void sobol_gen::operator()(arma::vec &out){
-  if(out.n_elem != (size_t)dimen)
-    throw std::invalid_argument("sobol_gen:::operator(): invalid out");
-
+void sobol_gen::operator()(double * out){
   F77_CALL(nextsobol)(
       &dimen, quasi.get(), &ll, &count, sv.get());
 
-  for(size_t i = 0; i < out.n_elem; ++i){
-    double val = *(quasi.get() + i);
-    if(__builtin_expect(val < std::numeric_limits<double>::min(), 0))
-      val = std::numeric_limits<double>::min();
+  double * o = out, *q = quasi.get();
+  for(int i = 0; i < dimen; ++i, ++o, ++q){
+    double val = *q;
+    if(__builtin_expect(val < std::numeric_limits<double>::epsilon(), 0))
+      val = std::numeric_limits<double>::epsilon();
     if(__builtin_expect(val >= 1., 0))
       val = 1. - std::numeric_limits<double>::epsilon();
-    out[i] = val;
+    *o = val;
   }
 }

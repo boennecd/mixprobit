@@ -190,7 +190,7 @@ double approx(HermiteData const &rule, base_integrand const &func,
 
   if(is_adaptive){
     mvn<base_integrand> func_w_mvn(func);
-    adaptive<mvn<base_integrand> > new_func(func_w_mvn);
+    adaptive<mvn<base_integrand> > new_func(func_w_mvn, true);
 
     return approx(rule, new_func, false);
   }

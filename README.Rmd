@@ -211,7 +211,7 @@ aprx <- within(list(), {
   #   n_seqs: number of randomized sobol sequences.
   #   abseps: unused.
   get_qmc <- function(y, eta, Z, S, maxpts, is_adaptive = FALSE, 
-                      releps = 1e-4, n_seqs = 15L, abseps)
+                      releps = 1e-4, n_seqs = 10L, abseps)
     function(){
       seeds <- sample.int(2147483646L, n_seqs)
       mixprobit:::aprx_binary_mix_qmc(
@@ -387,7 +387,7 @@ rm(list = setdiff(ls(), cur_vars))
 ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
-  max_maxpts = 5000000L, 
+  max_maxpts = 2500000L, 
   releps = 1e-4,
   min_releps = 1e-6,
   key_use = 3L, 
@@ -395,7 +395,8 @@ ex_params <- list(
   n_runs = 5L, 
   n_brute = 1e7, 
   n_brute_max = 1e8, 
-  n_brute_sds = 4)
+  n_brute_sds = 4, 
+  qmc_n_seqs = 10L)
 ```
 
 We are interested in a more rigorous comparison. Therefor, we define a 
@@ -622,21 +623,25 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
     formals(Asim_func)$key <- key_use
   
   # get function to use with QMC
+  formals(aprx$get_qmc)$n_seqs <- ex_params$qmc_n_seqs
   qmc_releps <- if(is_to_large_for_ghq)
     NA_integer_ else get_releps(aprx$get_qmc)
   qmc_func <- if(!is.na(qmc_releps))
      wd(aprx$get_qmc(y = y, eta = eta, Z = Z, S = S, 
                      maxpts = ex_params$max_maxpts, abseps = -1,
-                     releps = qmc_releps))
+                     releps = qmc_releps, 
+                     n_seqs = ex_params$qmc_n_seqs))
   else 
     NA
 
   # get function to use with adaptive QMC
   Aqmc_releps <- get_releps(aprx$get_Aqmc)
+  formals(aprx$get_Aqmc)$n_seqs <- ex_params$qmc_n_seqs
   Aqmc_func <- if(!is.null(Aqmc_releps))
     wd(aprx$get_Aqmc(y = y, eta = eta, Z = Z, S = S, 
                      maxpts = ex_params$max_maxpts, abseps = -1,
-                     releps = Aqmc_releps))
+                     releps = Aqmc_releps, 
+                     n_seqs = ex_params$qmc_n_seqs))
   else 
     NA
     
@@ -759,13 +764,13 @@ number of observations, `n`, and number of random effects, `p`.
 
 ```{r run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- 2^1:3
+n_vals <- 2^(1:5)
 # number of random effects
-p_vals <- 2:3
+p_vals <- 2:7
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 20L
+n_runs <- 25L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -802,7 +807,7 @@ ex_output <- (function(){
       sim_out[c("n", "p")] <- list(n = n, p = p)
       saveRDS(sim_out, cache_file)
     } else
-      message(sprintf ("Loading results with n %3d and p %3d", n, p))
+      message(sprintf("Loading results with n %3d and p %3d", n, p))
       
     
     readRDS(cache_file)
@@ -918,13 +923,13 @@ show_run_times <- function(remove_nas = FALSE, na.rm = FALSE,
     simplify = "array")
   comp_times <- comp_times["elapsed", , , ]
   
-  is_complete <- t(apply(comp_times, 2, function(x){
-    if(remove_nas)
-      apply(!is.na(x), 2, all)
-    else 
+  is_complete <- apply(comp_times, 3, function(x){
+    if(remove_nas){
+      consider <- !apply(is.na(x), 1L, all)
+      apply(!is.na(x[consider, , drop = FALSE]), 2, all)
+    } else 
       rep(TRUE, NCOL(x))
-  }))
-  dim(is_complete) <- dim(comp_times)[2:3]
+  })
   
   comp_times <- lapply(1:dim(comp_times)[3], function(i){
     x <- comp_times[, , i]
@@ -1006,12 +1011,13 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
   n_meth <- dim(err)[1]
   err <- err / rep(mean_integral, each = n_meth)
   
-  is_complete <- t(apply(err, 2, function(x){
-    if(remove_nas)
-      apply(!is.na(x), 2, all)
-    else 
+  is_complete <- apply(err, 3, function(x){
+    if(remove_nas){
+      consider <- !apply(is.na(x), 1L, all)
+      apply(!is.na(x[consider, , drop = FALSE]), 2, all)
+    } else 
       rep(TRUE, NCOL(x))
-  }))
+  })
   dim(is_complete) <- dim(err)[2:3]
   
   err <- lapply(1:dim(err)[3], function(i){
@@ -1021,6 +1027,7 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
   
   err <- sapply(err, rowMeans, na.rm = na.rm) * err_mult
   err[is.nan(err)] <- NA_real_
+  err <- err[!apply(err, 1, function(x) all(is.na(x))), ]
   
   # flatten the table. Start by getting the row labels
   meths <- rownames(err)

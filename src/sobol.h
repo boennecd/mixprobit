@@ -20,8 +20,16 @@ public:
   sobol_gen(int const dimen, int const scrambling, int const seed);
   sobol_gen(int const dimen): sobol_gen(dimen, 0L, 4711L) { }
 
+  /* sets the next vector to the array. No checks on the pointer */
+  void operator()(double*);
+
   /* returns the next vector by reference */
-  void operator()(arma::vec&);
+  void operator()(arma::vec &out){
+    if(out.n_elem != (size_t)dimen)
+      throw std::invalid_argument("sobol_gen::operator(): invalid out");
+
+    operator()(out.begin());
+  }
 
   /* allocates a new vector and returns the next vector */
   arma::vec operator()() {

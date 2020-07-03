@@ -167,11 +167,27 @@ context("integrand-binary unit tests") {
     }
 
     dput(mode <- optim(c(0, 0), function(x) -f(x), control = list(reltol = 1e-12))$par)
-    sig_adaptive <- solve(-hessian(f, mode, method.args = list(eps = 1e-10)))
-    dput(chol(sig_adaptive))
+    Hes <- hessian(f, mode, method.args = list(eps = 1e-10))
+    sig_adaptive <- solve(-Hes)
+    dput(half_mat <- chol(sig_adaptive))
 
     x <- c(-1, 1)
-    dput(f(mode + x %*% chol(sig_adaptive)) - mvtnorm::dmvnorm(x, log = TRUE) +
+    dput(f(mode + x %*% half_mat) - mvtnorm::dmvnorm(x, log = TRUE) +
+    determinant(sig_adaptive)$modulus / 2)
+
+    eg1 <- eigen(sig_adaptive)
+    eg2 <- eigen(-Hes)
+
+    tcrossprod(eg1$vectors %*% diag(sqrt(eg1$values))) - sig_adaptive
+    tcrossprod(eg2$vectors %*% diag(sqrt(eg2$values^(-1)))) - sig_adaptive
+    (t(eg2$vectors[, 2:1]) - eg1$vectors) /  eg1$vectors
+
+    tmp <- t(eg2$vectors)
+    dput(half_mat <- (eg2$vectors %*% diag(eg2$values^(-1/2)))[, 2:1])
+    tcrossprod(half_mat) - sig_adaptive
+
+    x <- c(-1, 1)
+    dput(f(drop(mode + half_mat %*% x)) - mvtnorm::dmvnorm(x, log = TRUE) +
     determinant(sig_adaptive)$modulus / 2)
     */
     using namespace integrand;
@@ -195,32 +211,65 @@ context("integrand-binary unit tests") {
     mvn<mix_binary> mvn_bin(bin);
     double const eps = std::pow(
       std::numeric_limits<double>::epsilon(), 1. / 4.);
-    adaptive<mvn<integrand::mix_binary> > ada(
-        mvn_bin, 10000L, -1., eps * eps);
+    /* w/ Cholesky */
+    {
+      adaptive<mvn<integrand::mix_binary> > ada(
+          mvn_bin, true, 10000L, -1., eps * eps);
 
-    arma::vec mode_ex;
-    mode_ex << -0.275739778642164 << 0.0192264549867938;
-    arma::mat neg_hes_inv_chol;
-    neg_hes_inv_chol << 0.680968197783783 << 0
-                     << -0.0223120126667078 << 0.990551648427405;
+      arma::vec mode_ex;
+      mode_ex << -0.275739778642164 << 0.0192264549867938;
+      arma::mat neg_hes_inv_half;
+      neg_hes_inv_half << 0.680968197783783 << 0
+                       << -0.0223120126667078 << 0.990551648427405;
+      neg_hes_inv_half.reshape(2L, 2L);
 
-    for(unsigned i = 0; i < p; ++i)
-      expect_true(std::abs(
-          (mode_ex[i] - ada.dat.mode[i]) / mode_ex[i]) < eps);
-
-    for(unsigned i = 0; i < p * p; ++i)
-      if(ada.dat.neg_hes_inv_chol[i] == 0.)
-        expect_true(neg_hes_inv_chol[i] == 0.);
-      else
+      for(unsigned i = 0; i < p; ++i)
         expect_true(std::abs(
-            (neg_hes_inv_chol[i] - ada.dat.neg_hes_inv_chol[i]) /
-              neg_hes_inv_chol[i]) < eps);
+            (mode_ex[i] - ada.dat.mode[i]) / mode_ex[i]) < eps);
 
-    arma::vec x;
-    x << -1 << 1;
+      for(unsigned i = 0; i < p * p; ++i)
+        if(ada.dat.neg_hes_inv_half[i] == 0.)
+          expect_true(neg_hes_inv_half[i] == 0.);
+        else
+          expect_true(std::abs(
+              (neg_hes_inv_half[i] - ada.dat.neg_hes_inv_half[i]) /
+                neg_hes_inv_half[i]) < eps);
 
-    double const expec_val = -5.2947411042184;
-    expect_true(std::abs(
-        (expec_val - ada(x.memptr(), true)) / expec_val) < eps);
+      arma::vec x;
+      x << -1 << 1;
+
+      double const expec_val = -5.2947411042184;
+      expect_true(std::abs(
+          (expec_val - ada(x.memptr(), true)) / expec_val) < eps);
+    }
+
+    /* w/ Eigen */
+    {
+      adaptive<mvn<integrand::mix_binary> > ada(
+          mvn_bin, false, 10000L, -1., eps * eps);
+
+      arma::vec mode_ex;
+      mode_ex << -0.275739778642164 << 0.0192264549867938;
+      arma::mat neg_hes_inv_half;
+      neg_hes_inv_half << 0.0290325249486965 << -0.990602243561544
+                       << -0.680349027255861 << -0.0199396379687283;
+      neg_hes_inv_half.reshape(2L, 2L);
+
+      for(unsigned i = 0; i < p; ++i)
+        expect_true(std::abs(
+            (mode_ex[i] - ada.dat.mode[i]) / mode_ex[i]) < eps);
+
+      for(unsigned i = 0; i < p * p; ++i)
+        expect_true(std::abs(
+            (neg_hes_inv_half[i] - ada.dat.neg_hes_inv_half[i]) /
+              neg_hes_inv_half[i]) < eps);
+
+        arma::vec x;
+        x << -1 << 1;
+
+        double const expec_val = -5.29494527011595;
+        expect_true(std::abs(
+            (expec_val - ada(x.memptr(), true)) / expec_val) < eps);
+    }
   }
 }
