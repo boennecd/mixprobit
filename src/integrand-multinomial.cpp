@@ -132,11 +132,15 @@ multinomial::mode_res multinomial::find_mode(double const *par) const {
   multinomial_mode_helper helper(*this);
 
   /* settings for Brent */
-  double x_min = -2.58,
-         x_max =  2.58,
+  double delta = delta_old;
+  double x_min = mode_old - delta / 2,
+         x_max = mode_old + delta / 2,
          res;
   double const tol = 1e-3;
-  double delta = x_max - x_min;
+
+  /* reset default values */
+  mode_old = 0.;
+  delta_old = 5.16;
 
   /* perform minimization */
   constexpr size_t const  max_it = 30L;
@@ -149,12 +153,12 @@ multinomial::mode_res multinomial::find_mode(double const *par) const {
       std::numeric_limits<double>::epsilon() * abs(res) + tol / 2.;
     if       (abs(res - x_min) < eps){
       x_max = x_min + .01 * delta;
-      delta *= 2;
+      delta *= 10;
       x_min = x_max - delta;
 
     } else if(abs(res - x_max) < eps){
       x_min = x_max - .01 * delta;
-      delta *= 2;
+      delta *= 10;
       x_max = x_min + delta;
 
     } else
@@ -163,6 +167,9 @@ multinomial::mode_res multinomial::find_mode(double const *par) const {
 
   if(it >= max_it)
     return multinomial::mode_res();
+
+  mode_old = res;
+  delta_old = 1;
 
   /* compute second order derivative and return */
   double const he = helper.he(res);
@@ -390,6 +397,32 @@ arma::mat multinomial::Hessian(double const *par) const {
   }
 
   return (Z * arma::symmatu(wk_mat)) * Z.t();
+}
+
+
+double multinomial_group::operator()
+  (double const *par, bool const ret_log) const {
+  double out(0.);
+  for(auto &x : factors)
+    out += x(par, true);
+
+  if(ret_log)
+    return out;
+  return exp(out);
+}
+
+arma::vec multinomial_group::gr(double const *par) const {
+  arma::vec out(n_par, arma::fill::zeros);
+  for(auto &x : factors)
+    out += x.gr(par);
+  return out;
+}
+
+arma::mat multinomial_group::Hessian(double const *par) const {
+  arma::mat out(n_par, n_par, arma::fill::zeros);
+  for(auto &x : factors)
+    out += x.Hessian(par);
+  return out;
 }
 
 } // namespace integrand

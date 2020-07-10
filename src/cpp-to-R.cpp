@@ -90,6 +90,42 @@ Rcpp::NumericVector aprx_binary_mix(
 }
 
 // [[Rcpp::export]]
+Rcpp::NumericVector aprx_mult_mix(
+    unsigned const n_alt, arma::vec const &eta, arma::mat const &Z,
+    arma::mat const &Sigma, int const maxpts, double const abseps,
+    double const releps, int const key = 2L,
+    bool const is_adaptive = false){
+  using namespace ranrth_aprx;
+  using namespace integrand;
+  using Rcpp::NumericVector;
+
+  parallelrng::set_rng_seeds(1L);
+  auto const res = ([&](){
+    if(is_adaptive){
+      multinomial_group obj(n_alt, Z, eta, Sigma);
+      mvn<multinomial_group > mix_obj(obj);
+
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<multinomial_group> > (mix_obj, true)));
+
+      return integral_arpx(maxpts, key, abseps, releps);
+    }
+
+    set_integrand(std::unique_ptr<base_integrand>(
+        new multinomial_group(n_alt, Z, eta, Sigma)));
+
+    return integral_arpx(maxpts, key, abseps, releps);
+  })();
+
+  NumericVector out = NumericVector::create(res.value);
+  out.attr("error") = res.err;
+  out.attr("inform") = res.inform;
+  out.attr("inivls") = res.inivls;
+
+  return out;
+}
+
+// [[Rcpp::export]]
 Rcpp::NumericVector aprx_jac_binary_mix(
     arma::ivec const &y, arma::vec const &eta, arma::mat const &X,
     arma::mat const &Z, arma::mat const &Sigma, int const maxpts,
@@ -364,6 +400,18 @@ double aprx_binary_mix_ghq(
   return GaussHermite::approx(rule, integrand, is_adaptive);
 }
 
+// [[Rcpp::export]]
+double aprx_mult_mix_ghq(
+    unsigned const n_alt, arma::vec const &eta, arma::mat const &Z,
+    arma::mat const &Sigma, unsigned const b,
+    bool const is_adaptive = false){
+  auto const &rule = GaussHermite::gaussHermiteDataCached(b);
+  integrand::multinomial_group integrand(
+      n_alt, Z, eta, Sigma);
+
+  return GaussHermite::approx(rule, integrand, is_adaptive);
+}
+
 // [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector aprx_binary_mix_qmc(
     arma::ivec const &y, arma::vec eta, arma::mat Z,
@@ -382,60 +430,90 @@ Rcpp::NumericVector aprx_binary_mix_qmc(
   return out;
 }
 
-/* brute force MC estimate */
-// [[Rcpp::export]]
-Rcpp::NumericVector aprx_binary_mix_brute(
-    arma::ivec const &y, arma::vec eta, arma::mat Z,
-    arma::mat const &Sigma, unsigned const n_sim,
-    unsigned const n_threads = 1L, bool const is_is = true){
-  using namespace integrand;
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericVector aprx_mult_mix_qmc(
+    unsigned const n_alt, arma::vec const &eta, arma::mat const &Z,
+    arma::mat const &Sigma, unsigned const n_max,
+    arma::ivec const &seeds, double const releps,
+    bool const is_adaptive = false){
+  using Rcpp::NumericVector;
+  integrand::multinomial_group integrand(n_alt, Z, eta, Sigma);
 
-  std::size_t const p = Sigma.n_cols;
-  mix_binary integrand(y, eta, Z, Sigma);
+  auto const res = qmc::approx(
+    integrand, is_adaptive, n_max, seeds, releps);
+  NumericVector out = NumericVector::create(res.value);
+  out.attr("intvls") = res.intvls;
+  out.attr("error")  = res.err;
+
+  return out;
+}
+
+template<class T>
+Rcpp::NumericVector aprx_brute(
+    std::vector<T> const &int_objs, unsigned const n_sim, bool const is_is){
+  using namespace integrand;
+  if(int_objs.size() == 0L)
+    throw std::invalid_argument("aprx_brute(): invalid int_obj");
+  size_t const p = int_objs[0].get_n_par(),
+       n_threads = int_objs.size();
   arma::vec par_vec(p);
 
   {
-    int const n_use = std::max(unsigned(1L), n_threads);
+  int const n_use = std::max(static_cast<size_t>(1L), n_threads);
 #ifdef _OPENMP
-    omp_set_num_threads(n_use);
+  omp_set_num_threads(n_use);
 #endif
-    parallelrng::set_rng_seeds(n_use);
+  parallelrng::set_rng_seeds(n_use);
   }
 
   welfords out;
 
   if(is_is){
     struct integrand_worker {
-      mix_binary const bin;
-      mvn<mix_binary> const mvn_obj = mvn<mix_binary>(bin);
-      adaptive<mvn<mix_binary> > const ada =
-        adaptive<mvn<mix_binary> >(mvn_obj, true);
+      T const &bin;
+      mvn<T> const mvn_obj = mvn<T>(bin);
+      adaptive<mvn<T> > const ada =
+        adaptive<mvn<T> >(mvn_obj, true);
 
-      integrand_worker(mix_binary const &bin): bin(bin) { }
+      integrand_worker(T const &bin): bin(bin) { }
       integrand_worker(integrand_worker const &other):
         integrand_worker(other.bin) { }
     };
-    integrand_worker const worker(integrand);
+
+    std::vector<integrand_worker> workers;
+    workers.reserve(int_objs.size());
+    for(auto &x : int_objs)
+      workers.emplace_back(x);
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(welPlus:out) firstprivate(par_vec, worker)
+#pragma omp parallel for schedule(static) reduction(welPlus:out) firstprivate(par_vec)
 #endif
     for(unsigned i = 0; i < n_sim; ++i){
       for(unsigned j = 0; j < p; ++j)
         par_vec[j] = rngnorm_wrapper();
 
-      out += antithetic<base_integrand>(worker.ada)(par_vec);
+#ifdef _OPENMP
+      size_t const idx = omp_get_thread_num();
+#else
+      size_t const idx = 0L;
+#endif
+      out += antithetic<base_integrand>(workers[idx].ada)(par_vec);
     }
 
   } else {
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(welPlus:out) firstprivate(par_vec, integrand)
+#pragma omp parallel for schedule(static) reduction(welPlus:out) firstprivate(par_vec)
 #endif
     for(unsigned i = 0; i < n_sim; ++i){
       for(unsigned j = 0; j < p; ++j)
         par_vec[j] = rngnorm_wrapper();
 
-      out += antithetic<base_integrand>(integrand)(par_vec);
+#ifdef _OPENMP
+      size_t const idx = omp_get_thread_num();
+#else
+      size_t const idx = 0L;
+#endif
+      out += antithetic<base_integrand>(int_objs[idx])(par_vec);
     }
   }
 
@@ -443,6 +521,33 @@ Rcpp::NumericVector aprx_binary_mix_brute(
   R_out[0] = out.mean();
   R_out.attr("SE") = std::sqrt(out.var() / (double)n_sim);
   return R_out;
+}
+
+/* brute force MC estimate */
+// [[Rcpp::export]]
+Rcpp::NumericVector aprx_binary_mix_brute(
+    arma::ivec const &y, arma::vec eta, arma::mat Z,
+    arma::mat const &Sigma, unsigned const n_sim,
+    unsigned const n_threads = 1L, bool const is_is = true){
+  std::vector<integrand::mix_binary> objs;
+  objs.reserve(n_threads);
+  for(size_t i = 0; i < n_threads; ++i)
+    objs.emplace_back(y, eta, Z, Sigma);
+
+  return aprx_brute(objs, n_sim, is_is);
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector aprx_mult_mix_brute(
+    unsigned const n_alt, arma::vec const &eta, arma::mat const &Z,
+    arma::mat const &Sigma, unsigned const n_sim,
+    unsigned const n_threads = 1L, bool const is_is = true){
+  std::vector<integrand::multinomial_group> objs;
+  objs.reserve(n_threads);
+  for(size_t i = 0; i < n_threads; ++i)
+    objs.emplace_back(n_alt, Z, eta, Sigma);
+
+  return aprx_brute(objs, n_sim, is_is);
 }
 
 // [[Rcpp::export]]
@@ -511,7 +616,10 @@ arma::mat multinomial_inner_integral
   (arma::mat const &Z, arma::vec const &eta, arma::mat const &Sigma,
    unsigned const n_nodes, bool const is_adaptive, unsigned const n_times,
    arma::vec const &u, unsigned const order = 0L){
-  integrand::multinomial obj(Z, eta, Sigma, n_nodes, is_adaptive);
+  std::unique_ptr<double[]> wk_mem(new double[Z.n_rows + 3L * Z.n_cols]);
+
+  integrand::multinomial obj(
+      Z, eta, arma::chol(Sigma), wk_mem.get(), n_nodes, is_adaptive);
 
   if(order == 0L){
     double out(0.);

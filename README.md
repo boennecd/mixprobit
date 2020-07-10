@@ -262,19 +262,19 @@ independent of the random effect dimension, `p`.
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 1.94
+#> [1] 1.996
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
-#> [1] 2.002
+#> [1] 1.981
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 1.98
+#> [1] 2.005
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 2
+#> [1] 2.002
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 1.972
+#> [1] 1.966
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 2.096
+#> [1] 1.934
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 2.016
+#> [1] 1.992
 ```
 
 Next we perform a quick example.
@@ -2096,6 +2096,259 @@ interface.
 
 Mixed Models with Multinomial Outcomes
 --------------------------------------
+
+A related model is with multinomial outcomes (TODO: write more about the
+model).
+
+We have also made an implementation for this model. We perform a similar
+quick example as before below. We start by assigning functions to
+approximate the marginal likelihood. Then we assign a function to draw a
+covariance matrix, the random effects, the fixed offsets, and the
+outcomes.
+
+``` r
+#####
+# assign approximation functions
+aprx <- within(list(), {
+  get_GHQ_cpp <- function(eta, Z, p, Sigma, b, is_adaptive = FALSE){
+    mixprobit:::set_GH_rule_cached(b)
+    function()
+      mixprobit:::aprx_mult_mix_ghq(eta = eta, n_alt = p, Z = Z, 
+                                    Sigma = Sigma, b = b, 
+                                    is_adaptive = is_adaptive)
+  }
+  get_AGHQ_cpp <- get_GHQ_cpp
+  formals(get_AGHQ_cpp)$is_adaptive <- TRUE
+  
+  get_sim_mth <- function(eta, Z, p, Sigma, maxpts, abseps = -1, 
+                          releps = 1e-4, is_adaptive = FALSE)
+    # Args: 
+    #   key: integer which determines degree of integration rule.
+    function(key)
+      mixprobit:::aprx_mult_mix(
+        eta = eta, n_alt = p, Z = Z, Sigma = Sigma, maxpts = maxpts, 
+        key = key, abseps = abseps, releps = releps, 
+        is_adaptive = is_adaptive)
+  get_Asim_mth <- get_sim_mth
+  formals(get_Asim_mth)$is_adaptive <- TRUE
+  
+  get_qmc <- function(eta, Z, p, Sigma, maxpts, is_adaptive = FALSE, 
+                      releps = 1e-4, n_seqs = 10L, abseps)
+    function(){
+      seeds <- sample.int(2147483646L, n_seqs)
+      mixprobit:::aprx_mult_mix_qmc(
+        eta = eta, n_alt = p, Z = Z, Sigma = Sigma, n_max = maxpts, 
+        is_adaptive = is_adaptive, seeds = seeds, releps = releps)
+    }
+  get_Aqmc <- get_qmc
+  formals(get_Aqmc)$is_adaptive <- TRUE
+})
+```
+
+``` r
+#####
+# returns a simulated data set from one cluster in a mixed multinomial 
+# model.
+# 
+# Args:
+#   n: cluster size.
+#   p: number of random effects and number of categories.
+get_sim_dat <- function(n, p){
+  out <- list(n = n, p = p)
+  within(out, {
+    Z <- diag(p)
+    Sigma <- drop(                       # covariance matrix of random effects
+      rWishart(1, 5 * p, diag(1 / 5 / p, p)))
+    S_chol <- chol(Sigma)
+    u <- drop(rnorm(p) %*% S_chol)       # random effects
+    
+    dat <- replicate(n, {
+      eta <- rnorm(p)
+      lp <- drop(eta + Z %*% u)
+      y <- sample.int(p, 1L, prob = pnorm(lp))
+      Z <- Z[, y] - Z[, -y, drop = FALSE]
+      eta <- eta[y] - eta[-y]
+      list(eta = eta, Z = Z, y = y)
+    }, simplify = FALSE)
+    
+    y <- sapply(dat, `[[`, "y")
+    eta <- do.call(c, lapply(dat, `[[`, "eta"))
+    Z <- do.call(cbind, lapply(dat, `[[`, "Z"))
+    rm(dat, S_chol)
+  })
+}
+
+# example of one data set
+set.seed(1L)
+get_sim_dat(n = 3L, p = 3L)
+#> $n
+#> [1] 3
+#> 
+#> $p
+#> [1] 3
+#> 
+#> $eta
+#> [1] -1.9113 -0.3486  2.1698 -1.1699 -0.3456 -1.6732
+#> 
+#> $y
+#> [1] 3 3 3
+#> 
+#> $u
+#> [1] -0.2510 -0.1036  2.4514
+#> 
+#> $Sigma
+#>         [,1]    [,2]    [,3]
+#> [1,]  0.7254  0.2798 -0.3387
+#> [2,]  0.2798  1.4856 -0.4120
+#> [3,] -0.3387 -0.4120  1.1567
+#> 
+#> $Z
+#>      [,1] [,2] [,3] [,4] [,5] [,6]
+#> [1,]   -1    0   -1    0   -1    0
+#> [2,]    0   -1    0   -1    0   -1
+#> [3,]    1    1    1    1    1    1
+```
+
+Here is a quick example where we compare the approximation methods on
+one data set.
+
+``` r
+#####
+# parameters to change
+n <- 10L              # cluster size
+p <- 4L               # number of random effects and categories
+b <- 15L              # number of nodes to use with GHQ
+maxpts <- p * 10000L  # factor to set the (maximum) number of
+                      # evaluations of the integrand with
+                      # the other methods
+
+#####
+# variables used in simulation
+set.seed(1)
+dat <- get_sim_dat(n = n, p = p)
+
+# shorter than calling `with(dat, ...)`
+wd <- function(expr)
+  eval(bquote(with(dat, .(substitute(expr)))), parent.frame())
+
+#####
+# get the functions to use
+GHQ_cpp  <- wd(aprx$get_GHQ_cpp (eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, b = b))
+AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, b = b))
+
+# cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
+#                                     maxpts = maxpts))
+# cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
+#                                     maxpts = maxpts))
+
+qmc_aprx <- wd(
+  aprx$get_qmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
+               maxpts = maxpts))
+qmc_Aaprx <- wd(
+  aprx$get_Aqmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
+                maxpts = maxpts))
+
+sim_aprx <-  wd(aprx$get_sim_mth(eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, maxpts = maxpts))
+sim_Aaprx <- wd(aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, maxpts = maxpts))
+
+
+#####
+# compare results. Start with the simulation based methods with a lot of
+# samples. We take this as the ground truth
+# truth_maybe_cdf <- wd( 
+#   aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+#                     abseps = 1e-11))()
+truth_maybe_Aqmc <- wd(
+  aprx$get_Aqmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, maxpts = 1e6, 
+                releps = 1e-11)())
+truth_maybe_Aqmc
+#> [1] 0.000447
+#> attr(,"intvls")
+#> [1] 1000000
+#> attr(,"error")
+#> [1] 3.992e-08
+
+truth_maybe_Amc <- wd(
+  aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
+                    maxpts = 1e6, releps = 1e-11)(2L))
+truth_maybe_Amc
+#> [1] 0.0004472
+#> attr(,"error")
+#> [1] 1.114e-07
+#> attr(,"inform")
+#> [1] 1
+#> attr(,"inivls")
+#> [1] 999991
+
+truth <- wd(
+  mixprobit:::aprx_mult_mix_brute(
+    eta = eta, Z = Z, n_alt = p - 1L, Sigma = Sigma,  n_sim = 1e7, 
+    n_threads = 6L))
+c(Estiamte = truth, SE = attr(truth, "SE"),  
+  `Estimate (log)` = log(c(truth)),  
+  `SE (log)` = abs(attr(truth, "SE") / truth))
+#>       Estiamte             SE Estimate (log)       SE (log) 
+#>      4.470e-04      2.329e-08     -7.713e+00      5.211e-05
+truth <- c(truth)
+
+# all.equal(truth, c(truth_maybe_cdf))
+all.equal(truth, c(truth_maybe_Aqmc))
+#> [1] "Mean relative difference: 2.416e-05"
+all.equal(truth, c(truth_maybe_Amc))
+#> [1] "Mean relative difference: 0.000419"
+
+# compare with using fewer samples and GHQ
+all.equal(truth,   GHQ_cpp())
+#> [1] "Mean relative difference: 0.000157"
+all.equal(truth,   AGHQ_cpp())
+#> [1] "Mean relative difference: 0.0001124"
+all.equal(truth, c(qmc_aprx()))
+#> [1] "Mean relative difference: 0.002574"
+all.equal(truth, c(qmc_Aaprx()))
+#> [1] "Mean relative difference: 0.001916"
+# all.equal(truth, c(cdf_aprx_cpp()))
+all.equal(truth, c(sim_aprx(1L)))
+#> [1] "Mean relative difference: 0.03461"
+all.equal(truth, c(sim_aprx(2L)))
+#> [1] "Mean relative difference: 0.02268"
+all.equal(truth, c(sim_aprx(3L)))
+#> [1] "Mean relative difference: 0.007367"
+all.equal(truth, c(sim_aprx(4L)))
+#> [1] "Mean relative difference: 0.005714"
+all.equal(truth, c(sim_Aaprx(1L)))
+#> [1] "Mean relative difference: 2.841e-05"
+all.equal(truth, c(sim_Aaprx(2L)))
+#> [1] "Mean relative difference: 0.0007702"
+all.equal(truth, c(sim_Aaprx(3L)))
+#> [1] "Mean relative difference: 0.0002279"
+all.equal(truth, c(sim_Aaprx(4L)))
+#> [1] "Mean relative difference: 0.0007256"
+
+# compare computations times
+microbenchmark::microbenchmark(
+  `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
+  # `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
+  QMC = qmc_aprx(), `QMC Adaptive` = qmc_Aaprx(),
+  `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
+  `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
+  `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
+  times = 5)
+#> Unit: seconds
+#>                         expr   min    lq  mean median    uq   max neval
+#>                    GHQ (C++) 1.369 1.383 1.395  1.400 1.408 1.413     5
+#>                   AGHQ (C++) 1.349 1.349 1.355  1.355 1.360 1.364     5
+#>                          QMC 1.076 1.098 1.103  1.100 1.118 1.126     5
+#>                 QMC Adaptive 1.022 1.027 1.129  1.053 1.068 1.475     5
+#>           Genz & Monahan (1) 1.097 1.097 1.107  1.102 1.111 1.128     5
+#>           Genz & Monahan (2) 1.096 1.113 1.117  1.118 1.124 1.136     5
+#>           Genz & Monahan (3) 1.101 1.112 1.119  1.120 1.124 1.136     5
+#>           Genz & Monahan (4) 1.111 1.111 1.128  1.120 1.143 1.156     5
+#>  Genz & Monahan Adaptive (2) 1.049 1.050 1.063  1.055 1.081 1.083     5
+```
 
 ### Approximating the Inner Integral
 

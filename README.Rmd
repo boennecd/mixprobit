@@ -1213,11 +1213,197 @@ C++ directly. This was the primary motivation for creating our own
 interface.
 
 ## Mixed Models with Multinomial Outcomes
+A related model is with multinomial outcomes (TODO: write more about 
+the model).
+
+We have also made an implementation for this model. We perform a similar 
+quick example as before below. We start by assigning functions to 
+approximate the marginal likelihood. Then we assign a function to draw 
+a covariance matrix, the random effects, the fixed offsets, and the 
+outcomes. 
 
 ```{r mult_cleanup_pre, echo = FALSE}
 rm(list = ls())
 ```
 
+```{r mult_def_func, cache = 1}
+#####
+# assign approximation functions
+aprx <- within(list(), {
+  get_GHQ_cpp <- function(eta, Z, p, Sigma, b, is_adaptive = FALSE){
+    mixprobit:::set_GH_rule_cached(b)
+    function()
+      mixprobit:::aprx_mult_mix_ghq(eta = eta, n_alt = p, Z = Z, 
+                                    Sigma = Sigma, b = b, 
+                                    is_adaptive = is_adaptive)
+  }
+  get_AGHQ_cpp <- get_GHQ_cpp
+  formals(get_AGHQ_cpp)$is_adaptive <- TRUE
+  
+  get_sim_mth <- function(eta, Z, p, Sigma, maxpts, abseps = -1, 
+                          releps = 1e-4, is_adaptive = FALSE)
+    # Args: 
+    #   key: integer which determines degree of integration rule.
+    function(key)
+      mixprobit:::aprx_mult_mix(
+        eta = eta, n_alt = p, Z = Z, Sigma = Sigma, maxpts = maxpts, 
+        key = key, abseps = abseps, releps = releps, 
+        is_adaptive = is_adaptive)
+  get_Asim_mth <- get_sim_mth
+  formals(get_Asim_mth)$is_adaptive <- TRUE
+  
+  get_qmc <- function(eta, Z, p, Sigma, maxpts, is_adaptive = FALSE, 
+                      releps = 1e-4, n_seqs = 10L, abseps)
+    function(){
+      seeds <- sample.int(2147483646L, n_seqs)
+      mixprobit:::aprx_mult_mix_qmc(
+        eta = eta, n_alt = p, Z = Z, Sigma = Sigma, n_max = maxpts, 
+        is_adaptive = is_adaptive, seeds = seeds, releps = releps)
+    }
+  get_Aqmc <- get_qmc
+  formals(get_Aqmc)$is_adaptive <- TRUE
+})
+```
+
+```{r mult_assign_sim_func, cache = 1}
+#####
+# returns a simulated data set from one cluster in a mixed multinomial 
+# model.
+# 
+# Args:
+#   n: cluster size.
+#   p: number of random effects and number of categories.
+get_sim_dat <- function(n, p){
+  out <- list(n = n, p = p)
+  within(out, {
+    Z <- diag(p)
+    Sigma <- drop(                       # covariance matrix of random effects
+      rWishart(1, 5 * p, diag(1 / 5 / p, p)))
+    S_chol <- chol(Sigma)
+    u <- drop(rnorm(p) %*% S_chol)       # random effects
+    
+    dat <- replicate(n, {
+      eta <- rnorm(p)
+      lp <- drop(eta + Z %*% u)
+      y <- sample.int(p, 1L, prob = pnorm(lp))
+      Z <- Z[, y] - Z[, -y, drop = FALSE]
+      eta <- eta[y] - eta[-y]
+      list(eta = eta, Z = Z, y = y)
+    }, simplify = FALSE)
+    
+    y <- sapply(dat, `[[`, "y")
+    eta <- do.call(c, lapply(dat, `[[`, "eta"))
+    Z <- do.call(cbind, lapply(dat, `[[`, "Z"))
+    rm(dat, S_chol)
+  })
+}
+
+# example of one data set
+set.seed(1L)
+get_sim_dat(n = 3L, p = 3L)
+```
+
+Here is a quick example where we compare the approximation methods on 
+one data set.
+
+```{r mult_quick_ex, cache = 1}
+#####
+# parameters to change
+n <- 10L              # cluster size
+p <- 4L               # number of random effects and categories
+b <- 15L              # number of nodes to use with GHQ
+maxpts <- p * 10000L  # factor to set the (maximum) number of
+                      # evaluations of the integrand with
+                      # the other methods
+
+#####
+# variables used in simulation
+set.seed(1)
+dat <- get_sim_dat(n = n, p = p)
+
+# shorter than calling `with(dat, ...)`
+wd <- function(expr)
+  eval(bquote(with(dat, .(substitute(expr)))), parent.frame())
+
+#####
+# get the functions to use
+GHQ_cpp  <- wd(aprx$get_GHQ_cpp (eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, b = b))
+AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, b = b))
+
+# cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
+#                                     maxpts = maxpts))
+# cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
+#                                     maxpts = maxpts))
+
+qmc_aprx <- wd(
+  aprx$get_qmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
+               maxpts = maxpts))
+qmc_Aaprx <- wd(
+  aprx$get_Aqmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
+                maxpts = maxpts))
+
+sim_aprx <-  wd(aprx$get_sim_mth(eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, maxpts = maxpts))
+sim_Aaprx <- wd(aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L, 
+                                 Sigma = Sigma, maxpts = maxpts))
+
+
+#####
+# compare results. Start with the simulation based methods with a lot of
+# samples. We take this as the ground truth
+# truth_maybe_cdf <- wd( 
+#   aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
+#                     abseps = 1e-11))()
+truth_maybe_Aqmc <- wd(
+  aprx$get_Aqmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, maxpts = 1e6, 
+                releps = 1e-11)())
+truth_maybe_Aqmc
+
+truth_maybe_Amc <- wd(
+  aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
+                    maxpts = 1e6, releps = 1e-11)(2L))
+truth_maybe_Amc
+
+truth <- wd(
+  mixprobit:::aprx_mult_mix_brute(
+    eta = eta, Z = Z, n_alt = p - 1L, Sigma = Sigma,  n_sim = 1e7, 
+    n_threads = 6L))
+c(Estiamte = truth, SE = attr(truth, "SE"),  
+  `Estimate (log)` = log(c(truth)),  
+  `SE (log)` = abs(attr(truth, "SE") / truth))
+truth <- c(truth)
+
+# all.equal(truth, c(truth_maybe_cdf))
+all.equal(truth, c(truth_maybe_Aqmc))
+all.equal(truth, c(truth_maybe_Amc))
+
+# compare with using fewer samples and GHQ
+all.equal(truth,   GHQ_cpp())
+all.equal(truth,   AGHQ_cpp())
+all.equal(truth, c(qmc_aprx()))
+all.equal(truth, c(qmc_Aaprx()))
+# all.equal(truth, c(cdf_aprx_cpp()))
+all.equal(truth, c(sim_aprx(1L)))
+all.equal(truth, c(sim_aprx(2L)))
+all.equal(truth, c(sim_aprx(3L)))
+all.equal(truth, c(sim_aprx(4L)))
+all.equal(truth, c(sim_Aaprx(1L)))
+all.equal(truth, c(sim_Aaprx(2L)))
+all.equal(truth, c(sim_Aaprx(3L)))
+all.equal(truth, c(sim_Aaprx(4L)))
+
+# compare computations times
+microbenchmark::microbenchmark(
+  `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
+  # `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
+  QMC = qmc_aprx(), `QMC Adaptive` = qmc_Aaprx(),
+  `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
+  `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
+  `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
+  times = 5)
+```
 
 ### Approximating the Inner Integral
 The integrand with multinomial outcomes is intractable and requires an 

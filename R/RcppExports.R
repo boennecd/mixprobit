@@ -13,6 +13,10 @@ aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L, 
     .Call('_mixprobit_aprx_binary_mix', PACKAGE = 'mixprobit', y, eta, Z, Sigma, maxpts, abseps, releps, key, is_adaptive)
 }
 
+aprx_mult_mix <- function(n_alt, eta, Z, Sigma, maxpts, abseps, releps, key = 2L, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_mult_mix', PACKAGE = 'mixprobit', n_alt, eta, Z, Sigma, maxpts, abseps, releps, key, is_adaptive)
+}
+
 aprx_jac_binary_mix <- function(y, eta, X, Z, Sigma, maxpts, abseps, releps, key = 2L, is_adaptive = FALSE) {
     .Call('_mixprobit_aprx_jac_binary_mix', PACKAGE = 'mixprobit', y, eta, X, Z, Sigma, maxpts, abseps, releps, key, is_adaptive)
 }
@@ -37,12 +41,24 @@ aprx_binary_mix_ghq <- function(y, eta, Z, Sigma, b, is_adaptive = FALSE) {
     .Call('_mixprobit_aprx_binary_mix_ghq', PACKAGE = 'mixprobit', y, eta, Z, Sigma, b, is_adaptive)
 }
 
+aprx_mult_mix_ghq <- function(n_alt, eta, Z, Sigma, b, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_mult_mix_ghq', PACKAGE = 'mixprobit', n_alt, eta, Z, Sigma, b, is_adaptive)
+}
+
 aprx_binary_mix_qmc <- function(y, eta, Z, Sigma, n_max, seeds, releps, is_adaptive = FALSE) {
     .Call('_mixprobit_aprx_binary_mix_qmc', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_max, seeds, releps, is_adaptive)
 }
 
+aprx_mult_mix_qmc <- function(n_alt, eta, Z, Sigma, n_max, seeds, releps, is_adaptive = FALSE) {
+    .Call('_mixprobit_aprx_mult_mix_qmc', PACKAGE = 'mixprobit', n_alt, eta, Z, Sigma, n_max, seeds, releps, is_adaptive)
+}
+
 aprx_binary_mix_brute <- function(y, eta, Z, Sigma, n_sim, n_threads = 1L, is_is = TRUE) {
     .Call('_mixprobit_aprx_binary_mix_brute', PACKAGE = 'mixprobit', y, eta, Z, Sigma, n_sim, n_threads, is_is)
+}
+
+aprx_mult_mix_brute <- function(n_alt, eta, Z, Sigma, n_sim, n_threads = 1L, is_is = TRUE) {
+    .Call('_mixprobit_aprx_mult_mix_brute', PACKAGE = 'mixprobit', n_alt, eta, Z, Sigma, n_sim, n_threads, is_is)
 }
 
 for_rngnorm_wrapper_test <- function(n, n_threads) {
