@@ -7,6 +7,7 @@
 #include "my_pmvnorm.h"
 #include "sobol.h"
 #include "qmc.h"
+#include "integrand-multinomial.h"
 
 #include <vector>
 
@@ -498,4 +499,41 @@ arma::mat eval_sobol(unsigned const n, SEXP ptr){
   }
 
   return arma::mat(functor->dimen, 0L);
+}
+
+/**
+ Evalutes the inner integral needed for multinomial outcomes. I.e. the
+ conditional density given the random effects. The `n_times` argument is
+ added to compare the run times.
+ */
+// [[Rcpp::export(rng = false)]]
+arma::mat multinomial_inner_integral
+  (arma::mat const &Z, arma::vec const &eta, arma::mat const &Sigma,
+   unsigned const n_nodes, bool const is_adaptive, unsigned const n_times,
+   arma::vec const &u, unsigned const order = 0L){
+  integrand::multinomial obj(Z, eta, Sigma, n_nodes, is_adaptive);
+
+  if(order == 0L){
+    double out(0.);
+    for(size_t i = 0; i < n_times; ++i)
+      out = obj(u.memptr(), false);
+
+    arma::mat m(1, 1);
+    m[0] = out;
+    return m;
+
+  } else if(order == 1L){
+    arma::vec out;
+
+    for(size_t i = 0; i < n_times; ++i)
+      out = obj.gr(u.memptr());
+
+    return out;
+  }
+
+  arma::mat out;
+  for(size_t i = 0; i < n_times; ++i)
+    out = obj.Hessian(u.memptr());
+
+  return out;
 }

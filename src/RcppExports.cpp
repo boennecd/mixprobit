@@ -234,6 +234,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// multinomial_inner_integral
+arma::mat multinomial_inner_integral(arma::mat const& Z, arma::vec const& eta, arma::mat const& Sigma, unsigned const n_nodes, bool const is_adaptive, unsigned const n_times, arma::vec const& u, unsigned const order);
+RcppExport SEXP _mixprobit_multinomial_inner_integral(SEXP ZSEXP, SEXP etaSEXP, SEXP SigmaSEXP, SEXP n_nodesSEXP, SEXP is_adaptiveSEXP, SEXP n_timesSEXP, SEXP uSEXP, SEXP orderSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< arma::mat const& >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type n_nodes(n_nodesSEXP);
+    Rcpp::traits::input_parameter< bool const >::type is_adaptive(is_adaptiveSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type n_times(n_timesSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< unsigned const >::type order(orderSEXP);
+    rcpp_result_gen = Rcpp::wrap(multinomial_inner_integral(Z, eta, Sigma, n_nodes, is_adaptive, n_times, u, order));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP run_testthat_tests();
 
@@ -253,6 +270,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_my_pmvnorm_cpp", (DL_FUNC) &_mixprobit_my_pmvnorm_cpp, 4},
     {"_mixprobit_get_sobol_obj", (DL_FUNC) &_mixprobit_get_sobol_obj, 3},
     {"_mixprobit_eval_sobol", (DL_FUNC) &_mixprobit_eval_sobol, 2},
+    {"_mixprobit_multinomial_inner_integral", (DL_FUNC) &_mixprobit_multinomial_inner_integral, 8},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };

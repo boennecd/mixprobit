@@ -27,6 +27,7 @@
 #include "gaus-Hermite.h"
 #include <memory>
 #include <map>
+#include <limits>
 
 namespace {
 void buildHermiteJacobi(arma::vec &D, arma::vec &E){
@@ -144,29 +145,31 @@ inline double approx_rec(
 
   unsigned const b = x.n_elem,
              c_lvl = par.n_elem - lvl;
-  double out(0.);
+  double out(-std::numeric_limits<double>::infinity());
   for(unsigned j = 0; j < b; ++j){
     par[c_lvl] = x[j];
-    out += is_final ?
-      std::exp(func(par.begin(), true) + w_log + w_logs[j]) :
-      approx_rec(x, w_logs, func, lvl - 1L, par, w_log + w_logs[j]);
+    double const new_term =
+      is_final ?
+      func(par.begin(), true) + w_log + w_logs[j] :
+      approx_rec(x, w_logs, func, lvl - 1L, par, w_log + w_logs[j]),
+                  largest = std::max(out, new_term);
 
+    out = largest +
+      std::log(std::exp(out - largest) + std::exp(new_term - largest));
   }
 
   return out;
 }
 
 namespace GaussHermite {
-HermiteData::HermiteData(unsigned const n): x(n), w(n) { }
-
 HermiteData gaussHermiteData(unsigned const n) {
   assert(n > 0);
-  HermiteData out(n);
+  arma::vec x(n), w(n);
 
   // Build Gauss-Hermite integration rules
-  gaussHermiteDataGolubWelsch(out.x, out.w);
+  gaussHermiteDataGolubWelsch(x, w);
 
-  return out;
+  return { std::move(x), std::move(w) };
 }
 
 HermiteData const& gaussHermiteDataCached(unsigned const n){
@@ -195,11 +198,10 @@ double approx(HermiteData const &rule, base_integrand const &func,
     return approx(rule, new_func, false);
   }
 
-  arma::vec const w_logs = arma::log(rule.w),
-                  x_use  = std::sqrt(2) * rule.x;
+  arma::vec const x_use  = std::sqrt(2) * rule.x;
   arma::vec par(n_par);
 
-  return approx_rec(x_use, w_logs, func, n_par, par) /
+  return std::exp(approx_rec(x_use, rule.w_log, func, n_par, par)) /
     std::pow(M_PI, (double)n_par / 2.);
 }
 } // namespace GaussHermite

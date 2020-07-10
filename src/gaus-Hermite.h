@@ -32,9 +32,13 @@ namespace GaussHermite {
 using integrand::base_integrand;
 
 struct HermiteData {
-  arma::vec x, w;
+  const arma::vec x, w,
+                  w_log = arma::log(w);
 
-  HermiteData(unsigned const);
+  HermiteData(arma::vec const &x, arma::vec const &w): x(x), w(w) {
+    if(x.n_elem != w.n_elem)
+      throw std::invalid_argument("HermiteData::HermiteData(): invalid x");
+  }
 };
 
 HermiteData gaussHermiteData(unsigned const);
@@ -44,6 +48,6 @@ HermiteData const& gaussHermiteDataCached(unsigned const);
 
 double approx(HermiteData const&, base_integrand const&,
               bool const is_adaptive = false);
-}
+} // namespace GaussHermite
 #endif
 

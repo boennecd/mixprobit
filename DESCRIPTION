@@ -19,7 +19,13 @@ Authors@R: c(
   person("Diethelm", "Wuertz", 
          role = c("cph")),
   person("Christophe", "Dutang", 
-         role = c("cph")))
+         role = c("cph")),
+  person("R-core", email = "R-core@R-project.org",
+         role = "cph"), 
+  person("Robert", "Gentleman", 
+         role = "cph"),
+  person("Ross", "Ihaka", 
+         role = "cph"))
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: GPL-2

@@ -13,7 +13,7 @@ nocite: |
 ```{r setup, echo = FALSE, cache=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE, comment = "#>", fig.path = "README-", dpi = 124, 
-  error = FALSE)
+  error = FALSE, fig.path = "man/figures/README-")
 options(digits = 4)
 ```
 
@@ -1135,7 +1135,7 @@ a big overhead which can be avoided in the package so we have created our
 own interface to the Fortran functions. As we show below, the difference in 
 computation time is quite substantial. 
 
-```{r show_randtoolbox_diff}
+```{r show_randtoolbox_diff, cache = 1}
 # assign function to get Sobol sequences from this package
 library(randtoolbox)
 get_sobol_seq <- function(dim, scrambling = 0L, seed = formals(sobol)$seed){
@@ -1211,5 +1211,191 @@ microbenchmark::microbenchmark(
 Lastly, the C++ interface we have created allow us to call the Fortran from 
 C++ directly. This was the primary motivation for creating our own 
 interface.
+
+## Mixed Models with Multinomial Outcomes
+
+```{r mult_cleanup_pre, echo = FALSE}
+rm(list = ls())
+```
+
+
+### Approximating the Inner Integral
+The integrand with multinomial outcomes is intractable and requires an 
+approximation. To be more precise, we need an approximation of
+
+$$
+\begin{align*}
+h(\vec u) &= \int \phi(a)\prod_{k = 1}^c
+   \Phi\left(a + \eta_k + \vec z_k^\top\vec u\right) du \\
+&=\int \phi(a)\prod_{k = 1}^c
+   \Phi\left(\eta_k (a, \vec u)\right) du
+\end{align*}
+$$
+
+with $\eta_k (a, \vec u) = a + \eta_k + \vec z_k^\top\vec u$. Moreover, 
+we need an approximations of the gradient and Hessian with respect to 
+$\vec u$ of $\log h(\vec u)$. We can easily compute the these if we have an 
+approximations of the gradient and Hessian with respect to 
+$x_k = \vec z_k^\top\vec u$. Let $e_k(a) = \eta_k(a, \vec u)$ which 
+implicitly depends on a given value of $\vec u$. Then the latter derivatives 
+are
+
+$$
+\begin{align*}
+\frac{\partial}{\partial x_i} \log h &=
+  \frac{
+  \int \phi(a)\phi(e_i(a))
+  \prod_{k\ne i}\Phi(e_k(a)) da}{
+  \int \phi(a)\prod_{k = 1}^c\Phi(e_{k}(a)) da} \\
+\frac{\partial^2}{\partial x_i^2}\log h &=
+ -\bigg(
+ \left[\int \phi(a)e_i(a)\phi(e_{i}(a))
+ \prod_{k\ne i}\Phi(e_{k}(a))da\right]
+ \left[\int \phi(a)\prod_{k = 1}^c\Phi(e_k(a)) da\right]\\
+ &\hspace{20pt}
+ +\left[\int \phi(a)\phi(e_i(a))
+ \prod_{k\ne i}\Phi(e_k(a))da\right]^2\bigg) \\
+ &\hspace{20pt}\bigg/\left[\int \phi(a)
+ \prod_{k = 1}^c\Phi(e_k(a)) da\right]^2 \\
+\frac{\partial^2}{\partial x_i\partial x_j}\log h &=
+ \bigg(
+ \left[\int \phi(a)\prod_{k = 1}^c\Phi(e_k(a)) da\right]
+ \left[\int \phi(a)\phi(e_i(a))\phi(e_j(a))
+ \prod_{k\ne i,j}\Phi(e_k(a))da\right] \\
+ &\hspace{20pt} -
+ \left[\int \phi(a)\phi(e_i(a))
+ \prod_{k\ne i}\Phi(e_k(a))da\right]
+ \left[\int \phi(a)\phi(e_j(a))
+ \prod_{k\ne j}\Phi(e_k(a))da\right]\bigg) \\
+ &\hspace{20pt}\bigg/
+ \left[\int \phi(a)\prod_{k = 1}^c\Phi(e_k(a)) da\right]^2
+\end{align*}
+$$
+
+This requires an approximation of four different types of integrals and is 
+what we have implemented. Below, we consider an approximation $h(\vec u)$. 
+We have implemented both an adaptive and non-adaptive version of GHQ. 
+Thus, we interested in comparing which version is fastest and a high 
+precision. 
+
+```{r aprx_mult_inner, cache = 1, fig.keep = "last", fig.height = 3}
+# define function to get test data for a given number of alternative 
+# groups 
+get_ex_data <- function(n_alt){
+  Z <- Sigma <- diag(1., n_alt)
+  Sigma[lower.tri(Sigma)] <- Sigma[upper.tri(Sigma)] <- -.1
+  eta <- seq(-1, 1, length.out = n_alt)
+  
+  list(Z = Z, Sigma = Sigma, eta = eta)
+}
+
+# use the data to assign two functions to approximate the "inner" integral
+dat <- get_ex_data(3L)
+get_aprx_ghq <- function(dat, is_adaptive, u)
+  function(n_nodes, n_times = 1L, order = 0L) 
+    with(dat, drop(mixprobit:::multinomial_inner_integral(
+      Z = Z, eta = eta, Sigma = Sigma, n_nodes = n_nodes, 
+      is_adaptive = is_adaptive, n_times = n_times, u = u, 
+      order = order)))
+
+set.seed(1)
+u <- drop(mvtnorm::rmvnorm(1L, sigma = dat$Sigma))
+# the adaptive version 
+adap   <- get_aprx_ghq(dat, TRUE , u)
+# the non-adaptive version
+n_adap <- get_aprx_ghq(dat, FALSE, u)
+adap  (10L)
+n_adap(10L)
+
+# plot one example (open circle: AGHQ; filled circle: GHQ)
+ns <- 3:30
+par(mar = c(5, 5, 1, 1), mfcol = c(1, 2))
+vals <- cbind(sapply(ns, adap), sapply(ns, n_adap))
+matplot(ns[1:7], vals[1:7, ], pch = c(1, 16), col = "black",
+        xlab = "Number of nodes", ylab = "Integral aprx.")
+abline(h = tail(vals, 1L)[, 1], lty = 3)
+matplot(ns[-(1:7)], vals[-(1:7), ], pch = c(1, 16), col = "black",
+        xlab = "Number of nodes", ylab = "Integral aprx.")
+abline(h = tail(vals, 1L)[, 1], lty = 3)
+
+# compare approximation time
+microbenchmark::microbenchmark(
+  `AGHQ 3`  = adap  (3L , n_times = 1000L),
+  `AGHQ 7`  = adap  (7L , n_times = 1000L), 
+  ` GHQ 3`  = n_adap(3L , n_times = 1000L), 
+  ` GHQ 7`  = n_adap(7L , n_times = 1000L),
+  ` GHQ 21` = n_adap(21L, n_times = 1000L))
+```
+
+The adaptive version is much more precise. Moreover, the it seems that 5 
+nodes is about sufficient. As of this writing, it takes about 1.9
+milliseconds to do 1000 evaluations of the integrand. This implies about 1.9 
+microseconds per integrand evaluation which, unfortunately, will add when 
+we have to marginalize over the random effects, $\vec u$. 
+
+Similar to what we do above, we consider approximating the gradient and 
+Hessian of $\log h(\vec u)$ with respect to $\vec u$ below. 
+
+```{r grads_aprx_mult_inner, cache = 1, dependson = "aprx_mult_inner", fig.keep="last"}
+#####
+# the gradient
+adap  (10L, order = 1L)
+n_adap(10L, order = 1L)
+
+# check precision. We plot the errors now with the black being the 
+# adaptive version and gray being the non-adaptive version
+va <- t(sapply(ns,   adap, order = 1L))
+vn <- t(sapply(ns, n_adap, order = 1L))
+est <- rep(drop(tail(va, 1)), each = length(ns))
+va <- va - est
+vn <- vn - est
+matplot(
+  ns[1:10], cbind(va, vn)[1:10, ], pch = rep(as.character(1:NCOL(va)), 2), 
+  xlab = "Number of nodes", ylab = "Gradient aprx. (error)", 
+  col = rep(c("black", "darkgray"), each = NCOL(va)), type = "b", 
+  lty = rep(c(1, 2), each = NCOL(va)))
+
+# compare approximation time
+microbenchmark::microbenchmark(
+  `AGHQ 3`  = adap  (3L , n_times = 1000L, order = 1L),
+  `AGHQ 7`  = adap  (7L , n_times = 1000L, order = 1L), 
+  ` GHQ 3`  = n_adap(3L , n_times = 1000L, order = 1L), 
+  ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 1L),
+  ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 1L))
+```
+
+```{r hess_aprx_mult_inner, cache = 1, dependson = "aprx_mult_inner", fig.keep="last"}
+#####
+# the Hessian
+adap  (10L, order = 2L)
+n_adap(10L, order = 2L)
+
+# check precision. We plot the errors now with the black being the 
+# adaptive version and gray being the non-adaptive version
+va <- t(sapply(ns, adap, order = 2L))
+vn <- t(sapply(ns, n_adap, order = 2L))
+keep <- which(lower.tri(matrix(nc = 3, nr = 3), diag = TRUE))
+va <- va[, keep]
+vn <- vn[, keep]
+est <- rep(drop(tail(va, 1)), each = length(ns))
+va <- va - est
+vn <- vn - est
+matplot(
+  ns[1:10], cbind(va, vn)[1:10, ], pch = rep(as.character(1:NCOL(va)), 2), 
+  xlab = "Number of nodes", ylab = "Hessian aprx. (error)", 
+  col = rep(c("black", "darkgray"), each = NCOL(va)), type = "b", 
+  lty = rep(c(1, 2), each = NCOL(va)))
+
+# compare approximation time
+microbenchmark::microbenchmark(
+  `AGHQ 3`  = adap  (3L , n_times = 1000L, order = 2L),
+  `AGHQ 7`  = adap  (7L , n_times = 1000L, order = 2L), 
+  ` GHQ 3`  = n_adap(3L , n_times = 1000L, order = 2L), 
+  ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 2L),
+  ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 2L))
+```
+
+It does not take much more time and using an adaptive method only seems more 
+attractive as the overhead from finding a mode is relatively smaller.
 
 ## References

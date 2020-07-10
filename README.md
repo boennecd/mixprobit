@@ -262,19 +262,19 @@ independent of the random effect dimension, `p`.
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 1.965
+#> [1] 1.94
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
-#> [1] 2.1
+#> [1] 2.002
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 1.942
+#> [1] 1.98
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 1.999
+#> [1] 2
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 2.029
+#> [1] 1.972
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 2.058
+#> [1] 2.096
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 2.011
+#> [1] 2.016
 ```
 
 Next we perform a quick example.
@@ -1973,8 +1973,6 @@ the difference in computation time is quite substantial.
 ``` r
 # assign function to get Sobol sequences from this package
 library(randtoolbox)
-#> Loading required package: rngWELL
-#> This is randtoolbox. For an overview, type 'help("randtoolbox")'.
 get_sobol_seq <- function(dim, scrambling = 0L, seed = formals(sobol)$seed){
   ptr <- mixprobit:::get_sobol_obj(dimen = dim, scrambling = scrambling, 
                                    seed = seed)
@@ -1994,8 +1992,8 @@ microbenchmark::microbenchmark(
   randtoolbox = sobol(n = n, dim = dim), times = 1000)
 #> Unit: microseconds
 #>         expr    min     lq  mean median    uq  max neval
-#>    mixprobit  8.512  9.808 13.57  11.95 12.73 1905  1000
-#>  randtoolbox 57.110 59.996 65.28  61.71 64.23 2037  1000
+#>    mixprobit  8.259  9.459 13.65  11.61 12.47 1841  1000
+#>  randtoolbox 55.611 58.913 66.59  60.83 64.39 1768  1000
 
 # w/ larger dim
 dim <- 50L
@@ -2005,9 +2003,9 @@ microbenchmark::microbenchmark(
   mixprobit = get_sobol_seq(dim)(n), 
   randtoolbox = sobol(n = n, dim = dim), times = 1000)
 #> Unit: microseconds
-#>         expr   min    lq  mean median    uq     max neval
-#>    mixprobit 17.07 19.11 22.00  22.00 23.85   69.93  1000
-#>  randtoolbox 74.00 78.90 85.77  81.74 86.15 2063.66  1000
+#>         expr   min    lq  mean median    uq    max neval
+#>    mixprobit 17.07 18.98 22.31  21.79 23.69  123.8  1000
+#>  randtoolbox 72.95 77.34 86.08  80.50 84.83 2013.8  1000
 
 #####
 # after having initialized
@@ -2030,12 +2028,12 @@ microbenchmark::microbenchmark(
   times = 1000)
 #> Unit: microseconds
 #>                        expr     min      lq    mean  median      uq     max
-#>       mixprobit   (1 point)   3.510   4.313   6.070   5.788   6.579   60.73
-#>       randtoolbox (1 point)  38.772  41.763  45.497  43.507  45.822  220.35
-#>    mixprobit   (100 points)   5.665   6.822   8.682   8.296   9.151   55.70
-#>    randtoolbox (100 points)  43.387  46.606  50.598  48.499  51.217  150.33
-#>  mixprobit   (10000 points) 180.984 196.744 216.120 199.964 208.849 2866.22
-#>  randtoolbox (10000 points) 376.153 389.353 467.703 397.048 422.930 3250.54
+#>       mixprobit   (1 point)   3.332   4.038   5.295   5.335   6.006   18.09
+#>       randtoolbox (1 point)  38.426  40.888  43.377  42.240  43.974  105.86
+#>    mixprobit   (100 points)   5.478   6.508   7.740   7.739   8.330   40.33
+#>    randtoolbox (100 points)  42.957  45.479  48.474  46.899  48.733  227.40
+#>  mixprobit   (10000 points) 184.854 193.361 220.872 196.444 202.827 3614.90
+#>  randtoolbox (10000 points) 368.451 382.314 461.568 388.495 407.096 3734.77
 #>  neval
 #>   1000
 #>   1000
@@ -2057,8 +2055,8 @@ microbenchmark::microbenchmark(
   randtoolbox = sobol(n = n, dim = dim, scrambling = 1L), times = 1000)
 #> Unit: microseconds
 #>         expr   min    lq  mean median    uq    max neval
-#>    mixprobit 281.0 287.5 294.8  290.7 295.9  442.2  1000
-#>  randtoolbox 334.2 342.8 356.4  349.3 355.2 2258.0  1000
+#>    mixprobit 274.4 281.7 287.6  283.7 288.0  487.9  1000
+#>  randtoolbox 327.1 336.4 346.8  340.5 344.7 2159.4  1000
 
 sobol_obj <- get_sobol_seq(dim, scrambling = 1L)
 invisible(sobol_obj(1L))
@@ -2076,25 +2074,307 @@ microbenchmark::microbenchmark(
   
   times = 1000)
 #> Unit: microseconds
-#>                        expr     min       lq     mean   median       uq
-#>       mixprobit   (1 point)   3.514    4.664    7.896    6.271    8.363
-#>       randtoolbox (1 point)  39.556   42.915   52.453   46.223   53.325
-#>    mixprobit   (100 points)   6.886    8.544   12.115   10.392   12.772
-#>    randtoolbox (100 points)  50.242   53.498   65.646   57.341   65.994
-#>  mixprobit   (10000 points) 297.896  351.520  446.769  366.943  409.065
-#>  randtoolbox (10000 points) 937.859 1006.781 1348.883 1039.777 1327.688
-#>       max neval
-#>     62.76  1000
-#>    303.04  1000
-#>     66.94  1000
-#>    363.20  1000
-#>   3602.93  1000
-#>  32910.95  1000
+#>                        expr     min      lq     mean   median       uq      max
+#>       mixprobit   (1 point)   3.328   4.377    6.665    5.945    7.434    40.85
+#>       randtoolbox (1 point)  39.403  42.469   49.927   45.609   50.434  1399.46
+#>    mixprobit   (100 points)   6.819   8.261   10.605    9.837   11.346    68.74
+#>    randtoolbox (100 points)  49.735  52.854   69.383   56.218   61.041  6548.78
+#>  mixprobit   (10000 points) 308.059 354.920  440.079  369.568  388.820  3735.48
+#>  randtoolbox (10000 points) 951.142 997.139 1257.844 1015.037 1088.019 33880.11
+#>  neval
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+#>   1000
+#>   1000
 ```
 
 Lastly, the C++ interface we have created allow us to call the Fortran
 from C++ directly. This was the primary motivation for creating our own
 interface.
+
+Mixed Models with Multinomial Outcomes
+--------------------------------------
+
+### Approximating the Inner Integral
+
+The integrand with multinomial outcomes is intractable and requires an
+approximation. To be more precise, we need an approximation of
+
+![
+\\begin{align\*}
+h(\\vec u) &= \\int \\phi(a)\\prod\_{k = 1}^c
+   \\Phi\\left(a + \\eta\_k + \\vec z\_k^\\top\\vec u\\right) du \\\\
+&=\\int \\phi(a)\\prod\_{k = 1}^c
+   \\Phi\\left(\\eta\_k (a, \\vec u)\\right) du
+\\end{align\*}
+](https://latex.codecogs.com/svg.latex?%0A%5Cbegin%7Balign%2A%7D%0Ah%28%5Cvec%20u%29%20%26%3D%20%5Cint%20%5Cphi%28a%29%5Cprod_%7Bk%20%3D%201%7D%5Ec%0A%20%20%20%5CPhi%5Cleft%28a%20%2B%20%5Ceta_k%20%2B%20%5Cvec%20z_k%5E%5Ctop%5Cvec%20u%5Cright%29%20du%20%5C%5C%0A%26%3D%5Cint%20%5Cphi%28a%29%5Cprod_%7Bk%20%3D%201%7D%5Ec%0A%20%20%20%5CPhi%5Cleft%28%5Ceta_k%20%28a%2C%20%5Cvec%20u%29%5Cright%29%20du%0A%5Cend%7Balign%2A%7D%0A "
+\begin{align*}
+h(\vec u) &= \int \phi(a)\prod_{k = 1}^c
+   \Phi\left(a + \eta_k + \vec z_k^\top\vec u\right) du \\
+&=\int \phi(a)\prod_{k = 1}^c
+   \Phi\left(\eta_k (a, \vec u)\right) du
+\end{align*}
+")
+
+with
+![\\eta\_k (a, \\vec u) = a + \\eta\_k + \\vec z\_k^\\top\\vec u](https://latex.codecogs.com/svg.latex?%5Ceta_k%20%28a%2C%20%5Cvec%20u%29%20%3D%20a%20%2B%20%5Ceta_k%20%2B%20%5Cvec%20z_k%5E%5Ctop%5Cvec%20u "\eta_k (a, \vec u) = a + \eta_k + \vec z_k^\top\vec u").
+Moreover, we need an approximations of the gradient and Hessian with
+respect to
+![\\vec u](https://latex.codecogs.com/svg.latex?%5Cvec%20u "\vec u") of
+![\\log h(\\vec u)](https://latex.codecogs.com/svg.latex?%5Clog%20h%28%5Cvec%20u%29 "\log h(\vec u)").
+We can easily compute the these if we have an approximations of the
+gradient and Hessian with respect to
+![x\_k = \\vec z\_k^\\top\\vec u](https://latex.codecogs.com/svg.latex?x_k%20%3D%20%5Cvec%20z_k%5E%5Ctop%5Cvec%20u "x_k = \vec z_k^\top\vec u").
+Let
+![e\_k(a) = \\eta\_k(a, \\vec u)](https://latex.codecogs.com/svg.latex?e_k%28a%29%20%3D%20%5Ceta_k%28a%2C%20%5Cvec%20u%29 "e_k(a) = \eta_k(a, \vec u)")
+which implicitly depends on a given value of
+![\\vec u](https://latex.codecogs.com/svg.latex?%5Cvec%20u "\vec u").
+Then the latter derivatives are
+
+![
+\\begin{align\*}
+\\frac{\\partial}{\\partial x\_i} \\log h &=
+  \\frac{
+  \\int \\phi(a)\\phi(e\_i(a))
+  \\prod\_{k\\ne i}\\Phi(e\_k(a)) da}{
+  \\int \\phi(a)\\prod\_{k = 1}^c\\Phi(e\_{k}(a)) da} \\\\
+\\frac{\\partial^2}{\\partial x\_i^2}\\log h &=
+ -\\bigg(
+ \\left\[\\int \\phi(a)e\_i(a)\\phi(e\_{i}(a))
+ \\prod\_{k\\ne i}\\Phi(e\_{k}(a))da\\right\]
+ \\left\[\\int \\phi(a)\\prod\_{k = 1}^c\\Phi(e\_k(a)) da\\right\]\\\\
+ &\\hspace{20pt}
+ +\\left\[\\int \\phi(a)\\phi(e\_i(a))
+ \\prod\_{k\\ne i}\\Phi(e\_k(a))da\\right\]^2\\bigg) \\\\
+ &\\hspace{20pt}\\bigg/\\left\[\\int \\phi(a)
+ \\prod\_{k = 1}^c\\Phi(e\_k(a)) da\\right\]^2 \\\\
+\\frac{\\partial^2}{\\partial x\_i\\partial x\_j}\\log h &=
+ \\bigg(
+ \\left\[\\int \\phi(a)\\prod\_{k = 1}^c\\Phi(e\_k(a)) da\\right\]
+ \\left\[\\int \\phi(a)\\phi(e\_i(a))\\phi(e\_j(a))
+ \\prod\_{k\\ne i,j}\\Phi(e\_k(a))da\\right\] \\\\
+ &\\hspace{20pt} -
+ \\left\[\\int \\phi(a)\\phi(e\_i(a))
+ \\prod\_{k\\ne i}\\Phi(e\_k(a))da\\right\]
+ \\left\[\\int \\phi(a)\\phi(e\_j(a))
+ \\prod\_{k\\ne j}\\Phi(e\_k(a))da\\right\]\\bigg) \\\\
+ &\\hspace{20pt}\\bigg/
+ \\left\[\\int \\phi(a)\\prod\_{k = 1}^c\\Phi(e\_k(a)) da\\right\]^2
+\\end{align\*}
+](https://latex.codecogs.com/svg.latex?%0A%5Cbegin%7Balign%2A%7D%0A%5Cfrac%7B%5Cpartial%7D%7B%5Cpartial%20x_i%7D%20%5Clog%20h%20%26%3D%0A%20%20%5Cfrac%7B%0A%20%20%5Cint%20%5Cphi%28a%29%5Cphi%28e_i%28a%29%29%0A%20%20%5Cprod_%7Bk%5Cne%20i%7D%5CPhi%28e_k%28a%29%29%20da%7D%7B%0A%20%20%5Cint%20%5Cphi%28a%29%5Cprod_%7Bk%20%3D%201%7D%5Ec%5CPhi%28e_%7Bk%7D%28a%29%29%20da%7D%20%5C%5C%0A%5Cfrac%7B%5Cpartial%5E2%7D%7B%5Cpartial%20x_i%5E2%7D%5Clog%20h%20%26%3D%0A%20-%5Cbigg%28%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29e_i%28a%29%5Cphi%28e_%7Bi%7D%28a%29%29%0A%20%5Cprod_%7Bk%5Cne%20i%7D%5CPhi%28e_%7Bk%7D%28a%29%29da%5Cright%5D%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cprod_%7Bk%20%3D%201%7D%5Ec%5CPhi%28e_k%28a%29%29%20da%5Cright%5D%5C%5C%0A%20%26%5Chspace%7B20pt%7D%0A%20%2B%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cphi%28e_i%28a%29%29%0A%20%5Cprod_%7Bk%5Cne%20i%7D%5CPhi%28e_k%28a%29%29da%5Cright%5D%5E2%5Cbigg%29%20%5C%5C%0A%20%26%5Chspace%7B20pt%7D%5Cbigg%2F%5Cleft%5B%5Cint%20%5Cphi%28a%29%0A%20%5Cprod_%7Bk%20%3D%201%7D%5Ec%5CPhi%28e_k%28a%29%29%20da%5Cright%5D%5E2%20%5C%5C%0A%5Cfrac%7B%5Cpartial%5E2%7D%7B%5Cpartial%20x_i%5Cpartial%20x_j%7D%5Clog%20h%20%26%3D%0A%20%5Cbigg%28%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cprod_%7Bk%20%3D%201%7D%5Ec%5CPhi%28e_k%28a%29%29%20da%5Cright%5D%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cphi%28e_i%28a%29%29%5Cphi%28e_j%28a%29%29%0A%20%5Cprod_%7Bk%5Cne%20i%2Cj%7D%5CPhi%28e_k%28a%29%29da%5Cright%5D%20%5C%5C%0A%20%26%5Chspace%7B20pt%7D%20-%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cphi%28e_i%28a%29%29%0A%20%5Cprod_%7Bk%5Cne%20i%7D%5CPhi%28e_k%28a%29%29da%5Cright%5D%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cphi%28e_j%28a%29%29%0A%20%5Cprod_%7Bk%5Cne%20j%7D%5CPhi%28e_k%28a%29%29da%5Cright%5D%5Cbigg%29%20%5C%5C%0A%20%26%5Chspace%7B20pt%7D%5Cbigg%2F%0A%20%5Cleft%5B%5Cint%20%5Cphi%28a%29%5Cprod_%7Bk%20%3D%201%7D%5Ec%5CPhi%28e_k%28a%29%29%20da%5Cright%5D%5E2%0A%5Cend%7Balign%2A%7D%0A "
+\begin{align*}
+\frac{\partial}{\partial x_i} \log h &=
+  \frac{
+  \int \phi(a)\phi(e_i(a))
+  \prod_{k\ne i}\Phi(e_k(a)) da}{
+  \int \phi(a)\prod_{k = 1}^c\Phi(e_{k}(a)) da} \\
+\frac{\partial^2}{\partial x_i^2}\log h &=
+ -\bigg(
+ \left[\int \phi(a)e_i(a)\phi(e_{i}(a))
+ \prod_{k\ne i}\Phi(e_{k}(a))da\right]
+ \left[\int \phi(a)\prod_{k = 1}^c\Phi(e_k(a)) da\right]\\
+ &\hspace{20pt}
+ +\left[\int \phi(a)\phi(e_i(a))
+ \prod_{k\ne i}\Phi(e_k(a))da\right]^2\bigg) \\
+ &\hspace{20pt}\bigg/\left[\int \phi(a)
+ \prod_{k = 1}^c\Phi(e_k(a)) da\right]^2 \\
+\frac{\partial^2}{\partial x_i\partial x_j}\log h &=
+ \bigg(
+ \left[\int \phi(a)\prod_{k = 1}^c\Phi(e_k(a)) da\right]
+ \left[\int \phi(a)\phi(e_i(a))\phi(e_j(a))
+ \prod_{k\ne i,j}\Phi(e_k(a))da\right] \\
+ &\hspace{20pt} -
+ \left[\int \phi(a)\phi(e_i(a))
+ \prod_{k\ne i}\Phi(e_k(a))da\right]
+ \left[\int \phi(a)\phi(e_j(a))
+ \prod_{k\ne j}\Phi(e_k(a))da\right]\bigg) \\
+ &\hspace{20pt}\bigg/
+ \left[\int \phi(a)\prod_{k = 1}^c\Phi(e_k(a)) da\right]^2
+\end{align*}
+")
+
+This requires an approximation of four different types of integrals and
+is what we have implemented. Below, we consider an approximation
+![h(\\vec u)](https://latex.codecogs.com/svg.latex?h%28%5Cvec%20u%29 "h(\vec u)").
+We have implemented both an adaptive and non-adaptive version of GHQ.
+Thus, we interested in comparing which version is fastest and a high
+precision.
+
+``` r
+# define function to get test data for a given number of alternative 
+# groups 
+get_ex_data <- function(n_alt){
+  Z <- Sigma <- diag(1., n_alt)
+  Sigma[lower.tri(Sigma)] <- Sigma[upper.tri(Sigma)] <- -.1
+  eta <- seq(-1, 1, length.out = n_alt)
+  
+  list(Z = Z, Sigma = Sigma, eta = eta)
+}
+
+# use the data to assign two functions to approximate the "inner" integral
+dat <- get_ex_data(3L)
+get_aprx_ghq <- function(dat, is_adaptive, u)
+  function(n_nodes, n_times = 1L, order = 0L) 
+    with(dat, drop(mixprobit:::multinomial_inner_integral(
+      Z = Z, eta = eta, Sigma = Sigma, n_nodes = n_nodes, 
+      is_adaptive = is_adaptive, n_times = n_times, u = u, 
+      order = order)))
+
+set.seed(1)
+u <- drop(mvtnorm::rmvnorm(1L, sigma = dat$Sigma))
+# the adaptive version 
+adap   <- get_aprx_ghq(dat, TRUE , u)
+# the non-adaptive version
+n_adap <- get_aprx_ghq(dat, FALSE, u)
+adap  (10L)
+#> [1] 0.2352
+n_adap(10L)
+#> [1] 0.2352
+
+# plot one example (open circle: AGHQ; filled circle: GHQ)
+ns <- 3:30
+par(mar = c(5, 5, 1, 1), mfcol = c(1, 2))
+vals <- cbind(sapply(ns, adap), sapply(ns, n_adap))
+matplot(ns[1:7], vals[1:7, ], pch = c(1, 16), col = "black",
+        xlab = "Number of nodes", ylab = "Integral aprx.")
+abline(h = tail(vals, 1L)[, 1], lty = 3)
+matplot(ns[-(1:7)], vals[-(1:7), ], pch = c(1, 16), col = "black",
+        xlab = "Number of nodes", ylab = "Integral aprx.")
+abline(h = tail(vals, 1L)[, 1], lty = 3)
+```
+
+![](man/figures/README-aprx_mult_inner-1.png)
+
+``` r
+
+# compare approximation time
+microbenchmark::microbenchmark(
+  `AGHQ 3`  = adap  (3L , n_times = 1000L),
+  `AGHQ 7`  = adap  (7L , n_times = 1000L), 
+  ` GHQ 3`  = n_adap(3L , n_times = 1000L), 
+  ` GHQ 7`  = n_adap(7L , n_times = 1000L),
+  ` GHQ 21` = n_adap(21L, n_times = 1000L))
+#> Unit: microseconds
+#>     expr    min     lq   mean median     uq    max neval
+#>   AGHQ 3  906.7  943.4  953.7  944.7  949.2 1325.6   100
+#>   AGHQ 7 1784.3 1853.5 1889.4 1861.4 1871.3 2468.3   100
+#>    GHQ 3  652.0  676.0  692.4  682.1  686.5  921.4   100
+#>    GHQ 7 1493.7 1536.8 1574.6 1561.0 1569.2 2129.6   100
+#>   GHQ 21 4511.0 4681.2 4732.7 4693.9 4712.6 5604.1   100
+```
+
+The adaptive version is much more precise. Moreover, the it seems that 5
+nodes is about sufficient. As of this writing, it takes about 1.9
+milliseconds to do 1000 evaluations of the integrand. This implies about
+1.9 microseconds per integrand evaluation which, unfortunately, will add
+when we have to marginalize over the random effects,
+![\\vec u](https://latex.codecogs.com/svg.latex?%5Cvec%20u "\vec u").
+
+Similar to what we do above, we consider approximating the gradient and
+Hessian of
+![\\log h(\\vec u)](https://latex.codecogs.com/svg.latex?%5Clog%20h%28%5Cvec%20u%29 "\log h(\vec u)")
+with respect to
+![\\vec u](https://latex.codecogs.com/svg.latex?%5Cvec%20u "\vec u")
+below.
+
+``` r
+#####
+# the gradient
+adap  (10L, order = 1L)
+#> [1] -0.47024 -0.47285 -0.02483
+n_adap(10L, order = 1L)
+#> [1] -0.47049 -0.47313 -0.02473
+
+# check precision. We plot the errors now with the black being the 
+# adaptive version and gray being the non-adaptive version
+va <- t(sapply(ns,   adap, order = 1L))
+vn <- t(sapply(ns, n_adap, order = 1L))
+est <- rep(drop(tail(va, 1)), each = length(ns))
+va <- va - est
+vn <- vn - est
+matplot(
+  ns[1:10], cbind(va, vn)[1:10, ], pch = rep(as.character(1:NCOL(va)), 2), 
+  xlab = "Number of nodes", ylab = "Gradient aprx. (error)", 
+  col = rep(c("black", "darkgray"), each = NCOL(va)), type = "b", 
+  lty = rep(c(1, 2), each = NCOL(va)))
+```
+
+![](man/figures/README-grads_aprx_mult_inner-1.png)
+
+``` r
+
+# compare approximation time
+microbenchmark::microbenchmark(
+  `AGHQ 3`  = adap  (3L , n_times = 1000L, order = 1L),
+  `AGHQ 7`  = adap  (7L , n_times = 1000L, order = 1L), 
+  ` GHQ 3`  = n_adap(3L , n_times = 1000L, order = 1L), 
+  ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 1L),
+  ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 1L))
+#> Unit: microseconds
+#>     expr    min     lq mean median   uq  max neval
+#>   AGHQ 3 1256.3 1270.9 1309   1300 1307 1579   100
+#>   AGHQ 7 2609.0 2633.9 2696   2694 2701 3098   100
+#>    GHQ 3  983.4  993.5 1022   1016 1024 1242   100
+#>    GHQ 7 2352.9 2368.8 2421   2419 2430 2809   100
+#>   GHQ 21 6969.8 7019.7 7156   7171 7208 7663   100
+```
+
+``` r
+#####
+# the Hessian
+adap  (10L, order = 2L)
+#>          [,1]     [,2]     [,3]
+#> [1,] -0.38453  0.13987  0.01607
+#> [2,]  0.13987 -0.34386  0.01722
+#> [3,]  0.01607  0.01722 -0.04677
+n_adap(10L, order = 2L)
+#>          [,1]     [,2]     [,3]
+#> [1,] -0.38482  0.13960  0.01599
+#> [2,]  0.13960 -0.34424  0.01714
+#> [3,]  0.01599  0.01714 -0.04666
+
+# check precision. We plot the errors now with the black being the 
+# adaptive version and gray being the non-adaptive version
+va <- t(sapply(ns, adap, order = 2L))
+vn <- t(sapply(ns, n_adap, order = 2L))
+keep <- which(lower.tri(matrix(nc = 3, nr = 3), diag = TRUE))
+va <- va[, keep]
+vn <- vn[, keep]
+est <- rep(drop(tail(va, 1)), each = length(ns))
+va <- va - est
+vn <- vn - est
+matplot(
+  ns[1:10], cbind(va, vn)[1:10, ], pch = rep(as.character(1:NCOL(va)), 2), 
+  xlab = "Number of nodes", ylab = "Hessian aprx. (error)", 
+  col = rep(c("black", "darkgray"), each = NCOL(va)), type = "b", 
+  lty = rep(c(1, 2), each = NCOL(va)))
+```
+
+![](man/figures/README-hess_aprx_mult_inner-1.png)
+
+``` r
+
+# compare approximation time
+microbenchmark::microbenchmark(
+  `AGHQ 3`  = adap  (3L , n_times = 1000L, order = 2L),
+  `AGHQ 7`  = adap  (7L , n_times = 1000L, order = 2L), 
+  ` GHQ 3`  = n_adap(3L , n_times = 1000L, order = 2L), 
+  ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 2L),
+  ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 2L))
+#> Unit: milliseconds
+#>     expr    min     lq   mean median     uq    max neval
+#>   AGHQ 3  1.286  1.319  1.338  1.336  1.340  1.587   100
+#>   AGHQ 7  2.590  2.679  2.679  2.684  2.689  2.778   100
+#>    GHQ 3  1.012  1.047  1.061  1.049  1.054  1.330   100
+#>    GHQ 7  2.327  2.388  2.397  2.392  2.397  2.700   100
+#>   GHQ 21 16.414 16.838 16.915 16.864 16.956 17.744   100
+```
+
+It does not take much more time and using an adaptive method only seems
+more attractive as the overhead from finding a mode is relatively
+smaller.
 
 References
 ----------

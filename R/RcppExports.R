@@ -61,3 +61,7 @@ eval_sobol <- function(n, ptr) {
     .Call('_mixprobit_eval_sobol', PACKAGE = 'mixprobit', n, ptr)
 }
 
+multinomial_inner_integral <- function(Z, eta, Sigma, n_nodes, is_adaptive, n_times, u, order = 0L) {
+    .Call('_mixprobit_multinomial_inner_integral', PACKAGE = 'mixprobit', Z, eta, Sigma, n_nodes, is_adaptive, n_times, u, order)
+}
+
