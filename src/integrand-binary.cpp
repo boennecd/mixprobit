@@ -1,6 +1,7 @@
 #include "integrand-binary.h"
 #include "lapack.h"
 #include "utils.h"
+#include "pnorm.h"
 
 namespace integrand {
 double mix_binary::operator()(double const *par, bool const ret_log) const {
@@ -9,8 +10,8 @@ double mix_binary::operator()(double const *par, bool const ret_log) const {
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + colvecdot(Z, i, par_vec);
     /* essentially all of the computation time is spend on the next line */
-    out += y[i] > 0 ? R::pnorm5(lp, 0, 1, 1L, 1L) :
-                      R::pnorm5(lp, 0, 1, 0L, 1L);
+    out += y[i] > 0 ? pnorm_std(lp, 1L, 1L) :
+                      pnorm_std(lp, 0L, 1L);
   }
 
   if(ret_log)
@@ -27,7 +28,7 @@ arma::vec mix_binary::gr(double const *par) const {
                  s = y[i] > 0 ? 1 : -1;
 
     double const f = R::dnorm4(s * lp, 0, 1,     1L),
-                 F = R::pnorm5(s * lp, 0, 1, 1L, 1L);
+                 F = pnorm_std(s * lp, 1L, 1L);
     gr += s * std::exp(f - F)  * Z.col(i);
   }
 
@@ -47,7 +48,7 @@ arma::mat mix_binary::Hessian(double const *par) const {
     double const lpu = y[i] > 0 ? lp : -lp,
                  fl  = R::dnorm4(lpu, 0, 1,     1L),
                  f   = std::exp(fl),
-                 Fl  = R::pnorm5(lpu, 0, 1, 1L, 1L),
+                 Fl  = pnorm_std(lpu, 1L, 1L),
                  F   = std::exp(Fl),
                  fac = - std::exp(fl - 2 * Fl) * (lpu * F + f);
 
@@ -74,8 +75,8 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
   wk_mem.zeros();
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + colvecdot(Z, i, par_vec),
-               pnrm = y[i] > 0 ? R::pnorm5(lp, 0, 1, 1L, 1L) :
-                                 R::pnorm5(lp, 0, 1, 0L, 1L),
+               pnrm = y[i] > 0 ? pnorm_std(lp, 1L, 1L) :
+                                 pnorm_std(lp, 0L, 1L),
                dnrm =            R::dnorm4(lp, 0, 1, 1L),
                fac  = y[i] > 0 ?  std::exp(dnrm - pnrm) :
                                  -std::exp(dnrm - pnrm);

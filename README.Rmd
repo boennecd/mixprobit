@@ -255,7 +255,7 @@ get_sim_dat <- function(n, p){
 The variance of the linear predictor given the random effect is independent 
 of the random effect dimension, `p`.
 
-```{r show_var_lp}
+```{r show_var_lp, cache = 1}
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
@@ -341,29 +341,32 @@ truth <- wd(
 c(Estiamte = truth, SE = attr(truth, "SE"),  
   `Estimate (log)` = log(c(truth)),  
   `SE (log)` = abs(attr(truth, "SE") / truth))
-truth <- c(truth)
-all.equal(truth, c(truth_maybe_cdf))
-all.equal(truth, c(truth_maybe_qmc))
-all.equal(truth, c(truth_maybe_Aqmc))
-all.equal(truth, c(truth_maybe_mc))
-all.equal(truth, c(truth_maybe_Amc))
+
+tr <- c(truth)
+all.equal(tr, c(truth_maybe_cdf))
+all.equal(tr, c(truth_maybe_qmc))
+all.equal(tr, c(truth_maybe_Aqmc))
+all.equal(tr, c(truth_maybe_mc))
+all.equal(tr, c(truth_maybe_Amc))
 
 # compare with using fewer samples and GHQ
-all.equal(truth,   GHQ_R())
-all.equal(truth,   GHQ_cpp())
-all.equal(truth,   AGHQ_cpp())
-all.equal(truth, c(cdf_aprx_R()))
-all.equal(truth, c(qmc_aprx()))
-all.equal(truth, c(qmc_Aaprx()))
-all.equal(truth, c(cdf_aprx_cpp()))
-all.equal(truth, c(sim_aprx(1L)))
-all.equal(truth, c(sim_aprx(2L)))
-all.equal(truth, c(sim_aprx(3L)))
-all.equal(truth, c(sim_aprx(4L)))
-all.equal(truth, c(sim_Aaprx(1L)))
-all.equal(truth, c(sim_Aaprx(2L)))
-all.equal(truth, c(sim_Aaprx(3L)))
-all.equal(truth, c(sim_Aaprx(4L)))
+all.equal(tr,   GHQ_R())
+all.equal(tr,   GHQ_cpp())
+all.equal(tr,   AGHQ_cpp())
+comp <- function(f, ...)
+  mean(replicate(10, abs((tr - c(f())) / tr)))
+comp(cdf_aprx_R)
+comp(qmc_aprx)
+comp(qmc_Aaprx)
+comp(cdf_aprx_cpp)
+comp(function() sim_aprx(1L))
+comp(function() sim_aprx(2L))
+comp(function() sim_aprx(3L))
+comp(function() sim_aprx(4L))
+comp(function() sim_Aaprx(1L))
+comp(function() sim_Aaprx(2L))
+comp(function() sim_Aaprx(3L))
+comp(function() sim_Aaprx(4L))
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
@@ -1240,6 +1243,13 @@ aprx <- within(list(), {
   get_AGHQ_cpp <- get_GHQ_cpp
   formals(get_AGHQ_cpp)$is_adaptive <- TRUE
   
+  get_cdf_cpp <- function(eta, Z, p, Sigma, maxpts, abseps = -1, 
+                          releps = 1e-4)
+    function()
+      mixprobit:::aprx_mult_mix_cdf(
+        n_alt = p, eta = eta, Z = Z, Sigma = Sigma, maxpts = maxpts,
+        abseps = abseps, releps = releps)
+  
   get_sim_mth <- function(eta, Z, p, Sigma, maxpts, abseps = -1, 
                           releps = 1e-4, is_adaptive = FALSE)
     # Args: 
@@ -1273,14 +1283,18 @@ aprx <- within(list(), {
 # Args:
 #   n: cluster size.
 #   p: number of random effects and number of categories.
-get_sim_dat <- function(n, p){
+get_sim_dat <- function(n, p, Sigma){
+  has_Sigma <- !missing(Sigma)
   out <- list(n = n, p = p)
   within(out, {
     Z <- diag(p)
-    Sigma <- drop(                       # covariance matrix of random effects
-      rWishart(1, 5 * p, diag(1 / 5 / p, p)))
+    # covariance matrix of random effects
+    if(!has_Sigma)
+      Sigma <- drop(                     
+        rWishart(1, 5 * p, diag(1 / 5 / p, p)))
     S_chol <- chol(Sigma)
-    u <- drop(rnorm(p) %*% S_chol)       # random effects
+    # random effects
+    u <- drop(rnorm(p) %*% S_chol)       
     
     dat <- replicate(n, {
       eta <- rnorm(p)
@@ -1305,6 +1319,10 @@ get_sim_dat(n = 3L, p = 3L)
 
 Here is a quick example where we compare the approximation methods on 
 one data set.
+
+```{r pre_mult_quick_ex, echo = FALSE}
+cur_vars <- ls()
+```
 
 ```{r mult_quick_ex, cache = 1}
 #####
@@ -1332,10 +1350,8 @@ GHQ_cpp  <- wd(aprx$get_GHQ_cpp (eta = eta, Z = Z, p = p - 1L,
 AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(eta = eta, Z = Z, p = p - 1L, 
                                  Sigma = Sigma, b = b))
 
-# cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
-#                                     maxpts = maxpts))
-# cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
-#                                     maxpts = maxpts))
+cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(eta = eta, Z = Z, p = p - 1L, 
+                                    Sigma = Sigma, maxpts = maxpts))
 
 qmc_aprx <- wd(
   aprx$get_qmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
@@ -1353,9 +1369,11 @@ sim_Aaprx <- wd(aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L,
 #####
 # compare results. Start with the simulation based methods with a lot of
 # samples. We take this as the ground truth
-# truth_maybe_cdf <- wd( 
-#   aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-#                     abseps = 1e-11))()
+truth_maybe_cdf <- wd(
+  aprx$get_cdf_cpp (eta = eta, Z = Z, p = p - 1L, Sigma = Sigma,
+                    maxpts = 1e6, abseps = -1, releps = 1e-11))()
+truth_maybe_cdf
+
 truth_maybe_Aqmc <- wd(
   aprx$get_Aqmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, maxpts = 1e6, 
                 releps = 1e-11)())
@@ -1373,36 +1391,100 @@ truth <- wd(
 c(Estiamte = truth, SE = attr(truth, "SE"),  
   `Estimate (log)` = log(c(truth)),  
   `SE (log)` = abs(attr(truth, "SE") / truth))
-truth <- c(truth)
+tr <- c(truth)
 
-# all.equal(truth, c(truth_maybe_cdf))
-all.equal(truth, c(truth_maybe_Aqmc))
-all.equal(truth, c(truth_maybe_Amc))
+all.equal(tr, c(truth_maybe_cdf))
+all.equal(tr, c(truth_maybe_Aqmc))
+all.equal(tr, c(truth_maybe_Amc))
 
 # compare with using fewer samples and GHQ
-all.equal(truth,   GHQ_cpp())
-all.equal(truth,   AGHQ_cpp())
-all.equal(truth, c(qmc_aprx()))
-all.equal(truth, c(qmc_Aaprx()))
-# all.equal(truth, c(cdf_aprx_cpp()))
-all.equal(truth, c(sim_aprx(1L)))
-all.equal(truth, c(sim_aprx(2L)))
-all.equal(truth, c(sim_aprx(3L)))
-all.equal(truth, c(sim_aprx(4L)))
-all.equal(truth, c(sim_Aaprx(1L)))
-all.equal(truth, c(sim_Aaprx(2L)))
-all.equal(truth, c(sim_Aaprx(3L)))
-all.equal(truth, c(sim_Aaprx(4L)))
+all.equal(tr,   GHQ_cpp())
+all.equal(tr,   AGHQ_cpp())
+comp <- function(f, ...)
+  mean(replicate(10, abs((tr - c(f())) / tr)))
+comp(qmc_aprx)
+comp(qmc_Aaprx)
+comp(cdf_aprx_cpp)
+comp(function() sim_aprx(1L))
+comp(function() sim_aprx(2L))
+comp(function() sim_aprx(3L))
+comp(function() sim_aprx(4L))
+comp(function() sim_Aaprx(1L))
+comp(function() sim_Aaprx(2L))
+comp(function() sim_Aaprx(3L))
+comp(function() sim_Aaprx(4L))
 
 # compare computations times
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
-  # `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
+  `CDF (C++)` = cdf_aprx_cpp(),
   QMC = qmc_aprx(), `QMC Adaptive` = qmc_Aaprx(),
   `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
   `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 5)
+```
+
+The CDF approach is noticeably faster. 
+One explanation is that the AGHQ we are 
+using, as of this writing, for the integrand with other methods uses 
+$8(c - 1)$ evaluations of the standard normal distribution's CDF with $c$
+being the number of categories per observation in the cluster plus the 
+overhead of finding the mode. In the example above, this means that we do 
+`8 * n * (p - 1)`, `r 8 * n * (p - 1)`, CDF evaluations for each of the 
+`maxpts`, `r maxpts`, evaluations. We show how long this takes to compute 
+below when the evaluations points are drawn from a standard normal 
+distribution
+
+```{r pnorm_is_slow, cache = 1}
+local({
+  Rcpp::sourceCpp(code = "
+    // [[Rcpp::depends(RcppArmadillo)]]
+    #include <RcppArmadillo.h>
+    
+    //[[Rcpp::export]]
+    double test_pnorm(arma::vec const &x){
+      double out(0), p, cp;
+      for(auto xi : x){
+        p = xi;
+        R::pnorm_both(xi, &p, &cp, 1L, 1L);
+        out += p;
+      }
+      return out;
+    }")
+  
+  u <- rnorm(8 * n * (p - 1) * maxpts)
+  microbenchmark::microbenchmark(test_pnorm(u), times = 10)
+})
+```
+
+In contrast, the CDF approximation can be implemented with only 
+one evaluation of the CDF and 
+`n * (p - 1) - 1`, `r n * (p - 1) - 1`, evaluations of the log of the 
+standard normal distribution's PDF for each of `maxpts`, `r maxpts`, 
+evaluations. This is much faster to evaluate as shown below
+
+```{r pdf_is_fast, cache = 1}
+local({
+  u <- rnorm(n * (p - 1) * maxpts - 1L)
+  Rcpp::sourceCpp(code = "
+    // [[Rcpp::depends(RcppArmadillo)]]
+    #include <RcppArmadillo.h>
+    
+    //[[Rcpp::export]]
+    double test_dnorm(arma::vec const &x){
+      static double const norm_const = 1. / std::sqrt(2 * M_PI);
+      double out(0);
+      for(auto xi : x)
+        out += -.5 * xi * xi;
+      return out * norm_const;
+    }")
+  microbenchmark::microbenchmark(test_dnorm(u), times = 10)
+})
+```
+
+```{r clean_mult_quick_ex, echo = FALSE}
+rm(list = setdiff(ls(), cur_vars))
 ```
 
 ### Approximating the Inner Integral
@@ -1583,5 +1665,112 @@ microbenchmark::microbenchmark(
 
 It does not take much more time and using an adaptive method only seems more 
 attractive as the overhead from finding a mode is relatively smaller.
+
+As another example, we use the simulation function we defined before and 
+compute the average absolute error using a number of data sets and the 
+computation where we fix the covariance matrix. 
+
+<!-- knitr::opts_knit$set(output.dir = ".") -->
+<!-- knitr::load_cache("rig_aprx_mult_inner", path = "README_cache/markdown_github/") -->
+
+```{r rig_aprx_mult_inner, cache = 1}
+sim_one_integrand_aprx <- function(n, p, n_nodes){
+  Sigma <- diag(p)
+  dat <- get_sim_dat(n, p, Sigma = Sigma)
+  dat$Sigma <- Sigma
+  n_times <- 10000L
+  
+  . <- function(n){
+    ti <- system.time(
+      out <- func(n_nodes = n, n_times = n_times, order = 0L))
+    c(Estimate = out, Time = unname(ti["elapsed"]) * 1000L / n_times)
+  }
+  
+  func <- get_aprx_ghq(dat = dat, is_adaptive = TRUE, u = dat$u)
+  ada <- sapply(n_nodes, .)
+  func <- get_aprx_ghq(dat = dat, is_adaptive = FALSE, u = dat$u)
+  n_ada <- sapply(n_nodes, .)
+  
+  truth <- ada["Estimate", which.max(n_nodes)]
+  . <- function(x)
+    rbind(x, Error = x["Estimate", ] - truth)
+  
+  ada <- .(ada)
+  n_ada <- .(n_ada)
+  array(c(ada, n_ada), dim = c(dim(ada), 2L), 
+        dimnames = list(
+          Entity = rownames(ada), 
+          Property = n_nodes, 
+          Method = c("Adaptive", "Non-Adaptive")))
+} 
+
+n_nodes <- c(c(seq(2L, 20L, by = 2L)), 30L)
+n_sim <- 25L
+gr <- expand.grid(n = 2^(1:4), p = 2:4)
+
+set.seed(1L)
+integrand_dat <- mapply(function(n, p){
+  all_dat <- replicate(
+    n_sim, sim_one_integrand_aprx(n = n, p = p, n_nodes = n_nodes), 
+    simplify = "array")
+  out <- all_dat
+  out["Error", , , ] <- abs(out["Error", , , ])
+  sd_est <- apply(out["Error", , , ], 1:2, sd) / sqrt(n_sim)
+  out <- apply(out, 1:3, mean)
+  library(abind)
+  
+  out <- abind(out, sd_est, along = 1)
+  dimnames(out)[[1]][3:4] <- c("Abs(error)",  "Sd abs(error)")
+  
+  list(n = n, p = p, all_dat = all_dat, out = aperm(out, 3:1))
+}, n = gr$n, p = gr$p, SIMPLIFY = FALSE)
+```
+
+We plot the average evaluation time and error below using a different number 
+of nodes for different cluster sizes, number of clusters and random 
+effects.
+
+```{r show_rig_aprx_mult_inner_res}
+to_print <- lapply(integrand_dat, `[[`, "out")
+names(to_print) <- lapply(integrand_dat, function(x)
+  sprintf("n: %2d; p: %2d", x$n, x$p))
+
+do_plot <- function(what, do_abline = FALSE, n_choice){
+  dat <- sapply(to_print, function(x) x[, , what], simplify = "array")
+  ns <- sapply(integrand_dat, `[[`, "n")
+  ps <- sapply(integrand_dat, `[[`, "p")
+  
+  keep <- ns %in% n_choice
+  ns <- ns[keep]
+  ps <- ps[keep]
+  dat <- dat[, , keep]
+  
+  col <- gray.colors(length(unique(ps)), start = .5, end = 0)[
+    as.integer(factor(ps))]
+  lty <- as.integer(factor(ns))
+  
+  if(min(dat) <= 0)
+    dat <- pmax(dat, min(dat[dat != 0]))
+  plot(1, 1, xlim = range(n_nodes), ylim = range(dat), ylab = what, 
+       xlab = "# nodes", bty = "l", log = "y")
+  for(i in seq_len(dim(dat)[[3]])){
+    matlines(n_nodes, t(dat[, , i]), lty = lty[i], col = col[i])
+    matpoints(n_nodes, t(dat[, , i]), pch = c(1, 16) + (i %% 3), 
+              col = col[i])
+  }
+  if(do_abline)
+    for(x in 6:16)
+      abline(h = 10^(-x), lty = 3)
+}
+
+par(mfcol = c(2, 2), mar = c(5, 5, 1, 1))
+for(n_choice in unique(gr$n)){
+  cat(sprintf("n_choice %2d\n", n_choice))
+  do_plot("Abs(error)", do_abline = TRUE, n_choice = n_choice)
+  do_plot("Time", n_choice = n_choice)
+  do_plot("Sd abs(error)", do_abline = TRUE, n_choice = n_choice)
+  do_plot("Estimate", n_choice = n_choice)
+}
+```
 
 ## References

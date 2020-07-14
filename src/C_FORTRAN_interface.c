@@ -9,13 +9,14 @@
 #include <Rmath.h>
 #include <Rinternals.h>
 #include "threat-safe-random.h"
+#include "pnorm.h"
 
 double F77_SUB(sqrtqchisqint)(int const *n, double const *p) {
   return(sqrt(qchisq(p[0], (double) n[0], 0, 0)));
 }
 
 double F77_SUB(mvphi)(double const *z){
-  return pnorm5(*z, 0., 1., 1L, 0L);
+  return pnorm_std(*z, 1L, 0L);
 }
 
 double F77_SUB(mvphnv)(double const *p){

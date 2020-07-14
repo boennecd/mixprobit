@@ -114,6 +114,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// aprx_mult_mix_cdf
+Rcpp::NumericVector aprx_mult_mix_cdf(unsigned const n_alt, arma::vec const& eta, arma::mat const& Z, arma::mat const& Sigma, int const maxpts, double const abseps, double const releps);
+RcppExport SEXP _mixprobit_aprx_mult_mix_cdf(SEXP n_altSEXP, SEXP etaSEXP, SEXP ZSEXP, SEXP SigmaSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< unsigned const >::type n_alt(n_altSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::mat const& >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
+    Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
+    Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_mult_mix_cdf(n_alt, eta, Z, Sigma, maxpts, abseps, releps));
+    return rcpp_result_gen;
+END_RCPP
+}
 // aprx_binary_mix_cdf_get_ptr
 SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads, bool const gradient);
 RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP, SEXP gradientSEXP) {
@@ -330,6 +347,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_aprx_mult_mix", (DL_FUNC) &_mixprobit_aprx_mult_mix, 9},
     {"_mixprobit_aprx_jac_binary_mix", (DL_FUNC) &_mixprobit_aprx_jac_binary_mix, 10},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
+    {"_mixprobit_aprx_mult_mix_cdf", (DL_FUNC) &_mixprobit_aprx_mult_mix_cdf, 7},
     {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 3},
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},

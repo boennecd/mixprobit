@@ -1,5 +1,6 @@
 #include "integrand-multinomial.h"
 #include "Brent_fmin.h"
+#include "pnorm.h"
 
 using std::log;
 using std::exp;
@@ -8,6 +9,10 @@ using std::abs;
 namespace integrand {
 static double const norm_const = 1. / std::sqrt(M_PI * 2.),
                 norm_const_log = log(norm_const);
+
+inline double my_log_dnorm(double const x){
+  return norm_const_log - .5 * x * x;
+}
 
 /** the class assumes that the `lp` object has been set before calling its
     member functions. It then computes the log of the "inner" integrand and
@@ -84,7 +89,7 @@ class multinomial_mode_helper {
       }
     }
 
-    return R::pnorm5(x, 0, 1, 1L, 1L);
+    return pnorm_std(x, 1L, 1L);
   }
 
 public:
@@ -103,7 +108,7 @@ public:
     double out = -1;
     for(auto l : lp){
       double const val = l + a,
-              dnrm_log = - val * val / 2. + norm_const_log, // R::dnorm4(val, 0, 1,     1L),
+              dnrm_log = my_log_dnorm(val), // R::dnorm4(val, 0, 1,     1L),
               pnrm_log = norm_cdf_aprx(val),
                    rat = std::exp(dnrm_log - pnrm_log);
       out -= rat * (val + rat);
@@ -153,12 +158,12 @@ multinomial::mode_res multinomial::find_mode(double const *par) const {
       std::numeric_limits<double>::epsilon() * abs(res) + tol / 2.;
     if       (abs(res - x_min) < eps){
       x_max = x_min + .01 * delta;
-      delta *= 10;
+      delta *= 5;
       x_min = x_max - delta;
 
     } else if(abs(res - x_max) < eps){
       x_min = x_max - .01 * delta;
-      delta *= 10;
+      delta *= 5;
       x_max = x_min + delta;
 
     } else
@@ -197,7 +202,7 @@ double multinomial::operator()
 
     double new_term = w_log[i] - a * a / 2. + x[i] * x[i];
     for(unsigned j = 0; j < n_alt; ++j)
-      new_term += R::pnorm5(a + lp[j], 0, 1, 1L, 1L);
+      new_term += pnorm_std(a + lp[j], 1L, 1L);
 
     out = log_exp_add(out, new_term);
   }
@@ -247,8 +252,8 @@ arma::vec multinomial::gr(double const *par) const {
     double new_term_denom(start_val);
     for(unsigned j = 0; j < n_alt; ++j){
       double const lpj = a + lp[j],
-              dnrm_log = R::dnorm4(lpj, 0, 1,     1L),
-              pnrm_log = R::pnorm5(lpj, 0, 1, 1L, 1L);
+              dnrm_log = my_log_dnorm(lpj),
+              pnrm_log = pnorm_std(lpj, 1L, 1L);
 
       new_term_denom += pnrm_log;
       partial_inner[j] = dnrm_log - pnrm_log;
@@ -358,8 +363,8 @@ arma::mat multinomial::Hessian(double const *par) const {
     /* compute dnorm and pnorms */
     for(unsigned j = 0; j < n_alt; ++j){
       double const lpj = a + lp[j];
-      dnrms_log[j] = R::dnorm4(lpj, 0, 1,     1L);
-      pnrms_log[j] = R::pnorm5(lpj, 0, 1, 1L, 1L);
+      dnrms_log[j] = my_log_dnorm(lpj);
+      pnrms_log[j] = pnorm_std(lpj, 1L, 1L);
     }
 
     double new_term_denom(w[i] * exp(- a * a / 2. + x[i] * x[i]));

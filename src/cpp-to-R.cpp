@@ -8,7 +8,6 @@
 #include "sobol.h"
 #include "qmc.h"
 #include "integrand-multinomial.h"
-
 #include <vector>
 
 #ifdef _OPENMP
@@ -187,6 +186,45 @@ Rcpp::NumericVector aprx_binary_mix_cdf(
   S.diag() += 1.;
   arma::vec const mean(n, arma::fill::zeros);
   arma::vec lower(n);
+  lower.fill(-std::numeric_limits<double>::infinity());
+
+  auto const res =
+    pmvnorm::cdf(lower, eta, mean, S, maxpts, abseps, releps);
+
+  NumericVector out = NumericVector::create(res.value);
+  out.attr("inform") = res.inform;
+  out.attr("error")  = res.error;
+
+  return out;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector aprx_mult_mix_cdf(
+    unsigned const n_alt, arma::vec const &eta, arma::mat const &Z,
+    arma::mat const &Sigma, int const maxpts, double const abseps,
+    double const releps){
+  using Rcpp::NumericVector;
+
+  parallelrng::set_rng_seeds(1L);
+  arma::uword const n = eta.n_elem / n_alt,
+                    p = Z.n_rows;
+  assert(n * n_alt == eta.n_elem);
+  assert(Z.n_cols == eta.n_elem);
+  assert(Sigma.n_cols == p);
+  assert(Sigma.n_rows == p);
+
+  arma::mat S = Z.t() * (Sigma * Z);
+  {
+    arma::mat dum(n_alt, n_alt, arma::fill::ones);
+    dum.diag() += 1.;
+    for(size_t i = 0; i < n; ++i){
+      size_t const start = i * n_alt;
+      arma::span const indices(start, start +  n_alt - 1L);
+      S(indices, indices) += dum;
+    }
+  }
+  arma::vec const mean(eta.n_elem, arma::fill::zeros);
+  arma::vec lower(eta.n_elem);
   lower.fill(-std::numeric_limits<double>::infinity());
 
   auto const res =

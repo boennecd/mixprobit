@@ -6,11 +6,12 @@
 #include <limits>
 #include <memory>
 #include <cmath>
+#include "pnorm.h"
 
 namespace restrictcdf {
 inline std::array<double, 2> draw_trunc_mean
   (double const b, const double u, bool comp_quantile){
-  double const qb = R::pnorm5(b, 0, 1, 1L, 0L);
+  double const qb = pnorm_std(b, 1L, 0L);
   if(comp_quantile)
     return { qb, R::qnorm5(qb * u, 0, 1, 1L, 0L) };
   return { qb, std::numeric_limits<double>::quiet_NaN() };

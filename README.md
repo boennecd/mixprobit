@@ -262,19 +262,19 @@ independent of the random effect dimension, `p`.
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 1.996
+#> [1] 2.077
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
-#> [1] 1.981
+#> [1] 2.028
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 2.005
+#> [1] 2.038
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 2.002
+#> [1] 1.974
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 1.966
+#> [1] 1.961
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 1.934
+#> [1] 2.021
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 1.992
+#> [1] 2.019
 ```
 
 Next we perform a quick example.
@@ -351,54 +351,57 @@ c(Estiamte = truth, SE = attr(truth, "SE"),
   `SE (log)` = abs(attr(truth, "SE") / truth))
 #>       Estiamte             SE Estimate (log)       SE (log) 
 #>      4.436e-03      3.240e-08     -5.418e+00      7.304e-06
-truth <- c(truth)
-all.equal(truth, c(truth_maybe_cdf))
+
+tr <- c(truth)
+all.equal(tr, c(truth_maybe_cdf))
 #> [1] "Mean relative difference: 7.963e-05"
-all.equal(truth, c(truth_maybe_qmc))
+all.equal(tr, c(truth_maybe_qmc))
 #> [1] "Mean relative difference: 2.317e-05"
-all.equal(truth, c(truth_maybe_Aqmc))
+all.equal(tr, c(truth_maybe_Aqmc))
 #> [1] "Mean relative difference: 1.763e-06"
-all.equal(truth, c(truth_maybe_mc))
+all.equal(tr, c(truth_maybe_mc))
 #> [1] "Mean relative difference: 0.0002474"
-all.equal(truth, c(truth_maybe_Amc))
+all.equal(tr, c(truth_maybe_Amc))
 #> [1] "Mean relative difference: 1.555e-05"
 
 # compare with using fewer samples and GHQ
-all.equal(truth,   GHQ_R())
+all.equal(tr,   GHQ_R())
 #> [1] "Mean relative difference: 5.245e-06"
-all.equal(truth,   GHQ_cpp())
+all.equal(tr,   GHQ_cpp())
 #> [1] "Mean relative difference: 5.245e-06"
-all.equal(truth,   AGHQ_cpp())
+all.equal(tr,   AGHQ_cpp())
 #> [1] "Mean relative difference: 6.682e-06"
-all.equal(truth, c(cdf_aprx_R()))
-#> [1] "Mean relative difference: 0.0001005"
-all.equal(truth, c(qmc_aprx()))
-#> [1] "Mean relative difference: 0.002115"
-all.equal(truth, c(qmc_Aaprx()))
-#> [1] "Mean relative difference: 0.0005724"
-all.equal(truth, c(cdf_aprx_cpp()))
-#> [1] "Mean relative difference: 1.811e-05"
-all.equal(truth, c(sim_aprx(1L)))
-#> [1] "Mean relative difference: 0.03199"
-all.equal(truth, c(sim_aprx(2L)))
-#> [1] "Mean relative difference: 0.01141"
-all.equal(truth, c(sim_aprx(3L)))
-#> [1] "Mean relative difference: 0.006145"
-all.equal(truth, c(sim_aprx(4L)))
-#> [1] "Mean relative difference: 0.01554"
-all.equal(truth, c(sim_Aaprx(1L)))
-#> [1] "Mean relative difference: 5.265e-05"
-all.equal(truth, c(sim_Aaprx(2L)))
-#> [1] "Mean relative difference: 0.001101"
-all.equal(truth, c(sim_Aaprx(3L)))
-#> [1] "Mean relative difference: 0.001387"
-all.equal(truth, c(sim_Aaprx(4L)))
-#> [1] "Mean relative difference: 0.001129"
+comp <- function(f, ...)
+  mean(replicate(10, abs((tr - c(f())) / tr)))
+comp(cdf_aprx_R)
+#> [1] 7.553e-05
+comp(qmc_aprx)
+#> [1] 0.00314
+comp(qmc_Aaprx)
+#> [1] 0.0002745
+comp(cdf_aprx_cpp)
+#> [1] 7.734e-05
+comp(function() sim_aprx(1L))
+#> [1] 0.01688
+comp(function() sim_aprx(2L))
+#> [1] 0.009532
+comp(function() sim_aprx(3L))
+#> [1] 0.006249
+comp(function() sim_aprx(4L))
+#> [1] 0.00535
+comp(function() sim_Aaprx(1L))
+#> [1] 0.0008081
+comp(function() sim_Aaprx(2L))
+#> [1] 0.0008816
+comp(function() sim_Aaprx(3L))
+#> [1] 0.0006781
+comp(function() sim_Aaprx(4L))
+#> [1] 0.0005077
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 #>    user  system elapsed 
-#>   1.461   0.000   1.462
+#>   1.394   0.000   1.394
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
@@ -408,18 +411,18 @@ microbenchmark::microbenchmark(
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 10)
 #> Unit: milliseconds
-#>                         expr    min     lq  mean median    uq   max neval
-#>                    GHQ (C++) 39.888 40.263 40.38  40.41 40.59 40.76    10
-#>                   AGHQ (C++) 43.436 43.860 44.17  44.17 44.49 44.90    10
-#>                          CDF 21.141 21.297 21.38  21.34 21.42 21.93    10
-#>                    CDF (C++) 11.622 11.724 11.83  11.80 11.85 12.28    10
-#>                          QMC 32.922 33.741 34.11  34.08 34.70 34.92    10
-#>                 QMC Adaptive 38.575 39.423 39.69  39.71 40.10 40.40    10
-#>           Genz & Monahan (1) 30.251 30.472 31.25  31.44 31.61 32.22    10
-#>           Genz & Monahan (2) 31.106 32.696 32.83  32.89 33.22 33.76    10
-#>           Genz & Monahan (3) 30.972 31.101 31.51  31.42 31.97 32.16    10
-#>           Genz & Monahan (4) 30.745 31.237 31.40  31.37 31.70 32.06    10
-#>  Genz & Monahan Adaptive (2)  6.844  7.991 10.97  10.13 12.89 21.26    10
+#>                         expr    min     lq   mean median    uq    max neval
+#>                    GHQ (C++) 34.656 35.651 35.805 35.692 36.58 36.743    10
+#>                   AGHQ (C++) 38.340 38.745 39.223 39.261 39.69 40.098    10
+#>                          CDF 21.287 21.471 21.777 21.757 22.00 22.340    10
+#>                    CDF (C++) 10.755 11.053 11.281 11.089 11.24 12.451    10
+#>                          QMC 28.253 28.938 29.324 29.332 29.85 30.326    10
+#>                 QMC Adaptive 33.542 33.675 34.358 34.287 35.06 35.501    10
+#>           Genz & Monahan (1) 25.768 25.888 26.463 26.551 26.86 27.459    10
+#>           Genz & Monahan (2) 26.679 27.813 28.146 28.333 28.70 29.168    10
+#>           Genz & Monahan (3) 26.222 26.743 26.986 26.962 27.09 28.328    10
+#>           Genz & Monahan (4) 25.579 26.421 26.740 26.749 27.03 27.858    10
+#>  Genz & Monahan Adaptive (2)  4.376  6.221  6.584  6.502  6.85  9.219    10
 ```
 
 More Rigorous Comparison
@@ -2120,6 +2123,13 @@ aprx <- within(list(), {
   get_AGHQ_cpp <- get_GHQ_cpp
   formals(get_AGHQ_cpp)$is_adaptive <- TRUE
   
+  get_cdf_cpp <- function(eta, Z, p, Sigma, maxpts, abseps = -1, 
+                          releps = 1e-4)
+    function()
+      mixprobit:::aprx_mult_mix_cdf(
+        n_alt = p, eta = eta, Z = Z, Sigma = Sigma, maxpts = maxpts,
+        abseps = abseps, releps = releps)
+  
   get_sim_mth <- function(eta, Z, p, Sigma, maxpts, abseps = -1, 
                           releps = 1e-4, is_adaptive = FALSE)
     # Args: 
@@ -2153,14 +2163,18 @@ aprx <- within(list(), {
 # Args:
 #   n: cluster size.
 #   p: number of random effects and number of categories.
-get_sim_dat <- function(n, p){
+get_sim_dat <- function(n, p, Sigma){
+  has_Sigma <- !missing(Sigma)
   out <- list(n = n, p = p)
   within(out, {
     Z <- diag(p)
-    Sigma <- drop(                       # covariance matrix of random effects
-      rWishart(1, 5 * p, diag(1 / 5 / p, p)))
+    # covariance matrix of random effects
+    if(!has_Sigma)
+      Sigma <- drop(                     
+        rWishart(1, 5 * p, diag(1 / 5 / p, p)))
     S_chol <- chol(Sigma)
-    u <- drop(rnorm(p) %*% S_chol)       # random effects
+    # random effects
+    u <- drop(rnorm(p) %*% S_chol)       
     
     dat <- replicate(n, {
       eta <- rnorm(p)
@@ -2238,10 +2252,8 @@ GHQ_cpp  <- wd(aprx$get_GHQ_cpp (eta = eta, Z = Z, p = p - 1L,
 AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(eta = eta, Z = Z, p = p - 1L, 
                                  Sigma = Sigma, b = b))
 
-# cdf_aprx_R   <- wd(aprx$get_cdf_R  (y = y, eta = eta, Z = Z, S = S, 
-#                                     maxpts = maxpts))
-# cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(y = y, eta = eta, Z = Z, S = S, 
-#                                     maxpts = maxpts))
+cdf_aprx_cpp <- wd(aprx$get_cdf_cpp(eta = eta, Z = Z, p = p - 1L, 
+                                    Sigma = Sigma, maxpts = maxpts))
 
 qmc_aprx <- wd(
   aprx$get_qmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
@@ -2259,26 +2271,33 @@ sim_Aaprx <- wd(aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L,
 #####
 # compare results. Start with the simulation based methods with a lot of
 # samples. We take this as the ground truth
-# truth_maybe_cdf <- wd( 
-#   aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-#                     abseps = 1e-11))()
+truth_maybe_cdf <- wd(
+  aprx$get_cdf_cpp (eta = eta, Z = Z, p = p - 1L, Sigma = Sigma,
+                    maxpts = 1e6, abseps = -1, releps = 1e-11))()
+truth_maybe_cdf
+#> [1] 0.0004471
+#> attr(,"inform")
+#> [1] 1
+#> attr(,"error")
+#> [1] 9.651e-08
+
 truth_maybe_Aqmc <- wd(
   aprx$get_Aqmc(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, maxpts = 1e6, 
                 releps = 1e-11)())
 truth_maybe_Aqmc
-#> [1] 0.000447
+#> [1] 0.0004472
 #> attr(,"intvls")
 #> [1] 1000000
 #> attr(,"error")
-#> [1] 3.992e-08
+#> [1] 1.471e-07
 
 truth_maybe_Amc <- wd(
   aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
                     maxpts = 1e6, releps = 1e-11)(2L))
 truth_maybe_Amc
-#> [1] 0.0004472
+#> [1] 0.0004471
 #> attr(,"error")
-#> [1] 1.114e-07
+#> [1] 9.268e-08
 #> attr(,"inform")
 #> [1] 1
 #> attr(,"inivls")
@@ -2292,62 +2311,142 @@ c(Estiamte = truth, SE = attr(truth, "SE"),
   `Estimate (log)` = log(c(truth)),  
   `SE (log)` = abs(attr(truth, "SE") / truth))
 #>       Estiamte             SE Estimate (log)       SE (log) 
-#>      4.470e-04      2.329e-08     -7.713e+00      5.211e-05
-truth <- c(truth)
+#>      4.470e-04      2.388e-08     -7.713e+00      5.342e-05
+tr <- c(truth)
 
-# all.equal(truth, c(truth_maybe_cdf))
-all.equal(truth, c(truth_maybe_Aqmc))
-#> [1] "Mean relative difference: 2.416e-05"
-all.equal(truth, c(truth_maybe_Amc))
-#> [1] "Mean relative difference: 0.000419"
+all.equal(tr, c(truth_maybe_cdf))
+#> [1] "Mean relative difference: 0.000199"
+all.equal(tr, c(truth_maybe_Aqmc))
+#> [1] "Mean relative difference: 0.0004429"
+all.equal(tr, c(truth_maybe_Amc))
+#> [1] "Mean relative difference: 4.563e-05"
 
 # compare with using fewer samples and GHQ
-all.equal(truth,   GHQ_cpp())
-#> [1] "Mean relative difference: 0.000157"
-all.equal(truth,   AGHQ_cpp())
-#> [1] "Mean relative difference: 0.0001124"
-all.equal(truth, c(qmc_aprx()))
-#> [1] "Mean relative difference: 0.002574"
-all.equal(truth, c(qmc_Aaprx()))
-#> [1] "Mean relative difference: 0.001916"
-# all.equal(truth, c(cdf_aprx_cpp()))
-all.equal(truth, c(sim_aprx(1L)))
-#> [1] "Mean relative difference: 0.03461"
-all.equal(truth, c(sim_aprx(2L)))
-#> [1] "Mean relative difference: 0.02268"
-all.equal(truth, c(sim_aprx(3L)))
-#> [1] "Mean relative difference: 0.007367"
-all.equal(truth, c(sim_aprx(4L)))
-#> [1] "Mean relative difference: 0.005714"
-all.equal(truth, c(sim_Aaprx(1L)))
-#> [1] "Mean relative difference: 2.841e-05"
-all.equal(truth, c(sim_Aaprx(2L)))
-#> [1] "Mean relative difference: 0.0007702"
-all.equal(truth, c(sim_Aaprx(3L)))
-#> [1] "Mean relative difference: 0.0002279"
-all.equal(truth, c(sim_Aaprx(4L)))
-#> [1] "Mean relative difference: 0.0007256"
+all.equal(tr,   GHQ_cpp())
+#> [1] "Mean relative difference: 8.856e-05"
+all.equal(tr,   AGHQ_cpp())
+#> [1] "Mean relative difference: 4.401e-05"
+comp <- function(f, ...)
+  mean(replicate(10, abs((tr - c(f())) / tr)))
+comp(qmc_aprx)
+#> [1] 0.002155
+comp(qmc_Aaprx)
+#> [1] 0.001103
+comp(cdf_aprx_cpp)
+#> [1] 0.0007433
+comp(function() sim_aprx(1L))
+#> [1] 0.01552
+comp(function() sim_aprx(2L))
+#> [1] 0.007258
+comp(function() sim_aprx(3L))
+#> [1] 0.006178
+comp(function() sim_aprx(4L))
+#> [1] 0.01385
+comp(function() sim_Aaprx(1L))
+#> [1] 0.0015
+comp(function() sim_Aaprx(2L))
+#> [1] 0.001208
+comp(function() sim_Aaprx(3L))
+#> [1] 0.0007614
+comp(function() sim_Aaprx(4L))
+#> [1] 0.001671
 
 # compare computations times
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
-  # `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
+  `CDF (C++)` = cdf_aprx_cpp(),
   QMC = qmc_aprx(), `QMC Adaptive` = qmc_Aaprx(),
   `Genz & Monahan (1)` = sim_aprx(1L), `Genz & Monahan (2)` = sim_aprx(2L),
   `Genz & Monahan (3)` = sim_aprx(3L), `Genz & Monahan (4)` = sim_aprx(4L),
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 5)
-#> Unit: seconds
-#>                         expr   min    lq  mean median    uq   max neval
-#>                    GHQ (C++) 1.369 1.383 1.395  1.400 1.408 1.413     5
-#>                   AGHQ (C++) 1.349 1.349 1.355  1.355 1.360 1.364     5
-#>                          QMC 1.076 1.098 1.103  1.100 1.118 1.126     5
-#>                 QMC Adaptive 1.022 1.027 1.129  1.053 1.068 1.475     5
-#>           Genz & Monahan (1) 1.097 1.097 1.107  1.102 1.111 1.128     5
-#>           Genz & Monahan (2) 1.096 1.113 1.117  1.118 1.124 1.136     5
-#>           Genz & Monahan (3) 1.101 1.112 1.119  1.120 1.124 1.136     5
-#>           Genz & Monahan (4) 1.111 1.111 1.128  1.120 1.143 1.156     5
-#>  Genz & Monahan Adaptive (2) 1.049 1.050 1.063  1.055 1.081 1.083     5
+#> Unit: milliseconds
+#>                         expr     min      lq    mean  median      uq     max
+#>                    GHQ (C++) 1230.61 1233.47 1235.20 1234.62 1235.82 1241.51
+#>                   AGHQ (C++) 1209.36 1210.59 1215.18 1216.73 1218.31 1220.91
+#>                    CDF (C++)   54.11   54.73   54.75   54.85   54.86   55.19
+#>                          QMC  976.50  976.94  984.53  980.33  981.31 1007.55
+#>                 QMC Adaptive  937.26  940.06  941.86  940.79  943.98  947.23
+#>           Genz & Monahan (1)  982.32  982.91  985.98  985.00  988.61  991.04
+#>           Genz & Monahan (2)  993.88  994.53 1002.34  997.33 1006.02 1019.92
+#>           Genz & Monahan (3)  992.29  993.68  996.88  993.69 1001.77 1002.94
+#>           Genz & Monahan (4)  996.03  996.06 1009.42  998.29 1015.13 1041.59
+#>  Genz & Monahan Adaptive (2)  942.35  944.17  948.40  946.57  954.07  954.82
+#>  neval
+#>      5
+#>      5
+#>      5
+#>      5
+#>      5
+#>      5
+#>      5
+#>      5
+#>      5
+#>      5
+```
+
+The CDF approach is noticeably faster. One explanation is that the AGHQ
+we are using, as of this writing, for the integrand with other methods
+uses
+![8(c - 1)](https://latex.codecogs.com/svg.latex?8%28c%20-%201%29 "8(c - 1)")
+evaluations of the standard normal distribution’s CDF with
+![c](https://latex.codecogs.com/svg.latex?c "c") being the number of
+categories per observation in the cluster plus the overhead of finding
+the mode. In the example above, this means that we do `8 * n * (p - 1)`,
+240, CDF evaluations for each of the `maxpts`, 40000, evaluations. We
+show how long this takes to compute below when the evaluations points
+are drawn from a standard normal distribution
+
+``` r
+local({
+  Rcpp::sourceCpp(code = "
+    // [[Rcpp::depends(RcppArmadillo)]]
+    #include <RcppArmadillo.h>
+    
+    //[[Rcpp::export]]
+    double test_pnorm(arma::vec const &x){
+      double out(0), p, cp;
+      for(auto xi : x){
+        p = xi;
+        R::pnorm_both(xi, &p, &cp, 1L, 1L);
+        out += p;
+      }
+      return out;
+    }")
+  
+  u <- rnorm(8 * n * (p - 1) * maxpts)
+  microbenchmark::microbenchmark(test_pnorm(u), times = 10)
+})
+#> Unit: milliseconds
+#>           expr   min    lq  mean median    uq   max neval
+#>  test_pnorm(u) 466.4 467.4 468.4  468.2 468.7 472.2    10
+```
+
+In contrast, the CDF approximation can be implemented with only one
+evaluation of the CDF and `n * (p - 1) - 1`, 29, evaluations of the log
+of the standard normal distribution’s PDF for each of `maxpts`, 40000,
+evaluations. This is much faster to evaluate as shown below
+
+``` r
+local({
+  u <- rnorm(n * (p - 1) * maxpts - 1L)
+  Rcpp::sourceCpp(code = "
+    // [[Rcpp::depends(RcppArmadillo)]]
+    #include <RcppArmadillo.h>
+    
+    //[[Rcpp::export]]
+    double test_dnorm(arma::vec const &x){
+      static double const norm_const = 1. / std::sqrt(2 * M_PI);
+      double out(0);
+      for(auto xi : x)
+        out += -.5 * xi * xi;
+      return out * norm_const;
+    }")
+  microbenchmark::microbenchmark(test_dnorm(u), times = 10)
+})
+#> Unit: milliseconds
+#>           expr   min    lq  mean median    uq   max neval
+#>  test_dnorm(u) 1.246 1.253 1.356  1.262 1.303 2.082    10
 ```
 
 ### Approximating the Inner Integral
@@ -2511,11 +2610,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L))
 #> Unit: microseconds
 #>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3  906.7  943.4  953.7  944.7  949.2 1325.6   100
-#>   AGHQ 7 1784.3 1853.5 1889.4 1861.4 1871.3 2468.3   100
-#>    GHQ 3  652.0  676.0  692.4  682.1  686.5  921.4   100
-#>    GHQ 7 1493.7 1536.8 1574.6 1561.0 1569.2 2129.6   100
-#>   GHQ 21 4511.0 4681.2 4732.7 4693.9 4712.6 5604.1   100
+#>   AGHQ 3  849.1  850.3  865.4  856.7  872.8 1074.0   100
+#>   AGHQ 7 1661.6 1667.1 1697.7 1704.2 1709.9 1838.1   100
+#>    GHQ 3  601.4  604.0  616.9  616.5  618.9  764.6   100
+#>    GHQ 7 1375.0 1399.8 1432.0 1432.3 1437.6 1738.5   100
+#>   GHQ 21 4101.1 4117.1 4209.8 4211.0 4240.5 4647.8   100
 ```
 
 The adaptive version is much more precise. Moreover, the it seems that 5
@@ -2566,12 +2665,12 @@ microbenchmark::microbenchmark(
   ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 1L),
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 1L))
 #> Unit: microseconds
-#>     expr    min     lq mean median   uq  max neval
-#>   AGHQ 3 1256.3 1270.9 1309   1300 1307 1579   100
-#>   AGHQ 7 2609.0 2633.9 2696   2694 2701 3098   100
-#>    GHQ 3  983.4  993.5 1022   1016 1024 1242   100
-#>    GHQ 7 2352.9 2368.8 2421   2419 2430 2809   100
-#>   GHQ 21 6969.8 7019.7 7156   7171 7208 7663   100
+#>     expr  min     lq   mean median     uq  max neval
+#>   AGHQ 3 1136 1150.3 1171.2   1168 1175.3 1375   100
+#>   AGHQ 7 2320 2377.8 2405.0   2393 2412.2 2683   100
+#>    GHQ 3  852  855.7  875.4    876  877.9 1207   100
+#>    GHQ 7 1991 2018.1 2058.9   2050 2062.1 2485   100
+#>   GHQ 21 5973 6126.8 6147.5   6137 6153.6 6472   100
 ```
 
 ``` r
@@ -2616,18 +2715,139 @@ microbenchmark::microbenchmark(
   ` GHQ 3`  = n_adap(3L , n_times = 1000L, order = 2L), 
   ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 2L),
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 2L))
-#> Unit: milliseconds
-#>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3  1.286  1.319  1.338  1.336  1.340  1.587   100
-#>   AGHQ 7  2.590  2.679  2.679  2.684  2.689  2.778   100
-#>    GHQ 3  1.012  1.047  1.061  1.049  1.054  1.330   100
-#>    GHQ 7  2.327  2.388  2.397  2.392  2.397  2.700   100
-#>   GHQ 21 16.414 16.838 16.915 16.864 16.956 17.744   100
+#> Unit: microseconds
+#>     expr     min      lq    mean median      uq   max neval
+#>   AGHQ 3  1151.7  1182.1  1213.2   1216  1233.9  1412   100
+#>   AGHQ 7  2372.0  2400.0  2442.7   2440  2474.9  2608   100
+#>    GHQ 3   910.6   930.4   950.8    939   970.5  1240   100
+#>    GHQ 7  1984.0  2033.8  2072.7   2054  2116.8  2197   100
+#>   GHQ 21 15880.6 16210.1 16310.8  16315 16411.6 16686   100
 ```
 
 It does not take much more time and using an adaptive method only seems
 more attractive as the overhead from finding a mode is relatively
 smaller.
+
+As another example, we use the simulation function we defined before and
+compute the average absolute error using a number of data sets and the
+computation where we fix the covariance matrix.
+
+<!-- knitr::opts_knit$set(output.dir = ".") -->
+<!-- knitr::load_cache("rig_aprx_mult_inner", path = "README_cache/markdown_github/") -->
+``` r
+sim_one_integrand_aprx <- function(n, p, n_nodes){
+  Sigma <- diag(p)
+  dat <- get_sim_dat(n, p, Sigma = Sigma)
+  dat$Sigma <- Sigma
+  n_times <- 10000L
+  
+  . <- function(n){
+    ti <- system.time(
+      out <- func(n_nodes = n, n_times = n_times, order = 0L))
+    c(Estimate = out, Time = unname(ti["elapsed"]) * 1000L / n_times)
+  }
+  
+  func <- get_aprx_ghq(dat = dat, is_adaptive = TRUE, u = dat$u)
+  ada <- sapply(n_nodes, .)
+  func <- get_aprx_ghq(dat = dat, is_adaptive = FALSE, u = dat$u)
+  n_ada <- sapply(n_nodes, .)
+  
+  truth <- ada["Estimate", which.max(n_nodes)]
+  . <- function(x)
+    rbind(x, Error = x["Estimate", ] - truth)
+  
+  ada <- .(ada)
+  n_ada <- .(n_ada)
+  array(c(ada, n_ada), dim = c(dim(ada), 2L), 
+        dimnames = list(
+          Entity = rownames(ada), 
+          Property = n_nodes, 
+          Method = c("Adaptive", "Non-Adaptive")))
+} 
+
+n_nodes <- c(c(seq(2L, 20L, by = 2L)), 30L)
+n_sim <- 25L
+gr <- expand.grid(n = 2^(1:4), p = 2:4)
+
+set.seed(1L)
+integrand_dat <- mapply(function(n, p){
+  all_dat <- replicate(
+    n_sim, sim_one_integrand_aprx(n = n, p = p, n_nodes = n_nodes), 
+    simplify = "array")
+  out <- all_dat
+  out["Error", , , ] <- abs(out["Error", , , ])
+  sd_est <- apply(out["Error", , , ], 1:2, sd) / sqrt(n_sim)
+  out <- apply(out, 1:3, mean)
+  library(abind)
+  
+  out <- abind(out, sd_est, along = 1)
+  dimnames(out)[[1]][3:4] <- c("Abs(error)",  "Sd abs(error)")
+  
+  list(n = n, p = p, all_dat = all_dat, out = aperm(out, 3:1))
+}, n = gr$n, p = gr$p, SIMPLIFY = FALSE)
+```
+
+We plot the average evaluation time and error below using a different
+number of nodes for different cluster sizes, number of clusters and
+random effects.
+
+``` r
+to_print <- lapply(integrand_dat, `[[`, "out")
+names(to_print) <- lapply(integrand_dat, function(x)
+  sprintf("n: %2d; p: %2d", x$n, x$p))
+
+do_plot <- function(what, do_abline = FALSE, n_choice){
+  dat <- sapply(to_print, function(x) x[, , what], simplify = "array")
+  ns <- sapply(integrand_dat, `[[`, "n")
+  ps <- sapply(integrand_dat, `[[`, "p")
+  
+  keep <- ns %in% n_choice
+  ns <- ns[keep]
+  ps <- ps[keep]
+  dat <- dat[, , keep]
+  
+  col <- gray.colors(length(unique(ps)), start = .5, end = 0)[
+    as.integer(factor(ps))]
+  lty <- as.integer(factor(ns))
+  
+  if(min(dat) <= 0)
+    dat <- pmax(dat, min(dat[dat != 0]))
+  plot(1, 1, xlim = range(n_nodes), ylim = range(dat), ylab = what, 
+       xlab = "# nodes", bty = "l", log = "y")
+  for(i in seq_len(dim(dat)[[3]])){
+    matlines(n_nodes, t(dat[, , i]), lty = lty[i], col = col[i])
+    matpoints(n_nodes, t(dat[, , i]), pch = c(1, 16) + (i %% 3), 
+              col = col[i])
+  }
+  if(do_abline)
+    for(x in 6:16)
+      abline(h = 10^(-x), lty = 3)
+}
+
+par(mfcol = c(2, 2), mar = c(5, 5, 1, 1))
+for(n_choice in unique(gr$n)){
+  cat(sprintf("n_choice %2d\n", n_choice))
+  do_plot("Abs(error)", do_abline = TRUE, n_choice = n_choice)
+  do_plot("Time", n_choice = n_choice)
+  do_plot("Sd abs(error)", do_abline = TRUE, n_choice = n_choice)
+  do_plot("Estimate", n_choice = n_choice)
+}
+#> n_choice  2
+```
+
+![](man/figures/README-show_rig_aprx_mult_inner_res-1.png)
+
+    #> n_choice  4
+
+![](man/figures/README-show_rig_aprx_mult_inner_res-2.png)
+
+    #> n_choice  8
+
+![](man/figures/README-show_rig_aprx_mult_inner_res-3.png)
+
+    #> n_choice 16
+
+![](man/figures/README-show_rig_aprx_mult_inner_res-4.png)
 
 References
 ----------

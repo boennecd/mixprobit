@@ -1,5 +1,6 @@
 #include "my_pmvnorm.h"
 #include "welfords.h"
+#include "pnorm.h"
 
 namespace {
 struct get_var_order_output {
@@ -23,7 +24,7 @@ get_var_order_output get_var_order
   /* util functions */
   auto trunc_mean = [&](double const x){
     double const phi_Phi =
-      std::exp(R::dnorm4(x, 0, 1, 1L) - R::pnorm5(x, 0, 1, 1L, 1L));
+      std::exp(R::dnorm4(x, 0, 1, 1L) - pnorm_std(x, 1L, 1L));
     return -phi_Phi;
   };
   auto swap_vec = [&](arma::vec &x, uword const i, uword const j){
@@ -40,7 +41,7 @@ get_var_order_output get_var_order
   };
   auto vfunc = [&](double const x){
     double const phi_Phi =
-      std::exp(R::dnorm4(x, 0, 1, 1L) - R::pnorm5(x, 0, 1, 1L, 1L));
+      std::exp(R::dnorm4(x, 0, 1, 1L) - pnorm_std(x, 1L, 1L));
     return -x * phi_Phi - phi_Phi * phi_Phi;
   };
 
@@ -143,7 +144,7 @@ my_pmvnorm_output my_pmvnorm
             b -= *s++ * draw[k];
           b /= *s++;
 
-          double const qb = R::pnorm5(b, 0, 1, 1L, 0L);
+          double const qb = pnorm_std(b, 1L, 0L);
           w       *= qb;
           draw[j]  = R::qnorm5(qb * u[j], 0, 1, 1L, 0L);
         }
@@ -153,7 +154,7 @@ my_pmvnorm_output my_pmvnorm
           b -= *s++ * draw[k];
         b /= *s++;
 
-        double const qb = R::pnorm5(b, 0, 1, 1L, 0L);
+        double const qb = pnorm_std(b, 1L, 0L);
         w *= qb;
 
         return w;
