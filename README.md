@@ -401,7 +401,7 @@ comp(function() sim_Aaprx(4L))
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 #>    user  system elapsed 
-#>   1.394   0.000   1.394
+#>   1.405   0.000   1.405
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
@@ -411,18 +411,18 @@ microbenchmark::microbenchmark(
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 10)
 #> Unit: milliseconds
-#>                         expr    min     lq   mean median    uq    max neval
-#>                    GHQ (C++) 34.656 35.651 35.805 35.692 36.58 36.743    10
-#>                   AGHQ (C++) 38.340 38.745 39.223 39.261 39.69 40.098    10
-#>                          CDF 21.287 21.471 21.777 21.757 22.00 22.340    10
-#>                    CDF (C++) 10.755 11.053 11.281 11.089 11.24 12.451    10
-#>                          QMC 28.253 28.938 29.324 29.332 29.85 30.326    10
-#>                 QMC Adaptive 33.542 33.675 34.358 34.287 35.06 35.501    10
-#>           Genz & Monahan (1) 25.768 25.888 26.463 26.551 26.86 27.459    10
-#>           Genz & Monahan (2) 26.679 27.813 28.146 28.333 28.70 29.168    10
-#>           Genz & Monahan (3) 26.222 26.743 26.986 26.962 27.09 28.328    10
-#>           Genz & Monahan (4) 25.579 26.421 26.740 26.749 27.03 27.858    10
-#>  Genz & Monahan Adaptive (2)  4.376  6.221  6.584  6.502  6.85  9.219    10
+#>                         expr    min     lq   mean median     uq    max neval
+#>                    GHQ (C++) 34.151 34.386 35.287  35.01 35.164 37.990    10
+#>                   AGHQ (C++) 37.072 37.152 37.802  37.57 37.977 40.325    10
+#>                          CDF 21.066 21.119 21.497  21.37 21.630 22.898    10
+#>                    CDF (C++) 10.810 10.880 11.114  10.97 11.363 11.724    10
+#>                          QMC 27.534 27.661 27.998  27.84 28.371 28.862    10
+#>                 QMC Adaptive 32.871 33.033 33.528  33.43 33.776 35.237    10
+#>           Genz & Monahan (1) 25.306 25.354 25.842  25.67 25.933 27.796    10
+#>           Genz & Monahan (2) 26.217 26.386 26.746  26.50 26.908 27.957    10
+#>           Genz & Monahan (3) 25.479 25.928 26.236  26.03 26.658 27.317    10
+#>           Genz & Monahan (4) 24.970 24.992 25.369  25.09 25.645 26.555    10
+#>  Genz & Monahan Adaptive (2)  4.367  5.766  6.258   6.08  6.908  8.222    10
 ```
 
 More Rigorous Comparison
@@ -2362,16 +2362,16 @@ microbenchmark::microbenchmark(
   times = 5)
 #> Unit: milliseconds
 #>                         expr     min      lq    mean  median      uq     max
-#>                    GHQ (C++) 1230.61 1233.47 1235.20 1234.62 1235.82 1241.51
-#>                   AGHQ (C++) 1209.36 1210.59 1215.18 1216.73 1218.31 1220.91
-#>                    CDF (C++)   54.11   54.73   54.75   54.85   54.86   55.19
-#>                          QMC  976.50  976.94  984.53  980.33  981.31 1007.55
-#>                 QMC Adaptive  937.26  940.06  941.86  940.79  943.98  947.23
-#>           Genz & Monahan (1)  982.32  982.91  985.98  985.00  988.61  991.04
-#>           Genz & Monahan (2)  993.88  994.53 1002.34  997.33 1006.02 1019.92
-#>           Genz & Monahan (3)  992.29  993.68  996.88  993.69 1001.77 1002.94
-#>           Genz & Monahan (4)  996.03  996.06 1009.42  998.29 1015.13 1041.59
-#>  Genz & Monahan Adaptive (2)  942.35  944.17  948.40  946.57  954.07  954.82
+#>                    GHQ (C++) 1246.95 1248.98 1264.16 1258.69 1263.57 1302.61
+#>                   AGHQ (C++) 1219.84 1225.55 1231.19 1230.69 1237.83 1242.02
+#>                    CDF (C++)   54.86   55.01   55.93   55.04   55.28   59.44
+#>                          QMC  989.96  998.68 1007.09 1002.40 1020.41 1024.00
+#>                 QMC Adaptive  946.90  948.59  952.71  954.53  956.32  957.22
+#>           Genz & Monahan (1)  999.50 1003.64 1013.46 1013.44 1015.66 1035.04
+#>           Genz & Monahan (2) 1015.15 1016.51 1020.52 1016.91 1022.62 1031.43
+#>           Genz & Monahan (3) 1016.45 1018.50 1024.27 1019.94 1032.13 1034.34
+#>           Genz & Monahan (4) 1010.34 1012.45 1026.04 1020.70 1029.49 1057.24
+#>  Genz & Monahan Adaptive (2)  954.58  958.57  966.93  962.51  962.78  996.19
 #>  neval
 #>      5
 #>      5
@@ -2395,7 +2395,7 @@ categories per observation in the cluster plus the overhead of finding
 the mode. In the example above, this means that we do `8 * n * (p - 1)`,
 240, CDF evaluations for each of the `maxpts`, 40000, evaluations. We
 show how long this takes to compute below when the evaluations points
-are drawn from a standard normal distribution
+are drawn from the standard normal distribution
 
 ``` r
 local({
@@ -2418,8 +2418,8 @@ local({
   microbenchmark::microbenchmark(test_pnorm(u), times = 10)
 })
 #> Unit: milliseconds
-#>           expr   min    lq  mean median    uq   max neval
-#>  test_pnorm(u) 466.4 467.4 468.4  468.2 468.7 472.2    10
+#>           expr   min  lq  mean median  uq   max neval
+#>  test_pnorm(u) 464.6 466 469.8  467.1 469 483.7    10
 ```
 
 In contrast, the CDF approximation can be implemented with only one
@@ -2446,7 +2446,7 @@ local({
 })
 #> Unit: milliseconds
 #>           expr   min    lq  mean median    uq   max neval
-#>  test_dnorm(u) 1.246 1.253 1.356  1.262 1.303 2.082    10
+#>  test_dnorm(u) 1.271 1.274 1.381  1.295 1.323 2.097    10
 ```
 
 ### Approximating the Inner Integral
@@ -2610,11 +2610,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L))
 #> Unit: microseconds
 #>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3  849.1  850.3  865.4  856.7  872.8 1074.0   100
-#>   AGHQ 7 1661.6 1667.1 1697.7 1704.2 1709.9 1838.1   100
-#>    GHQ 3  601.4  604.0  616.9  616.5  618.9  764.6   100
-#>    GHQ 7 1375.0 1399.8 1432.0 1432.3 1437.6 1738.5   100
-#>   GHQ 21 4101.1 4117.1 4209.8 4211.0 4240.5 4647.8   100
+#>   AGHQ 3  867.1  888.8  892.1  890.2  892.1 1172.2   100
+#>   AGHQ 7 1690.5 1754.6 1758.1 1756.8 1758.9 1911.5   100
+#>    GHQ 3  608.6  624.3  630.7  625.0  627.2  869.8   100
+#>    GHQ 7 1403.1 1442.1 1459.9 1445.2 1448.5 2059.5   100
+#>   GHQ 21 4162.2 4259.8 4280.9 4279.4 4293.0 5014.2   100
 ```
 
 The adaptive version is much more precise. Moreover, the it seems that 5
@@ -2665,12 +2665,12 @@ microbenchmark::microbenchmark(
   ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 1L),
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 1L))
 #> Unit: microseconds
-#>     expr  min     lq   mean median     uq  max neval
-#>   AGHQ 3 1136 1150.3 1171.2   1168 1175.3 1375   100
-#>   AGHQ 7 2320 2377.8 2405.0   2393 2412.2 2683   100
-#>    GHQ 3  852  855.7  875.4    876  877.9 1207   100
-#>    GHQ 7 1991 2018.1 2058.9   2050 2062.1 2485   100
-#>   GHQ 21 5973 6126.8 6147.5   6137 6153.6 6472   100
+#>     expr    min     lq mean median     uq  max neval
+#>   AGHQ 3 1155.2 1158.0 1179 1185.4 1187.2 1262   100
+#>   AGHQ 7 2365.9 2373.4 2420 2427.5 2430.3 2612   100
+#>    GHQ 3  865.6  866.9  896  887.9  888.7 1302   100
+#>    GHQ 7 2032.2 2052.0 2096 2088.8 2096.5 2422   100
+#>   GHQ 21 6064.6 6226.9 6284 6299.2 6305.7 6911   100
 ```
 
 ``` r
@@ -2717,11 +2717,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 2L))
 #> Unit: microseconds
 #>     expr     min      lq    mean median      uq   max neval
-#>   AGHQ 3  1151.7  1182.1  1213.2   1216  1233.9  1412   100
-#>   AGHQ 7  2372.0  2400.0  2442.7   2440  2474.9  2608   100
-#>    GHQ 3   910.6   930.4   950.8    939   970.5  1240   100
-#>    GHQ 7  1984.0  2033.8  2072.7   2054  2116.8  2197   100
-#>   GHQ 21 15880.6 16210.1 16310.8  16315 16411.6 16686   100
+#>   AGHQ 3  1165.0  1194.3  1228.2   1197  1229.8  2030   100
+#>   AGHQ 7  2331.9  2392.9  2482.9   2440  2465.6  4930   100
+#>    GHQ 3   891.6   923.4   954.4    927   951.9  1609   100
+#>    GHQ 7  2011.3  2065.1  2133.2   2111  2141.7  3170   100
+#>   GHQ 21 15520.0 16108.0 16396.2  16245 16390.3 24328   100
 ```
 
 It does not take much more time and using an adaptive method only seems

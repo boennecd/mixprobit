@@ -1,6 +1,7 @@
 #include "integrand-multinomial.h"
 #include "Brent_fmin.h"
 #include "pnorm.h"
+#include "dnorm.h"
 
 using std::log;
 using std::exp;
@@ -10,87 +11,12 @@ namespace integrand {
 static double const norm_const = 1. / std::sqrt(M_PI * 2.),
                 norm_const_log = log(norm_const);
 
-inline double my_log_dnorm(double const x){
-  return norm_const_log - .5 * x * x;
-}
-
 /** the class assumes that the `lp` object has been set before calling its
     member functions. It then computes the log of the "inner" integrand and
     its second derivative. */
 class multinomial_mode_helper {
   multinomial const &int_obj;
   arma::vec const &lp = int_obj.lp;
-
-  /*
-   CDF approximation from
-
-   xup <- 0
-   dput(off <- pnorm(xup, log = TRUE))
-   xs <- seq(-8, xup, length.out = 1000)
-   xt <- xs - xup
-   fit <- lm(pnorm(xs, log.p = TRUE) ~ poly(xt, raw = TRUE, degree = 3) - 1,
-   offset = rep(off, length(xs)))
-   xhat <- seq(-9, xup, length.out = 1000)
-   matplot(xhat, cbind(pnorm(xhat, log.p = TRUE),
-   predict(fit, newdata = data.frame(xt = xhat - xup))),
-   type = "l")
-   xhat <- seq(xup - 1, xup, length.out = 1000)
-   matplot(xhat, cbind(pnorm(xhat, log.p = TRUE),
-   predict(fit, newdata = data.frame(xt = xhat - xup))),
-   type = "l")
-   max(abs(fit$residuals))
-   dput(coef(fit))
-
-   xs <- seq(xup, 8, length.out = 1000)
-   xt <- xs - xup
-   fit <- lm(pnorm(xs, log.p = TRUE) ~ poly(xt, raw = TRUE, degree = 5) - 1,
-   offset = rep(off, length(xs)))
-   xhat <- seq(xup, 8, length.out = 1000)
-   matplot(xhat, cbind(pnorm(xhat, log.p = TRUE),
-   predict(fit, newdata = data.frame(xt = xhat - xup))),
-   type = "l")
-   max(abs(fit$residuals))
-   dput(coef(fit))
-
-   */
-  inline double norm_cdf_aprx(double const x) const {
-    constexpr double const xup = 0,
-                         inter = -0.693147180559945;
-
-    if(x > -8 and x < 8){
-      if(x >= xup) {
-        double const xd = x - xup;
-        double out(inter),
-                xp = xd;
-        out += 0.811401689963717 * xp;
-        xp *= xd;
-        out -= 0.36464495501633 * xp;
-        xp *= xd;
-        out += 0.0784688043503829 * xp;
-        xp *= xd;
-        out -= 0.00809951215678632 * xp;
-        xp *= xd;
-        out += 0.000321901567031593 * xp;
-        return out;
-
-      } else {
-        double const xd = x - xup;
-        double out(inter),
-                xp = xd;
-        out += 0.7633873031817 * xp;
-        xp *= xd;
-        out -= 0.365089939925538 * xp;
-        xp *= xd;
-        out += 0.0146225647154304 * xp;
-        xp *= xd;
-        out += 0.000646820246088735 * xp;
-        return out;
-
-      }
-    }
-
-    return pnorm_std(x, 1L, 1L);
-  }
 
 public:
   multinomial_mode_helper(multinomial const &int_obj): int_obj(int_obj) { }
@@ -99,7 +25,7 @@ public:
   double fn(double const a) const {
     double out = - a * a / 2.; // R::dnorm4(a, 0, 1, 1L);
     for(auto l : lp)
-      out += norm_cdf_aprx(l + a);
+      out += pnorm_std_aprx(l + a);
     return out;
   }
 
@@ -108,8 +34,8 @@ public:
     double out = -1;
     for(auto l : lp){
       double const val = l + a,
-              dnrm_log = my_log_dnorm(val), // R::dnorm4(val, 0, 1,     1L),
-              pnrm_log = norm_cdf_aprx(val),
+              dnrm_log = dnorm_std     (val, 1L), // R::dnorm4(val, 0, 1,     1L),
+              pnrm_log = pnorm_std_aprx(val),
                    rat = std::exp(dnrm_log - pnrm_log);
       out -= rat * (val + rat);
     }
@@ -252,7 +178,7 @@ arma::vec multinomial::gr(double const *par) const {
     double new_term_denom(start_val);
     for(unsigned j = 0; j < n_alt; ++j){
       double const lpj = a + lp[j],
-              dnrm_log = my_log_dnorm(lpj),
+              dnrm_log = dnorm_std(lpj,     1L),
               pnrm_log = pnorm_std(lpj, 1L, 1L);
 
       new_term_denom += pnrm_log;
@@ -363,7 +289,7 @@ arma::mat multinomial::Hessian(double const *par) const {
     /* compute dnorm and pnorms */
     for(unsigned j = 0; j < n_alt; ++j){
       double const lpj = a + lp[j];
-      dnrms_log[j] = my_log_dnorm(lpj);
+      dnrms_log[j] = dnorm_std(lpj,     1L);
       pnrms_log[j] = pnorm_std(lpj, 1L, 1L);
     }
 

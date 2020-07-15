@@ -1433,7 +1433,7 @@ being the number of categories per observation in the cluster plus the
 overhead of finding the mode. In the example above, this means that we do 
 `8 * n * (p - 1)`, `r 8 * n * (p - 1)`, CDF evaluations for each of the 
 `maxpts`, `r maxpts`, evaluations. We show how long this takes to compute 
-below when the evaluations points are drawn from a standard normal 
+below when the evaluations points are drawn from the standard normal 
 distribution
 
 ```{r pnorm_is_slow, cache = 1}

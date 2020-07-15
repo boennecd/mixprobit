@@ -1,6 +1,8 @@
 #include "my_pmvnorm.h"
 #include "welfords.h"
 #include "pnorm.h"
+#include "qnorm.h"
+#include "dnorm.h"
 
 namespace {
 struct get_var_order_output {
@@ -24,7 +26,7 @@ get_var_order_output get_var_order
   /* util functions */
   auto trunc_mean = [&](double const x){
     double const phi_Phi =
-      std::exp(R::dnorm4(x, 0, 1, 1L) - pnorm_std(x, 1L, 1L));
+      std::exp(dnorm_std(x, 1L) - pnorm_std(x, 1L, 1L));
     return -phi_Phi;
   };
   auto swap_vec = [&](arma::vec &x, uword const i, uword const j){
@@ -41,7 +43,7 @@ get_var_order_output get_var_order
   };
   auto vfunc = [&](double const x){
     double const phi_Phi =
-      std::exp(R::dnorm4(x, 0, 1, 1L) - pnorm_std(x, 1L, 1L));
+      std::exp(dnorm_std(x, 1L) - pnorm_std(x, 1L, 1L));
     return -x * phi_Phi - phi_Phi * phi_Phi;
   };
 
@@ -146,7 +148,7 @@ my_pmvnorm_output my_pmvnorm
 
           double const qb = pnorm_std(b, 1L, 0L);
           w       *= qb;
-          draw[j]  = R::qnorm5(qb * u[j], 0, 1, 1L, 0L);
+          draw[j]  = qnorm_w(qb * u[j], 0, 1, 1L, 0L);
         }
 
         double b(-mean[j]);

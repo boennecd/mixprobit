@@ -4,6 +4,7 @@
 #include "arma-wrap.h"
 #include "welfords.h"
 #include <array>
+#include "qnorm.h"
 
 namespace qmc {
 qmc_approx_output approx(
@@ -65,7 +66,7 @@ qmc_approx_output approx(
       for(size_t j = 0; j < n_min; ++j)
         my_gen(par.colptr(j));
       par.for_each([](arma::mat::elem_type &val){
-        val = R::qnorm5(val, 0, 1, 1L, 0L);
+        val = qnorm_w(val, 0, 1, 1L, 0L);
       });
 
       for(size_t j = 0; j < n_min; ++j){
