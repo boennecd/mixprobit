@@ -121,9 +121,6 @@ double qnorm_w(double const p, double const mu, double const sigma,
 		     ((lower_tail && q <= 0) || (!lower_tail && q > 0))) ?
 		    p : /* else */ log(r)));
         /* r = sqrt(-log(r))  <==>  min(p, 1-p) = exp( - r^2 ) */
-#ifdef DEBUG_qnorm
-	REprintf("\t close to 0 or 1: r = %7g\n", r);
-#endif
 
         if (r <= 5.) { /* <==> min(p,1-p) >= exp(-25) ~= 1.3888e-11 */
             r += -1.6;
@@ -162,6 +159,3 @@ double qnorm_w(double const p, double const mu, double const sigma,
     }
     return mu + sigma * val;
 }
-
-
-

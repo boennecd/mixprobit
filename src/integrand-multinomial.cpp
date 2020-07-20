@@ -100,7 +100,7 @@ multinomial::mode_res multinomial::find_mode(double const *par) const {
     return multinomial::mode_res();
 
   mode_old = res;
-  delta_old = 1;
+  delta_old = 5.16;
 
   /* compute second order derivative and return */
   double const he = helper.he(res);

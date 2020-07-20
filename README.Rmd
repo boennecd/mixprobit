@@ -244,7 +244,7 @@ get_sim_dat <- function(n, p){
     n <- NCOL(Z)                         # number of individuals
     p <- NROW(Z)                         # number of random effects
     S <- drop(                           # covariance matrix of random effects
-      rWishart(1, p, diag(1 / p, p)))
+      rWishart(1, 5 * p, diag(1 / p / 5, p)))
     S_chol <- chol(S)
     u <- drop(rnorm(p) %*% S_chol)       # random effects
     y <- runif(n) < pnorm(drop(u %*% Z)) # observed outcomes
@@ -318,21 +318,22 @@ sim_Aaprx <- wd(aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S,
 truth_maybe_cdf <- wd( 
   aprx$get_cdf_cpp (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                     abseps = 1e-11))()
+truth_maybe_cdf
 
 truth_maybe_qmc <- wd(
   aprx$get_qmc(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                releps = 1e-11)())
+truth_maybe_qmc
 
 truth_maybe_Aqmc <- wd(
   aprx$get_Aqmc(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                 releps = 1e-11)())
+truth_maybe_Aqmc
 
-truth_maybe_mc <- wd(
-  aprx$get_sim_mth (y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
-                    abseps = 1e-11)(2L))
 truth_maybe_Amc <- wd(
   aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
                     abseps = 1e-11)(2L))
+truth_maybe_Amc
 
 truth <- wd(
   mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
@@ -346,7 +347,6 @@ tr <- c(truth)
 all.equal(tr, c(truth_maybe_cdf))
 all.equal(tr, c(truth_maybe_qmc))
 all.equal(tr, c(truth_maybe_Aqmc))
-all.equal(tr, c(truth_maybe_mc))
 all.equal(tr, c(truth_maybe_Amc))
 
 # compare with using fewer samples and GHQ
@@ -391,10 +391,10 @@ ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
   max_maxpts = 2500000L, 
-  releps = 1e-4,
+  releps = 2.5e-4,
   min_releps = 1e-6,
   key_use = 3L, 
-  n_reps = 25L, 
+  n_reps = 20L, 
   n_runs = 5L, 
   n_brute = 1e7, 
   n_brute_max = 1e8, 
@@ -498,10 +498,10 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
   
   # function to test whether the value is ok
   is_ok_func <- function(vals){
-    test_val <- abs((log(vals) - log(truth)) / log(truth)) 
+    test_val <- (log(vals) - log(truth)) / log(truth) 
     if(!all(is.finite(test_val)))
       stop("non-finite 'vals'")
-    test_val < releps
+    sqrt(mean(test_val^2)) < releps / 2
   }
       
   # get function to use with GHQ
@@ -557,7 +557,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
     if(do_not_run)
       NA_integer_
     else {
-      releps_use <- releps * 100
+      releps_use <- releps * 1000
       repeat {
         func <- wd(meth(y = y, eta = eta, Z = Z, S = S, 
                         maxpts = ex_params$max_maxpts, 
@@ -655,9 +655,9 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
          QMC = qmc_func, QMCA = Aqmc_func), 
     function(func){
       if(!is.function(func) && is.na(func)){
-        out <- rep(NA_real_, 6L)
+        out <- rep(NA_real_, 7L)
         names(out) <- c("mean", "sd", "mse", "user.self", 
-                        "sys.self", "elapsed")
+                        "sys.self", "elapsed", "rel_rmse")
         return(out)
       }
       
@@ -693,16 +693,20 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
         
         vs <- c(other_vs, vals[1])
         sd_use <- sd(vs)
-        mse <- mean((vs - truth) ^2)
+        mse <- mean((vs - truth)^2)
+        rel_rmse <- sqrt(mean(((log(vs) - log(truth)) / log(truth))^2))
+        
       } else {
         # we combine the variance estimators
         sd_use <- sqrt(mean(vals["sd", ]^2))
         vals <- vals["value", ]
-        mse <- mean((vals - truth) ^2)
+        mse <- mean((vals - truth)^2)
+        rel_rmse <- sqrt(mean(((log(vals) - log(truth)) / log(truth))^2))
         
       }
       
-      c(mean = mean(vals), sd = sd_use, mse = mse, ti[1:3] / n_runs)            
+      c(mean = mean(vals), sd = sd_use, mse = mse, ti[1:3] / n_runs, 
+        rel_rmse = rel_rmse)            
     })
   
   structure(list(
@@ -742,8 +746,9 @@ print.sim_experiment <- function(x, ...){
   
   mult <- 1 / ex_params$releps
   cat(sprintf("\nSD & RMSE (/%.2f)\n", mult))
-  print(rbind(SD   =      x$vals_n_comp_time["sd", ],  
-              RMSE = sqrt(x$vals_n_comp_time[c("mse"), ])) * mult)
+  print(rbind(SD   = x$vals_n_comp_time ["sd", ],  
+              RMSE = sqrt(x$vals_n_comp_time ["mse", ]), 
+              `sqrt rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
   
   cat("\nComputation times\n")
   print(x$vals_n_comp_time["elapsed", ])
@@ -758,7 +763,6 @@ sim_experiment(n = 10L, p = 5L, n_threads = 6L)
 
 sim_experiment(n = 3L , p = 7L, n_threads = 6L)
 sim_experiment(n = 10L, p = 7L, n_threads = 6L)
-
 sim_experiment(n = 20L, p = 7L, n_threads = 6L)
 ```
 
@@ -773,7 +777,7 @@ p_vals <- 2:7
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 25L
+n_runs <- 10L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -1007,12 +1011,7 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
     sapply(x[!names(x) %in% c("n", "p")], `[[`, "vals_n_comp_time", 
            simplify = "array"), 
     simplify = "array")
-  err <- sqrt(res["mse", , , ])
-  
-  # scale by mean integral value
-  mean_integral <- apply(res["mean", , , ], 2:3, mean, na.rm = TRUE)
-  n_meth <- dim(err)[1]
-  err <- err / rep(mean_integral, each = n_meth)
+  err <- res["rel_rmse", , , ]
   
   is_complete <- apply(err, 3, function(x){
     if(remove_nas){
@@ -1299,8 +1298,9 @@ get_sim_dat <- function(n, p, Sigma){
     dat <- replicate(n, {
       eta <- rnorm(p)
       lp <- drop(eta + Z %*% u)
-      y <- sample.int(p, 1L, prob = pnorm(lp))
-      Z <- Z[, y] - Z[, -y, drop = FALSE]
+      A <- rnorm(p, mean = lp)
+      y <- which.max(A)
+      Z <- t(Z[y, ] - Z[-y, , drop = FALSE])
       eta <- eta[y] - eta[-y]
       list(eta = eta, Z = Z, y = y)
     }, simplify = FALSE)
@@ -1329,7 +1329,7 @@ cur_vars <- ls()
 # parameters to change
 n <- 10L              # cluster size
 p <- 4L               # number of random effects and categories
-b <- 15L              # number of nodes to use with GHQ
+b <- 10L              # number of nodes to use with GHQ
 maxpts <- p * 10000L  # factor to set the (maximum) number of
                       # evaluations of the integrand with
                       # the other methods
@@ -1487,6 +1487,456 @@ local({
 rm(list = setdiff(ls(), cur_vars))
 ```
 
+## More Rigorous Comparison (Multinomial)
+```{r mult_default_params, cache = 1, echo = FALSE}
+# default parameters
+ex_params <- list(
+  streak_length = 4L, 
+  max_b = 25L, 
+  max_maxpts = 1000000L, 
+  releps = 2.5e-4,
+  min_releps = 1e-8,
+  key_use = 3L, 
+  n_reps = 20L, 
+  n_runs = 5L, 
+  n_brute = 1e6, 
+  n_brute_max = 1e8, 
+  n_brute_sds = 4, 
+  qmc_n_seqs = 10L)
+```
+
+Again, we perform a more rigorous comparison. 
+We fix the relative error of the methods before hand such that 
+the relative error is below `releps`, $`r ex_params$releps`$. 
+Ground truth is computed with brute force MC using `n_brute`, 
+$`r ex_params$n_brute`$, samples.
+
+We use 
+a number of nodes such that this number of nodes or `streak_length`, 
+`r ex_params$streak_length`, less 
+value of nodes with GHQ gives a relative error which is 
+below the threshold. We use a minimum of 
+`r ex_params$streak_length` nodes at the time of 
+this writing. The error of the simulation based methods is approximated 
+using `n_reps`, `r ex_params$n_reps`, replications.
+
+```{r mult_show_default_params, ref.label = "mult_default_params", eval = FALSE}
+```
+
+```{r mult_def_sim_experiment, cache = 1, dependson = "mult_default_params"}
+# perform a simulations run for a given number of observations and random
+# effects. First we fix the relative error of each method such that it is
+# below a given threshold. Then we run each method a number of times to 
+# measure the computation time. 
+# 
+# Args:
+#   n: number of observations in the cluster.
+#   p: number of random effects. 
+#   releps: required relative error. 
+#   key_use: integer which determines degree of integration rule for the 
+#            method from Genz and Monahan (1999).
+#   n_threads: number of threads to use.
+#   n_fail: only used by the function if a brute force estimator cannot
+#           get within the precision.
+sim_experiment <- function(n, p, releps = ex_params$releps, 
+                           key_use = ex_params$key_use, n_threads = 1L, 
+                           n_fail = 0L){
+  # in some cases we may not want to run the simulation experiment
+  do_not_run <- FALSE
+  
+  # simulate data
+  dat <- get_sim_dat(n = n, p = p)
+  
+  # shorter than calling `with(dat, ...)`
+  wd <- function(expr)
+    eval(bquote(with(dat, .(substitute(expr)))), parent.frame())
+  
+  # get the assumed ground truth
+  if(do_not_run){
+    truth <- SE_truth <- NA_real_
+    n_brute <- NA_integer_
+    find_brute_failed <- FALSE
+    
+  } else {
+    passed <- FALSE
+    n_brute <- NA_integer_
+    find_brute_failed <- FALSE
+    
+    while(!passed){
+      if(!is.na(n_brute) && n_brute >= ex_params$n_brute_max){
+        n_brute <- NA_integer_
+        find_brute_failed <- TRUE
+        break
+      }
+      
+      n_brute <- if(is.na(n_brute))
+        ex_params$n_brute 
+      else 
+        min(ex_params$n_brute_max, 
+            n_brute * as.integer(ceiling(1.2 * (SE_truth / eps)^2)))
+      
+      truth <- wd(mixprobit:::aprx_mult_mix_brute(
+        eta = eta, Z = Z, Sigma = Sigma, n_sim = n_brute, 
+        n_threads = n_threads, n_alt = p - 1L, is_is = TRUE))
+      
+      SE_truth <- abs(attr(truth, "SE") / c(truth))
+      eps <- ex_params$releps / ex_params$n_brute_sds * abs(log(c(truth)))
+      passed <- SE_truth < eps
+    }
+      
+    truth <- c(truth)
+  }
+  
+  if(find_brute_failed){
+    # we failed to find a brute force estimator within the precision. 
+    # We repeat with a new data set
+    cl <- match.call()
+    cl$n_fail <- n_fail + 1L
+    return(eval(cl, parent.frame()))
+  }
+  
+  # function to test whether the value is ok
+  is_ok_func <- function(vals){
+    test_val <- (log(vals) - log(truth)) / log(truth)
+    if(!all(is.finite(test_val)))
+      stop("non-finite 'vals'")
+    sqrt(mean(test_val^2)) < releps / 2
+  }
+      
+  # get function to use with GHQ
+  get_b <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else local({
+      apx_func <- function(b)
+        wd(meth(eta = eta, Z = Z, Sigma = Sigma, b = b, p = p - 1L))()
+      
+      # length of node values which have a relative error below the threshold
+      streak_length <- ex_params$streak_length
+      vals <- rep(NA_real_, streak_length)
+      
+      b <- streak_length
+      for(i in 1:(streak_length - 1L))
+        vals[i + 1L] <- apx_func(b - streak_length + i)
+      repeat {
+        vals[1:(streak_length - 1L)] <- vals[-1]
+        vals[streak_length] <- apx_func(b)
+        
+        if(all(is_ok_func(vals)))
+          break
+        
+        b <- b + 1L
+        if(b > ex_params$max_b){
+          warning("found no node value")
+          b <- NA_integer_
+          break
+        }
+      }
+      b
+    })
+  }
+  
+  is_to_large_for_ghq <- n > 16L || p >= 5L
+  b_use <- NA_integer_
+  # b_use <- if(is_to_large_for_ghq)
+  #   NA_integer_ else get_b(aprx$get_GHQ_cpp)
+  ghq_func <- if(!is.na(b_use))
+    wd(aprx$get_GHQ_cpp(eta = eta, Z = Z, Sigma = Sigma, b = b_use, 
+                        p = p - 1L))
+  else
+    NA
+  
+  # get function to use with AGHQ
+  b_use_A <- get_b(aprx$get_AGHQ_cpp)
+  aghq_func <- if(!is.na(b_use_A))
+    wd(aprx$get_AGHQ_cpp(eta = eta, Z = Z, Sigma = Sigma, b = b_use_A, 
+                         p = p - 1L))
+  else
+    NA
+  
+  # get function to use with CDF method
+  get_releps <- function(meth){
+    if(do_not_run)
+      NA_integer_
+    else {
+      releps_use <- releps * 1000
+      repeat {
+        func <- wd(meth(eta = eta, Z = Z, Sigma = Sigma, 
+                        maxpts = ex_params$max_maxpts, p = p - 1L,
+                        abseps = -1, releps = releps_use))
+        if("key" %in% names(formals(func)))
+          formals(func)$key <- ex_params$key_use
+        vals <- replicate(ex_params$n_reps, {
+          v <- func()
+          inivls <- if("inivls" %in% names(attributes(v)))
+            attr(v, "inivls") else NA_integer_
+          c(value = v, error = attr(v, "error"), inivls = inivls)
+        })
+        
+        inivls_ok <- all(
+          is.na(vals["inivls", ]) | 
+            vals["inivls", ] / ex_params$max_maxpts < .999999)
+        
+        if(all(is_ok_func(vals["value", ])) && inivls_ok)
+          break
+        
+        releps_use <- if(!inivls_ok) 
+          # no point in doing any more computations
+          ex_params$min_releps / 10 else 
+            releps_use / 2
+        if(releps_use < ex_params$min_releps){
+          warning("found no releps for CDF method")
+          releps_use <- NA_integer_
+          break
+        }
+      }
+      releps_use
+    }
+  }
+  
+  cdf_releps <- get_releps(aprx$get_cdf_cpp)
+  cdf_func <- if(!is.na(cdf_releps))
+    wd(aprx$get_cdf_cpp(eta = eta, Z = Z, Sigma = Sigma, p = p - 1L,
+                        maxpts = ex_params$max_maxpts, abseps = -1, 
+                        releps = cdf_releps))
+  else 
+    NA
+  
+  # get function to use with Genz and Monahan method
+  # sim_releps <- if(is_to_large_for_ghq) 
+  #   NA_integer_ else get_releps(aprx$get_sim_mth)
+  sim_releps <- NA_integer_ # just do not use it. It is __very__ slow in  
+                            # some cases
+  sim_func <- if(!is.na(sim_releps))
+    wd(aprx$get_sim_mth(eta = eta, Z = Z, Sigma = Sigma, p = p - 1L,
+                        maxpts = ex_params$max_maxpts, abseps = -1, 
+                        releps = sim_releps))
+  else 
+    NA
+  if(is.function(sim_func))
+    formals(sim_func)$key <- key_use
+  
+  # do the same with the adaptive version
+  Asim_releps <- get_releps(aprx$get_Asim_mth)
+  Asim_func <- if(!is.na(Asim_releps))
+    wd(aprx$get_Asim_mth(eta = eta, Z = Z, Sigma = Sigma, p = p - 1L,
+                         maxpts = ex_params$max_maxpts, abseps = -1, 
+                         releps = Asim_releps))
+  else 
+    NA
+  if(is.function(Asim_func))
+    formals(Asim_func)$key <- key_use
+  
+  # get function to use with QMC
+  formals(aprx$get_qmc)$n_seqs <- ex_params$qmc_n_seqs
+  # qmc_releps <- if(is_to_large_for_ghq)
+  #   NA_integer_ else get_releps(aprx$get_qmc)
+  qmc_releps <- NA_integer_
+  qmc_func <- if(!is.na(qmc_releps))
+     wd(aprx$get_qmc(eta = eta, Z = Z, Sigma = Sigma, p = p - 1L, 
+                     maxpts = ex_params$max_maxpts, abseps = -1,
+                     releps = qmc_releps, 
+                     n_seqs = ex_params$qmc_n_seqs))
+  else 
+    NA
+
+  # get function to use with adaptive QMC
+  Aqmc_releps <- get_releps(aprx$get_Aqmc)
+  formals(aprx$get_Aqmc)$n_seqs <- ex_params$qmc_n_seqs
+  Aqmc_func <- if(!is.null(Aqmc_releps))
+    wd(aprx$get_Aqmc(eta = eta, Z = Z, Sigma = Sigma, p = p - 1L,
+                     maxpts = ex_params$max_maxpts, abseps = -1,
+                     releps = Aqmc_releps, 
+                     n_seqs = ex_params$qmc_n_seqs))
+  else 
+    NA
+    
+  # perform the comparison
+  out <- sapply(
+    list(GHQ = ghq_func, AGHQ = aghq_func, CDF = cdf_func, 
+         GenzMonahan = sim_func, GenzMonahanA = Asim_func, 
+         QMC = qmc_func, QMCA = Aqmc_func), 
+    function(func){
+      if(!is.function(func) && is.na(func)){
+        out <- rep(NA_real_, 7L)
+        names(out) <- c("mean", "sd", "mse", "user.self", 
+                        "sys.self", "elapsed", "rel_rmse")
+        return(out)
+      }
+      
+      # number of runs used to estimate the computation time, etc.
+      n_runs <- ex_params$n_runs
+      
+      # perform the computations to estimate the computation times
+      ti <- system.time(vals <- replicate(n_runs, {
+        out <- func()
+        if(!is.null(err <- attr(out, "error"))){
+          # only of of the two methods needs an adjustment of the sd! 
+          # TODO: this is very ad hoc...
+          is_genz_mona <- !is.null(environment(func)$is_adaptive)
+
+          sd <- if(is_genz_mona)
+            err else err / 2.5
+          
+          out <- c(value = out, sd = sd)
+        }
+        out
+      }))
+      
+      # handle computation of sd and mse
+      is_ghq <- !is.null(b <- environment(func)$b)
+      if(is_ghq){
+        # if it is GHQ then we alter the number of nodes to get an sd 
+        # estiamte etc.
+        sl <- ex_params$streak_length
+        other_vs <- sapply((b - sl + 1):b, function(b){
+          environment(func)$b <- b
+          func()
+        })
+        
+        vs <- c(other_vs, vals[1])
+        sd_use <- sd(vs)
+        mse <- mean((vs - truth)^2)
+        rel_rmse <- sqrt(mean(((log(vs) - log(truth)) / log(truth))^2))
+        
+      } else {
+        # we combine the variance estimators
+        sd_use <- sqrt(mean(vals["sd", ]^2))
+        vals <- vals["value", ]
+        mse <- mean((vals - truth)^2)
+        rel_rmse <- sqrt(mean(((log(vals) - log(truth)) / log(truth))^2))
+        
+      }
+      
+      c(mean = mean(vals), sd = sd_use, mse = mse, ti[1:3] / n_runs, 
+        rel_rmse = rel_rmse)            
+    })
+  
+  structure(list(
+    b_use = b_use, b_use_A = b_use_A, cdf_releps = cdf_releps, 
+    sim_releps = sim_releps, Asim_releps = Asim_releps, 
+    qmc_releps = qmc_releps, Aqmc_releps = Aqmc_releps,
+    ll_truth = log(truth), SE_truth = SE_truth, n_brute = n_brute, 
+    n_fail = n_fail, vals_n_comp_time = out), 
+    class = "sim_experiment")
+}
+```
+
+Here is a few quick examples where we use the function we just defined.
+
+```{r mult_show_sim_experiment, cache = 1, dependson = "mult_def_sim_experiment"}
+print.sim_experiment <- function(x, ...){
+  old <- options()
+  on.exit(options(old))
+  options(digits = 6, scipen = 999)
+  
+  cat(
+    sprintf("         # brute force samples: %13d", x$n_brute),
+    sprintf("                  # nodes  GHQ: %13d", x$b_use),
+    sprintf("                  # nodes AGHQ: %13d", x$b_use_A),
+    sprintf("                    CDF releps: %13.8f", x$cdf_releps), 
+    sprintf("         Genz & Monahan releps: %13.8f", x$sim_releps),
+    sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
+    sprintf("                    QMC releps: %13.8f", x$qmc_releps),
+    sprintf("           Adaptive QMC releps: %13.8f", x$Aqmc_releps), 
+    sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
+            x$SE_truth), 
+    "", sep = "\n")
+  
+  xx <- x$vals_n_comp_time["mean", ]
+  print(cbind(`Mean estimate (likelihood)`     = xx, 
+              `Mean estimate (log-likelihood)` = log(xx)))
+  
+  mult <- 1 / ex_params$releps
+  cat(sprintf("\nSD & RMSE (/%.2f)\n", mult))
+  print(rbind(SD   = x$vals_n_comp_time ["sd", ],  
+              RMSE = sqrt(x$vals_n_comp_time ["mse", ]), 
+              `sqrt rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
+  
+  cat("\nComputation times\n")
+  print(x$vals_n_comp_time["elapsed", ])
+}
+
+set.seed(1)
+sim_experiment(n =  2L, p = 3L, n_threads = 6L)
+sim_experiment(n =  4L, p = 3L, n_threads = 6L)
+sim_experiment(n =  8L, p = 3L, n_threads = 6L)
+sim_experiment(n = 16L, p = 3L, n_threads = 6L)
+sim_experiment(n = 32L, p = 3L, n_threads = 6L)
+
+sim_experiment(n =  2L, p = 4L, n_threads = 6L)
+sim_experiment(n =  4L, p = 4L, n_threads = 6L)
+sim_experiment(n =  8L, p = 4L, n_threads = 6L)
+sim_experiment(n = 16L, p = 4L, n_threads = 6L)
+sim_experiment(n = 32L, p = 4L, n_threads = 6L)
+
+sim_experiment(n =  2L, p = 5L, n_threads = 6L)
+sim_experiment(n =  4L, p = 5L, n_threads = 6L)
+sim_experiment(n =  8L, p = 5L, n_threads = 6L)
+sim_experiment(n = 16L, p = 5L, n_threads = 6L)
+sim_experiment(n = 32L, p = 5L, n_threads = 6L)
+```
+
+```{r mult_run_larger_sim_ex, message = FALSE, warning = FALSE}
+# number of observations in the cluster
+n_vals <- 2^(1:4)
+# number of random effects
+p_vals <- 3:5
+# grid with all configurations
+gr_vals <- expand.grid(n = n_vals, p = p_vals)
+# number of replications per configuration
+n_runs <- 10L
+
+ex_output <- (function(){
+  # setup directory to store data
+  cache_dir <- file.path("README_cache", "experiment")
+  if(!dir.exists(cache_dir))
+    dir.create(cache_dir)
+  
+  # setup cluster to use
+  library(parallel)
+  
+  # run the experiment
+  mcmapply(function(n, p){
+    cache_file <- file.path(cache_dir, sprintf("mult-n-%03d-p-%03d.Rds", n, p))
+    if(!file.exists(cache_file)){
+      message(sprintf("Running setup with   n %3d and p %3d", n, p))
+      
+      # create file to write progress to
+      prg_file <- file.path(getwd(), 
+                            sprintf("progress-n-%03d-p-%03d.txt", n, p))
+      file.create(prg_file)
+      message(sprintf("Follow progress in %s", sQuote(prg_file)))
+      on.exit(unlink(prg_file))
+      
+      set.seed(71771946)
+      sim_out <- lapply(1:n_runs, function(...){
+        seed <- .Random.seed
+        out <- sim_experiment(n = n, p = p)
+        attr(out, "seed") <- seed
+        
+        cat("-", file = prg_file, append = TRUE)
+        out
+      })
+      
+      sim_out[c("n", "p")] <- list(n = n, p = p)
+      saveRDS(sim_out, cache_file)
+    } else
+      message(sprintf("Loading results with n %3d and p %3d", n, p))
+      
+    
+    readRDS(cache_file)
+  }, n = gr_vals$n, p = gr_vals$p, SIMPLIFY = FALSE, 
+  mc.cores = 4L, mc.preschedule = FALSE)
+})()
+```
+
+```{r mult_meta_create_table, ref.label = "meta_create_table", eval = TRUE}
+```
+
+```{r mult_create_table, ref.label = "create_table", eval = TRUE}
+```
+
 ### Approximating the Inner Integral
 The integrand with multinomial outcomes is intractable and requires an 
 approximation. To be more precise, we need an approximation of
@@ -1548,7 +1998,7 @@ precision.
 
 ```{r aprx_mult_inner, cache = 1, fig.keep = "last", fig.height = 3}
 # define function to get test data for a given number of alternative 
-# groups 
+# groups  
 get_ex_data <- function(n_alt){
   Z <- Sigma <- diag(1., n_alt)
   Sigma[lower.tri(Sigma)] <- Sigma[upper.tri(Sigma)] <- -.1
@@ -1674,7 +2124,7 @@ computation where we fix the covariance matrix.
 <!-- knitr::load_cache("rig_aprx_mult_inner", path = "README_cache/markdown_github/") -->
 
 ```{r rig_aprx_mult_inner, cache = 1}
-sim_one_integrand_aprx <- function(n, p, n_nodes){
+sim_one_integrand_aprx <- function(n, p, n_nodes){ 
   Sigma <- diag(p)
   dat <- get_sim_dat(n, p, Sigma = Sigma)
   dat$Sigma <- Sigma
