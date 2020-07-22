@@ -262,19 +262,19 @@ independent of the random effect dimension, `p`.
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 2.08
+#> [1] 1.996
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
-#> [1] 2.014
+#> [1] 2.049
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 2.023
+#> [1] 2.037
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 2.02
+#> [1] 2.012
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 2.081
+#> [1] 1.962
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 2.025
+#> [1] 2.004
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 1.995
+#> [1] 2.046
 ```
 
 Next we perform a quick example.
@@ -404,26 +404,26 @@ comp(qmc_Aaprx)
 comp(cdf_aprx_cpp)
 #> [1] 0.0001169
 comp(function() sim_aprx(1L))
-#> [1] 0.05793
+#> [1] 0.05832
 comp(function() sim_aprx(2L))
-#> [1] 0.03377
+#> [1] 0.04502
 comp(function() sim_aprx(3L))
-#> [1] 0.0103
+#> [1] 0.05785
 comp(function() sim_aprx(4L))
-#> [1] 0.02776
+#> [1] 0.04911
 comp(function() sim_Aaprx(1L))
-#> [1] 0.002089
+#> [1] 0.004187
 comp(function() sim_Aaprx(2L))
-#> [1] 0.001733
+#> [1] 0.004547
 comp(function() sim_Aaprx(3L))
-#> [1] 0.0008932
+#> [1] 0.002234
 comp(function() sim_Aaprx(4L))
-#> [1] 0.002019
+#> [1] 0.002864
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 #>    user  system elapsed 
-#>   1.412   0.000   1.412
+#>   1.386   0.000   1.385
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
@@ -433,18 +433,18 @@ microbenchmark::microbenchmark(
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 10)
 #> Unit: microseconds
-#>                         expr     min      lq    mean  median      uq     max
-#>                    GHQ (C++) 35097.6 35444.0 36035.5 35736.6 36363.7 38062.2
-#>                   AGHQ (C++) 35889.2 36418.0 37586.4 37584.3 38926.4 39055.3
-#>                          CDF 21157.2 21633.1 22548.7 23205.8 23269.6 23325.2
-#>                    CDF (C++) 11227.5 11277.2 11659.7 11460.2 12117.6 12245.2
-#>                          QMC 27550.9 28034.7 28829.9 28748.4 29823.2 29997.9
-#>                 QMC Adaptive 29233.7 29452.1 30568.5 30780.9 31565.2 31756.5
-#>           Genz & Monahan (1)   682.7   785.2   850.8   877.9   916.6   957.5
-#>           Genz & Monahan (2)   699.8   715.8   738.3   719.9   762.8   793.4
-#>           Genz & Monahan (3)   690.7   698.3   712.8   709.3   730.3   737.5
-#>           Genz & Monahan (4)   735.2   760.0   801.7   808.7   844.8   845.5
-#>  Genz & Monahan Adaptive (2)   727.8   747.0   775.6   777.0   802.4   824.0
+#>                         expr      min      lq    mean  median      uq     max
+#>                    GHQ (C++) 35294.50 35447.0 35734.9 35721.8 35933.5 36565.0
+#>                   AGHQ (C++) 36395.50 36573.2 36887.8 36862.3 37193.9 37457.2
+#>                          CDF 21442.10 21603.7 21790.3 21635.3 21982.6 22366.6
+#>                    CDF (C++) 11190.90 11275.6 11379.3 11356.1 11431.1 11667.0
+#>                          QMC 28006.59 28224.3 30232.6 28890.3 30683.0 40964.5
+#>                 QMC Adaptive 29316.52 29772.1 30103.8 30258.8 30281.4 30895.8
+#>           Genz & Monahan (1)   232.56   563.8   703.0   767.4   886.4   955.0
+#>           Genz & Monahan (2)    83.72   268.5   288.1   289.8   355.0   365.3
+#>           Genz & Monahan (3)    90.66   100.9   172.9   183.6   237.8   257.1
+#>           Genz & Monahan (4)   192.70   209.9   255.1   220.7   304.6   375.7
+#>  Genz & Monahan Adaptive (2)   109.79   117.2   130.6   132.2   142.3   150.6
 #>  neval
 #>     10
 #>     10
@@ -468,7 +468,7 @@ function below which for given number of observation in the cluster,
 of runs with each of the methods and returns the computation time (among
 other output). To make a fair comparison, we fix the relative error of
 the methods before hand such that the relative error is below `releps`,
-![2.5\\times 10^{-4}](https://latex.codecogs.com/svg.latex?2.5%5Ctimes%2010%5E%7B-4%7D "2.5\times 10^{-4}").
+![2\\times 10^{-4}](https://latex.codecogs.com/svg.latex?2%5Ctimes%2010%5E%7B-4%7D "2\times 10^{-4}").
 Ground truth is computed with brute force MC using `n_brute`,
 ![10^{7}](https://latex.codecogs.com/svg.latex?10%5E%7B7%7D "10^{7}"),
 samples.
@@ -485,7 +485,7 @@ ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
   max_maxpts = 2500000L, 
-  releps = 2.5e-4,
+  releps = 2e-4,
   min_releps = 1e-6,
   key_use = 3L, 
   n_reps = 20L, 
@@ -655,7 +655,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
           ex_params$min_releps / 10 else 
             releps_use / 2
         if(releps_use < ex_params$min_releps){
-          warning("found no releps for CDF method")
+          warning("found no releps")
           releps_use <- NA_integer_
           break
         }
@@ -808,7 +808,7 @@ print.sim_experiment <- function(x, ...){
     sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
     sprintf("                    QMC releps: %13.8f", x$qmc_releps),
     sprintf("           Adaptive QMC releps: %13.8f", x$Aqmc_releps), 
-    sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
+    sprintf("  Log-likelihood estimate (SE): %13.8f (%.8f)", x$ll_truth, 
             x$SE_truth), 
     "", sep = "\n")
   
@@ -816,11 +816,11 @@ print.sim_experiment <- function(x, ...){
   print(cbind(`Mean estimate (likelihood)`     = xx, 
               `Mean estimate (log-likelihood)` = log(xx)))
   
-  mult <- 1 / ex_params$releps
+  mult <- exp(ceiling(log10(1 / ex_params$releps)) * log(10))
   cat(sprintf("\nSD & RMSE (/%.2f)\n", mult))
   print(rbind(SD   = x$vals_n_comp_time ["sd", ],  
               RMSE = sqrt(x$vals_n_comp_time ["mse", ]), 
-              `sqrt rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
+              `Rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
   
   cat("\nComputation times\n")
   print(x$vals_n_comp_time["elapsed", ])
@@ -829,243 +829,235 @@ print.sim_experiment <- function(x, ...){
 set.seed(1)
 sim_experiment(n = 3L , p = 2L, n_threads = 6L)
 #>          # brute force samples:      10000000
-#>                   # nodes  GHQ:             9
+#>                   # nodes  GHQ:            10
 #>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
-#>                     QMC releps:    0.00048828
-#>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estiamte (SE):   -3.20961388 (0.00000229)
+#> Adaptive Genz & Monahan releps:    0.20000000
+#>                     QMC releps:    0.00039063
+#>            Adaptive QMC releps:    0.00039063
+#>   Log-likelihood estimate (SE):   -3.20961388 (0.00000229)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
-#> GHQ                           0.0403714                       -3.20963
+#> GHQ                           0.0403722                       -3.20961
 #> AGHQ                          0.0403721                       -3.20962
-#> CDF                           0.0403757                       -3.20953
+#> CDF                           0.0403691                       -3.20969
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0403761                       -3.20952
-#> QMC                           0.0403691                       -3.20969
-#> QMCA                          0.0403657                       -3.20978
+#> GenzMonahanA                  0.0403672                       -3.20974
+#> QMC                           0.0403794                       -3.20944
+#> QMCA                          0.0403686                       -3.20970
 #> 
-#> SD & RMSE (/4000.00)
-#>                     GHQ      AGHQ       CDF GenzMonahan GenzMonahanA       QMC
-#> SD            0.0582161 0.0153066 0.0376894          NA    0.0181005 0.0243636
-#> RMSE          0.0547709 0.0154601 0.0220619          NA    0.0178214 0.0340133
-#> sqrt rel RMSE 0.4225473 0.1193230 0.1702429          NA    0.1375231 0.2625160
-#>                    QMCA
-#> SD            0.0507975
-#> RMSE          0.0687086
-#> sqrt rel RMSE 0.5303909
+#> SD & RMSE (/10000.00)
+#>                GHQ      AGHQ      CDF GenzMonahan GenzMonahanA       QMC
+#> SD       0.0425442 0.0382665 0.134515          NA     0.126093 0.0547395
+#> RMSE     0.0406504 0.0386503 0.061449          NA     0.153399 0.1152442
+#> Rel RMSE 0.3137423 0.2983075 0.474246          NA     1.183884 0.8891403
+#>               QMCA
+#> SD       0.0541388
+#> RMSE     0.0791076
+#> Rel RMSE 0.6105496
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>       0.0000       0.0000       0.0002           NA       0.0004       0.0090 
+#>       0.0000       0.0000       0.0002           NA       0.0000       0.0084 
 #>         QMCA 
-#>       0.0012
+#>       0.0020
 sim_experiment(n = 10L, p = 2L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            11
-#>                   # nodes AGHQ:             5
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             4
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
-#>                     QMC releps:    0.00390625
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -11.55264857 (0.00000296)
+#> Adaptive Genz & Monahan releps:    0.20000000
+#>                     QMC releps:    0.00078125
+#>            Adaptive QMC releps:    0.00156250
+#>   Log-likelihood estimate (SE):   -5.88644301 (0.00000181)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
-#> GHQ                       0.00000960532                       -11.5532
-#> AGHQ                      0.00000961055                       -11.5526
-#> CDF                       0.00000961070                       -11.5526
+#> GHQ                          0.00277676                       -5.88647
+#> AGHQ                         0.00277684                       -5.88644
+#> CDF                          0.00277680                       -5.88646
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA              0.00000961173                       -11.5525
-#> QMC                       0.00000960932                       -11.5528
-#> QMCA                      0.00000961052                       -11.5527
+#> GenzMonahanA                 0.00277686                       -5.88644
+#> QMC                          0.00277650                       -5.88656
+#> QMCA                         0.00277655                       -5.88655
 #> 
-#> SD & RMSE (/4000.00)
-#>                        GHQ         AGHQ           CDF GenzMonahan  GenzMonahanA
-#> SD            0.0000437314 0.0000437451 0.00000394220          NA 0.00000373715
-#> RMSE          0.0000444839 0.0000453557 0.00000307299          NA 0.00000524796
-#> sqrt rel RMSE 0.4010852146 0.4090345915 0.02767760409          NA 0.04726314259
-#>                        QMC         QMCA
-#> SD            0.0000518479 0.0000283780
-#> RMSE          0.0000728948 0.0000183886
-#> sqrt rel RMSE 0.6574987982 0.1656303332
+#> SD & RMSE (/10000.00)
+#>                 GHQ      AGHQ        CDF GenzMonahan GenzMonahanA        QMC
+#> SD       0.00702665 0.0137016 0.00201768          NA  0.001874198 0.00652502
+#> RMSE     0.00650774 0.0127977 0.00102083          NA  0.000836298 0.01026912
+#> Rel RMSE 0.39805560 0.7825776 0.06245331          NA  0.051162306 0.62841695
+#>                QMCA
+#> SD       0.01374649
+#> RMSE     0.00877671
+#> Rel RMSE 0.53709955
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>       0.0002       0.0002       0.0112           NA       0.0008       0.0052 
+#>       0.0000       0.0000       0.0104           NA       0.0000       0.0080 
 #>         QMCA 
-#>       0.0012
+#>       0.0010
 
 sim_experiment(n = 3L , p = 5L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             7
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.00039063
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00048828
-#>   Log-likelihood estiamte (SE):   -4.76466838 (0.00001055)
+#>            Adaptive QMC releps:    0.00039063
+#>   Log-likelihood estimate (SE):   -2.93081608 (0.00003156)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                         0.00852566                       -4.76468
-#> CDF                          0.00852554                       -4.76469
+#> AGHQ                          0.0533543                       -2.93080
+#> CDF                           0.0533500                       -2.93088
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                 0.00852345                       -4.76493
+#> GenzMonahanA                  0.0533519                       -2.93085
 #> QMC                                  NA                             NA
-#> QMCA                         0.00852509                       -4.76474
+#> QMCA                          0.0533523                       -2.93084
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ       AGHQ        CDF GenzMonahan GenzMonahanA QMC       QMCA
-#> SD             NA 0.00920489 0.00753213          NA    0.0121605  NA 0.00605441
-#> RMSE           NA 0.00964111 0.00731891          NA    0.0186877  NA 0.00838645
-#> sqrt rel RMSE  NA 0.23740942 0.18014818          NA    0.4601260  NA 0.20646310
+#> SD & RMSE (/10000.00)
+#>          GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.0636415 0.0679714          NA    0.0809023  NA 0.0794669
+#> RMSE      NA 0.0631283 0.0400429          NA    0.0373369  NA 0.0374468
+#> Rel RMSE  NA 0.4037652 0.2560918          NA    0.2387783  NA 0.2394755
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0024       0.0002           NA       0.0004           NA 
+#>           NA       0.0054       0.0002           NA       0.1660           NA 
 #>         QMCA 
-#>       0.0090
+#>       0.0522
 sim_experiment(n = 10L, p = 5L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             7
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.00078125
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00195312
-#>   Log-likelihood estiamte (SE):  -10.40723480 (0.00000930)
+#>            Adaptive QMC releps:    0.00078125
+#>   Log-likelihood estimate (SE):   -5.59250506 (0.00002585)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                       0.0000302131                       -10.4072
-#> CDF                        0.0000302140                       -10.4072
+#> AGHQ                         0.00372564                       -5.59252
+#> CDF                          0.00372573                       -5.59249
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA               0.0000301999                       -10.4077
+#> GenzMonahanA                 0.00372568                       -5.59251
 #> QMC                                  NA                             NA
-#> QMCA                       0.0000302202                       -10.4070
+#> QMCA                         0.00372582                       -5.59247
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ         AGHQ           CDF GenzMonahan GenzMonahanA QMC
-#> SD             NA 0.0000416097 0.00000640883          NA  0.000118039  NA
-#> RMSE           NA 0.0000411398 0.00000802066          NA  0.000166304  NA
-#> sqrt rel RMSE  NA 0.1308868550 0.02550709488          NA  0.529231058  NA
-#>                       QMCA
-#> SD            0.0000722274
-#> RMSE          0.0000624192
-#> sqrt rel RMSE 0.1984394328
+#> SD & RMSE (/10000.00)
+#>          GHQ       AGHQ        CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.00179142 0.00258681          NA    0.0112966  NA 0.0106091
+#> RMSE      NA 0.00241341 0.00219074          NA    0.0101269  NA 0.0185980
+#> Rel RMSE  NA 0.11583533 0.10514177          NA    0.4860662  NA 0.8925964
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0060       0.0120           NA       0.0008           NA 
+#>           NA       0.0140       0.0120           NA       0.0872           NA 
 #>         QMCA 
-#>       0.0054
+#>       0.0478
 
 sim_experiment(n = 3L , p = 7L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.00048828
+#> Adaptive Genz & Monahan releps:    0.00009766
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00048828
-#>   Log-likelihood estiamte (SE):   -2.12486178 (0.00000790)
+#>            Adaptive QMC releps:    0.00039063
+#>   Log-likelihood estimate (SE):   -2.07459523 (0.00001161)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                           0.119449                       -2.12487
-#> CDF                            0.119450                       -2.12486
+#> AGHQ                           0.125608                       -2.07459
+#> CDF                            0.125606                       -2.07461
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                   0.119452                       -2.12484
+#> GenzMonahanA                   0.125607                       -2.07459
 #> QMC                                  NA                             NA
-#> QMCA                           0.119455                       -2.12481
+#> QMCA                           0.125630                       -2.07441
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC     QMCA
-#> SD             NA 0.0367776 0.0142816          NA     0.090112  NA 0.075966
-#> RMSE           NA 0.0377371 0.0133565          NA     0.106489  NA 0.101288
-#> sqrt rel RMSE  NA 0.1486933 0.0526231          NA     0.419552  NA 0.399018
+#> SD & RMSE (/10000.00)
+#>          GHQ     AGHQ       CDF GenzMonahan GenzMonahanA QMC     QMCA
+#> SD        NA 0.213788 0.0960791          NA    0.0476176  NA 0.166506
+#> RMSE      NA 0.212742 0.0612825          NA    0.0398558  NA 0.296269
+#> Rel RMSE  NA 0.816557 0.2351722          NA    0.1529476  NA 1.136713
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0958       0.0004           NA       0.0032           NA 
+#>           NA       0.0936       0.0002           NA       0.2564           NA 
 #>         QMCA 
-#>       0.0086
+#>       0.0164
 sim_experiment(n = 10L, p = 7L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             7
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             6
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.00195312
+#> Adaptive Genz & Monahan releps:    0.00078125
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00195312
-#>   Log-likelihood estiamte (SE):   -7.54258790 (0.00003314)
+#>            Adaptive QMC releps:    0.00156250
+#>   Log-likelihood estimate (SE):   -9.16691806 (0.00002557)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                        0.000529991                       -7.54265
-#> CDF                         0.000529996                       -7.54264
+#> AGHQ                        0.000104435                       -9.16694
+#> CDF                         0.000104436                       -9.16694
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                0.000529996                       -7.54264
+#> GenzMonahanA                0.000104417                       -9.16712
 #> QMC                                  NA                             NA
-#> QMCA                        0.000529725                       -7.54315
+#> QMCA                        0.000104327                       -9.16798
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ        AGHQ         CDF GenzMonahan GenzMonahanA QMC
-#> SD             NA 0.000236334 0.000304065          NA   0.00160484  NA
-#> RMSE           NA 0.000363601 0.000280131          NA   0.00141847  NA
-#> sqrt rel RMSE  NA 0.090963191 0.070073959          NA   0.35485150  NA
-#>                     QMCA
-#> SD            0.00151911
-#> RMSE          0.00301927
-#> sqrt rel RMSE 0.75587775
+#> SD & RMSE (/10000.00)
+#>          GHQ        AGHQ          CDF GenzMonahan GenzMonahanA QMC        QMCA
+#> SD        NA 0.000816346 0.0001221850          NA  0.000316621  NA 0.000550119
+#> RMSE      NA 0.000808792 0.0000363568          NA  0.000319628  NA 0.001556121
+#> Rel RMSE  NA 0.845517868 0.0379766475          NA  0.333922294  NA 1.627154353
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.6512       0.0106           NA       0.0250           NA 
+#>           NA       0.2248       0.0130           NA       0.1526           NA 
 #>         QMCA 
-#>       0.0172
+#>       0.0146
 sim_experiment(n = 20L, p = 7L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             7
+#>                     CDF releps:    0.20000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.00312500
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00781250
-#>   Log-likelihood estiamte (SE):  -25.73334145 (0.00002055)
+#>            Adaptive QMC releps:    0.00312500
+#>   Log-likelihood estimate (SE):  -15.10308843 (0.00004961)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                0.00000000000667019                       -25.7334
-#> CDF                 0.00000000000667064                       -25.7333
+#> AGHQ                     0.000000275931                       -15.1031
+#> CDF                      0.000000275944                       -15.1031
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA        0.00000000000667716                       -25.7323
+#> GenzMonahanA             0.000000275847                       -15.1034
 #> QMC                                  NA                             NA
-#> QMCA                0.00000000000666100                       -25.7348
+#> QMCA                     0.000000275726                       -15.1039
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ               AGHQ                 CDF GenzMonahan
-#> SD             NA 0.0000000000221298 0.00000000001086987          NA
-#> RMSE           NA 0.0000000000229577 0.00000000000570693          NA
-#> sqrt rel RMSE  NA 0.1338732496841358 0.03324246182402630          NA
-#>                     GenzMonahanA QMC               QMCA
-#> SD            0.0000000000588823  NA 0.0000000000583463
-#> RMSE          0.0000000000541107  NA 0.0000000000849527
-#> sqrt rel RMSE 0.3150246154268006  NA 0.4964247973959923
+#> SD & RMSE (/10000.00)
+#>          GHQ           AGHQ            CDF GenzMonahan  GenzMonahanA QMC
+#> SD        NA 0.000000207285 0.000001685322          NA 0.00000311119  NA
+#> RMSE      NA 0.000000279837 0.000000958438          NA 0.00001592394  NA
+#> Rel RMSE  NA 0.067153061495 0.229961696120          NA 3.83474954116  NA
+#>                   QMCA
+#> SD       0.00000308213
+#> RMSE     0.00000311659
+#> Rel RMSE 0.74841648168
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.3948       0.0358           NA       0.0016           NA 
+#>           NA       1.1976       0.0358           NA       0.0298           NA 
 #>         QMCA 
-#>       0.0048
+#>       0.0212
 ```
 
 Next, we apply the method a number of times for a of combination of
@@ -1079,7 +1071,7 @@ p_vals <- 2:7
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 10L
+n_runs <- 25L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -1201,34 +1193,34 @@ local({
 
 | n   | method/p                       |    2|    3|    4|    5|    6|    7|
 |:----|:-------------------------------|----:|----:|----:|----:|----:|----:|
-| 2   | GHQ                            |   10|   10|   10|    0|    0|    0|
-|     | AGHQ                           |   10|   10|   10|   10|   10|   10|
-|     | CDF                            |   10|   10|   10|   10|   10|   10|
-|     | Genz & Monahan (1999) Adaptive |   10|    9|    9|   10|   10|   10|
-|     | QMC                            |   10|   10|   10|    0|    0|    0|
-|     | Adaptive QMC                   |   10|   10|   10|   10|   10|   10|
-| 4   | GHQ                            |   10|   10|   10|    0|    0|    0|
-|     | AGHQ                           |   10|   10|   10|   10|   10|   10|
-|     | CDF                            |   10|   10|   10|   10|   10|   10|
-|     | Genz & Monahan (1999) Adaptive |   10|   10|   10|   10|   10|   10|
-|     | QMC                            |   10|   10|   10|    0|    0|    0|
-|     | Adaptive QMC                   |   10|   10|   10|   10|   10|   10|
-| 8   | GHQ                            |   10|   10|   10|    0|    0|    0|
-|     | AGHQ                           |   10|   10|   10|   10|   10|   10|
-|     | CDF                            |   10|   10|   10|   10|   10|   10|
-|     | Genz & Monahan (1999) Adaptive |   10|   10|   10|   10|   10|   10|
-|     | QMC                            |   10|   10|   10|    0|    0|    0|
-|     | Adaptive QMC                   |   10|   10|   10|   10|   10|   10|
-| 16  | GHQ                            |    8|   10|   10|    0|    0|    0|
-|     | AGHQ                           |   10|   10|   10|   10|   10|   10|
-|     | CDF                            |   10|   10|   10|   10|   10|   10|
-|     | Genz & Monahan (1999) Adaptive |   10|   10|   10|   10|   10|   10|
-|     | QMC                            |   10|   10|   10|    0|    0|    0|
-|     | Adaptive QMC                   |   10|   10|   10|   10|   10|   10|
-| 32  | AGHQ                           |   10|   10|   10|   10|   10|   10|
-|     | CDF                            |   10|   10|   10|   10|   10|   10|
-|     | Genz & Monahan (1999) Adaptive |   10|   10|   10|   10|   10|   10|
-|     | Adaptive QMC                   |   10|   10|   10|   10|   10|   10|
+| 2   | GHQ                            |   24|   25|   25|    0|    0|    0|
+|     | AGHQ                           |   25|   25|   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   24|   25|   25|
+|     | QMC                            |   25|   25|   25|    0|    0|    0|
+|     | Adaptive QMC                   |   25|   25|   25|   25|   25|   25|
+| 4   | GHQ                            |   25|   25|   25|    0|    0|    0|
+|     | AGHQ                           |   25|   25|   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|   25|   25|
+|     | QMC                            |   25|   25|   25|    0|    0|    0|
+|     | Adaptive QMC                   |   25|   25|   25|   25|   25|   25|
+| 8   | GHQ                            |   25|   25|   25|    0|    0|    0|
+|     | AGHQ                           |   25|   25|   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|   25|   25|
+|     | QMC                            |   25|   25|   25|    0|    0|    0|
+|     | Adaptive QMC                   |   25|   25|   25|   25|   25|   25|
+| 16  | GHQ                            |   23|   24|   25|    0|    0|    0|
+|     | AGHQ                           |   25|   25|   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|   25|   25|
+|     | QMC                            |   25|   25|   24|    0|    0|    0|
+|     | Adaptive QMC                   |   25|   25|   25|   25|   25|   25|
+| 32  | AGHQ                           |   25|   25|   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|   25|   25|
+|     | Adaptive QMC                   |   25|   25|   25|   25|   25|   25|
 
 ``` r
 
@@ -1328,41 +1320,41 @@ show_run_times(FALSE)
 
 | n   | method/p                       |       2|       3|       4|       5|       6|       7|
 |:----|:-------------------------------|-------:|-------:|-------:|-------:|-------:|-------:|
-| 2   | GHQ                            |    0.00|    0.20|    1.08|        |        |        |
-|     | AGHQ                           |    0.08|    0.12|    0.60|    4.18|   17.92|  185.32|
-|     | CDF                            |    0.04|    0.02|    0.06|    0.06|    0.06|    0.06|
+| 2   | GHQ                            |        |    0.18|    1.23|        |        |        |
+|     | AGHQ                           |    0.06|    0.13|    0.62|    4.36|   29.66|  188.46|
+|     | CDF                            |    0.07|    0.03|    0.03|    0.06|    0.04|    0.05|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |  137.88|        |        |  181.02|   11.14|   61.50|
-|     | QMC                            |    5.82|   14.48|   19.94|        |        |        |
-|     | Adaptive QMC                   |  177.28|  110.92|  153.64|   92.06|   16.04|   95.18|
-| 4   | GHQ                            |    0.10|    0.26|    1.56|        |        |        |
-|     | AGHQ                           |    0.08|    0.18|    0.78|    5.20|   26.66|  182.42|
-|     | CDF                            |    0.44|    0.46|    0.44|    0.48|    0.42|    0.44|
+|     | Genz & Monahan (1999) Adaptive |   46.06|   62.49|   98.74|        |  123.04|  126.56|
+|     | QMC                            |    8.34|   14.12|   18.72|        |        |        |
+|     | Adaptive QMC                   |   57.77|   78.78|   68.93|   87.14|   68.82|   33.54|
+| 4   | GHQ                            |    0.07|    0.30|    2.89|        |        |        |
+|     | AGHQ                           |    0.06|    0.16|    0.99|    6.46|   31.80|  269.71|
+|     | CDF                            |    0.49|    0.39|    0.45|    0.41|    0.42|    0.42|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |   24.92|   11.36|   23.70|   69.22|   16.08|   44.32|
-|     | QMC                            |    8.62|   16.98|   30.80|        |        |        |
-|     | Adaptive QMC                   |   46.08|   30.82|   34.70|   36.46|   14.92|   82.90|
-| 8   | GHQ                            |    0.14|    1.08|    5.46|        |        |        |
-|     | AGHQ                           |    0.08|    0.24|    1.36|    9.84|   48.16|  315.14|
-|     | CDF                            |    4.64|    4.48|    4.68|    4.66|    4.62|    4.60|
+|     | Genz & Monahan (1999) Adaptive |   48.57|   53.26|  168.73|  141.00|  106.99|  318.89|
+|     | QMC                            |   16.06|   20.30|   33.71|        |        |        |
+|     | Adaptive QMC                   |  140.16|   88.90|  122.42|   99.53|   56.31|   71.54|
+| 8   | GHQ                            |    0.18|    1.21|    5.82|        |        |        |
+|     | AGHQ                           |    0.07|    0.30|    1.39|   10.65|   58.63|  315.13|
+|     | CDF                            |    4.73|    4.57|    4.63|    4.55|    4.90|    4.48|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    2.00|   12.74|   56.08|   27.14|   12.60|   28.88|
-|     | QMC                            |   17.52|   55.16|   63.38|        |        |        |
-|     | Adaptive QMC                   |   10.78|   47.16|   41.38|   27.88|   17.00|   25.10|
-| 16  | GHQ                            |        |    6.64|   29.46|        |        |        |
-|     | AGHQ                           |    0.12|    0.40|    2.72|   12.92|   59.14|  554.60|
-|     | CDF                            |   34.42|   32.00|   33.96|   32.82|   33.10|   30.42|
+|     | Genz & Monahan (1999) Adaptive |  109.78|   22.87|   94.18|  173.80|  202.18|  214.38|
+|     | QMC                            |   15.50|  106.31|   88.12|        |        |        |
+|     | Adaptive QMC                   |  129.58|   33.02|   25.94|   57.51|   24.15|   77.80|
+| 16  | GHQ                            |        |        |   52.22|        |        |        |
+|     | AGHQ                           |    0.11|    0.39|    2.26|   17.36|  108.57|  506.87|
+|     | CDF                            |   32.25|   33.11|   32.41|   33.42|   32.76|   30.85|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    1.44|    9.14|   44.78|   19.90|   13.18|   18.96|
-|     | QMC                            |  117.54|  259.38|  620.70|        |        |        |
-|     | Adaptive QMC                   |    2.94|   27.58|   41.52|   20.78|   12.32|   21.48|
+|     | Genz & Monahan (1999) Adaptive |    7.03|   15.30|  248.06|  313.33|  359.53|  256.64|
+|     | QMC                            |   55.12|  364.66|        |        |        |        |
+|     | Adaptive QMC                   |   45.20|   16.75|   19.10|   62.76|   38.43|   20.96|
 | 32  | GHQ                            |        |        |        |        |        |        |
-|     | AGHQ                           |    0.18|    0.44|    3.10|   17.22|  123.08|  518.66|
-|     | CDF                            |   68.28|   68.48|   71.90|   70.54|   71.32|   59.88|
+|     | AGHQ                           |    0.18|    0.60|    3.44|   21.10|  120.02|  765.69|
+|     | CDF                            |   70.26|   69.18|   68.53|   68.80|   89.63|   59.74|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    2.30|    2.48|    9.88|    4.90|    4.44|    6.76|
+|     | Genz & Monahan (1999) Adaptive |    2.57|   14.74|  104.83|   51.55|   20.29|  116.38|
 |     | QMC                            |        |        |        |        |        |        |
-|     | Adaptive QMC                   |    2.92|    3.58|   29.92|    7.24|    8.00|    7.44|
+|     | Adaptive QMC                   |    5.05|   36.44|   14.06|   16.76|   10.42|   11.97|
 
 ``` r
 show_run_times(na.rm = TRUE)
@@ -1372,34 +1364,34 @@ show_run_times(na.rm = TRUE)
 
 | n   | method/p                       |       2|       3|       4|       5|       6|       7|
 |:----|:-------------------------------|-------:|-------:|-------:|-------:|-------:|-------:|
-| 2   | GHQ                            |    0.00|    0.20|    1.08|        |        |        |
-|     | AGHQ                           |    0.08|    0.12|    0.60|    4.18|   17.92|  185.32|
-|     | CDF                            |    0.04|    0.02|    0.06|    0.06|    0.06|    0.06|
-|     | Genz & Monahan (1999) Adaptive |  137.88|   20.96|   23.96|  181.02|   11.14|   61.50|
-|     | QMC                            |    5.82|   14.48|   19.94|        |        |        |
-|     | Adaptive QMC                   |  177.28|  110.92|  153.64|   92.06|   16.04|   95.18|
-| 4   | GHQ                            |    0.10|    0.26|    1.56|        |        |        |
-|     | AGHQ                           |    0.08|    0.18|    0.78|    5.20|   26.66|  182.42|
-|     | CDF                            |    0.44|    0.46|    0.44|    0.48|    0.42|    0.44|
-|     | Genz & Monahan (1999) Adaptive |   24.92|   11.36|   23.70|   69.22|   16.08|   44.32|
-|     | QMC                            |    8.62|   16.98|   30.80|        |        |        |
-|     | Adaptive QMC                   |   46.08|   30.82|   34.70|   36.46|   14.92|   82.90|
-| 8   | GHQ                            |    0.14|    1.08|    5.46|        |        |        |
-|     | AGHQ                           |    0.08|    0.24|    1.36|    9.84|   48.16|  315.14|
-|     | CDF                            |    4.64|    4.48|    4.68|    4.66|    4.62|    4.60|
-|     | Genz & Monahan (1999) Adaptive |    2.00|   12.74|   56.08|   27.14|   12.60|   28.88|
-|     | QMC                            |   17.52|   55.16|   63.38|        |        |        |
-|     | Adaptive QMC                   |   10.78|   47.16|   41.38|   27.88|   17.00|   25.10|
-| 16  | GHQ                            |    0.30|    6.64|   29.46|        |        |        |
-|     | AGHQ                           |    0.12|    0.40|    2.72|   12.92|   59.14|  554.60|
-|     | CDF                            |   34.42|   32.00|   33.96|   32.82|   33.10|   30.42|
-|     | Genz & Monahan (1999) Adaptive |    1.44|    9.14|   44.78|   19.90|   13.18|   18.96|
-|     | QMC                            |  117.54|  259.38|  620.70|        |        |        |
-|     | Adaptive QMC                   |    2.94|   27.58|   41.52|   20.78|   12.32|   21.48|
-| 32  | AGHQ                           |    0.18|    0.44|    3.10|   17.22|  123.08|  518.66|
-|     | CDF                            |   68.28|   68.48|   71.90|   70.54|   71.32|   59.88|
-|     | Genz & Monahan (1999) Adaptive |    2.30|    2.48|    9.88|    4.90|    4.44|    6.76|
-|     | Adaptive QMC                   |    2.92|    3.58|   29.92|    7.24|    8.00|    7.44|
+| 2   | GHQ                            |    0.05|    0.18|    1.23|        |        |        |
+|     | AGHQ                           |    0.06|    0.13|    0.62|    4.36|   29.66|  188.46|
+|     | CDF                            |    0.07|    0.03|    0.03|    0.06|    0.04|    0.05|
+|     | Genz & Monahan (1999) Adaptive |   46.06|   62.49|   98.74|   54.69|  123.04|  126.56|
+|     | QMC                            |    8.34|   14.12|   18.72|        |        |        |
+|     | Adaptive QMC                   |   57.77|   78.78|   68.93|   87.14|   68.82|   33.54|
+| 4   | GHQ                            |    0.07|    0.30|    2.89|        |        |        |
+|     | AGHQ                           |    0.06|    0.16|    0.99|    6.46|   31.80|  269.71|
+|     | CDF                            |    0.49|    0.39|    0.45|    0.41|    0.42|    0.42|
+|     | Genz & Monahan (1999) Adaptive |   48.57|   53.26|  168.73|  141.00|  106.99|  318.89|
+|     | QMC                            |   16.06|   20.30|   33.71|        |        |        |
+|     | Adaptive QMC                   |  140.16|   88.90|  122.42|   99.53|   56.31|   71.54|
+| 8   | GHQ                            |    0.18|    1.21|    5.82|        |        |        |
+|     | AGHQ                           |    0.07|    0.30|    1.39|   10.65|   58.63|  315.13|
+|     | CDF                            |    4.73|    4.57|    4.63|    4.55|    4.90|    4.48|
+|     | Genz & Monahan (1999) Adaptive |  109.78|   22.87|   94.18|  173.80|  202.18|  214.38|
+|     | QMC                            |   15.50|  106.31|   88.12|        |        |        |
+|     | Adaptive QMC                   |  129.58|   33.02|   25.94|   57.51|   24.15|   77.80|
+| 16  | GHQ                            |    0.49|    6.06|   52.22|        |        |        |
+|     | AGHQ                           |    0.11|    0.39|    2.26|   17.36|  108.57|  506.87|
+|     | CDF                            |   32.25|   33.11|   32.41|   33.42|   32.76|   30.85|
+|     | Genz & Monahan (1999) Adaptive |    7.03|   15.30|  248.06|  313.33|  359.53|  256.64|
+|     | QMC                            |   55.12|  364.66|  587.79|        |        |        |
+|     | Adaptive QMC                   |   45.20|   16.75|   19.10|   62.76|   38.43|   20.96|
+| 32  | AGHQ                           |    0.18|    0.60|    3.44|   21.10|  120.02|  765.69|
+|     | CDF                            |   70.26|   69.18|   68.53|   68.80|   89.63|   59.74|
+|     | Genz & Monahan (1999) Adaptive |    2.57|   14.74|  104.83|   51.55|   20.29|  116.38|
+|     | Adaptive QMC                   |    5.05|   36.44|   14.06|   16.76|   10.42|   11.97|
 
 ``` r
 show_run_times(TRUE)
@@ -1409,51 +1401,51 @@ show_run_times(TRUE)
 
 | n   | method/p                       |       2|       3|       4|       5|       6|       7|
 |:----|:-------------------------------|-------:|-------:|-------:|-------:|-------:|-------:|
-| 2   | GHQ                            |    0.00|    0.20|    0.93|        |        |        |
-|     | AGHQ                           |    0.08|    0.11|    0.53|    4.18|   17.92|  185.32|
-|     | CDF                            |    0.04|    0.02|    0.07|    0.06|    0.06|    0.06|
+| 2   | GHQ                            |    0.05|    0.18|    1.23|        |        |        |
+|     | AGHQ                           |    0.06|    0.13|    0.62|    4.14|   29.66|  188.46|
+|     | CDF                            |    0.07|    0.03|    0.03|    0.06|    0.04|    0.05|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |  137.88|   20.96|   23.96|  181.02|   11.14|   61.50|
-|     | QMC                            |    5.82|   12.09|   15.80|        |        |        |
-|     | Adaptive QMC                   |  177.28|   28.53|   78.89|   92.06|   16.04|   95.18|
-| 4   | GHQ                            |    0.10|    0.26|    1.56|        |        |        |
-|     | AGHQ                           |    0.08|    0.18|    0.78|    5.20|   26.66|  182.42|
-|     | CDF                            |    0.44|    0.46|    0.44|    0.48|    0.42|    0.44|
+|     | Genz & Monahan (1999) Adaptive |   47.01|   62.49|   98.74|   54.69|  123.04|  126.56|
+|     | QMC                            |    8.42|   14.12|   18.72|        |        |        |
+|     | Adaptive QMC                   |   58.94|   78.78|   68.93|   51.61|   68.82|   33.54|
+| 4   | GHQ                            |    0.07|    0.30|    2.89|        |        |        |
+|     | AGHQ                           |    0.06|    0.16|    0.99|    6.46|   31.80|  269.71|
+|     | CDF                            |    0.49|    0.39|    0.45|    0.41|    0.42|    0.42|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |   24.92|   11.36|   23.70|   69.22|   16.08|   44.32|
-|     | QMC                            |    8.62|   16.98|   30.80|        |        |        |
-|     | Adaptive QMC                   |   46.08|   30.82|   34.70|   36.46|   14.92|   82.90|
-| 8   | GHQ                            |    0.14|    1.08|    5.46|        |        |        |
-|     | AGHQ                           |    0.08|    0.24|    1.36|    9.84|   48.16|  315.14|
-|     | CDF                            |    4.64|    4.48|    4.68|    4.66|    4.62|    4.60|
+|     | Genz & Monahan (1999) Adaptive |   48.57|   53.26|  168.73|  141.00|  106.99|  318.89|
+|     | QMC                            |   16.06|   20.30|   33.71|        |        |        |
+|     | Adaptive QMC                   |  140.16|   88.90|  122.42|   99.53|   56.31|   71.54|
+| 8   | GHQ                            |    0.18|    1.21|    5.82|        |        |        |
+|     | AGHQ                           |    0.07|    0.30|    1.39|   10.65|   58.63|  315.13|
+|     | CDF                            |    4.73|    4.57|    4.63|    4.55|    4.90|    4.48|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    2.00|   12.74|   56.08|   27.14|   12.60|   28.88|
-|     | QMC                            |   17.52|   55.16|   63.38|        |        |        |
-|     | Adaptive QMC                   |   10.78|   47.16|   41.38|   27.88|   17.00|   25.10|
-| 16  | GHQ                            |    0.30|    6.64|   29.46|        |        |        |
-|     | AGHQ                           |    0.12|    0.40|    2.72|   12.92|   59.14|  554.60|
-|     | CDF                            |   34.42|   32.00|   33.96|   32.82|   33.10|   30.42|
+|     | Genz & Monahan (1999) Adaptive |  109.78|   22.87|   94.18|  173.80|  202.18|  214.38|
+|     | QMC                            |   15.50|  106.31|   88.12|        |        |        |
+|     | Adaptive QMC                   |  129.58|   33.02|   25.94|   57.51|   24.15|   77.80|
+| 16  | GHQ                            |    0.49|    6.06|   48.78|        |        |        |
+|     | AGHQ                           |    0.10|    0.39|    2.28|   17.36|  108.57|  506.87|
+|     | CDF                            |   32.23|   33.02|   32.33|   33.42|   32.76|   30.85|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    1.40|    9.14|   44.78|   19.90|   13.18|   18.96|
-|     | QMC                            |  139.63|  259.38|  620.70|        |        |        |
-|     | Adaptive QMC                   |    3.00|   27.58|   41.52|   20.78|   12.32|   21.48|
+|     | Genz & Monahan (1999) Adaptive |    7.57|   15.93|  258.32|  313.33|  359.53|  256.64|
+|     | QMC                            |   56.03|  376.18|  587.79|        |        |        |
+|     | Adaptive QMC                   |   48.82|   17.38|   19.71|   62.76|   38.43|   20.96|
 | 32  | GHQ                            |        |        |        |        |        |        |
-|     | AGHQ                           |    0.18|    0.44|    3.10|   17.22|  123.08|  518.66|
-|     | CDF                            |   68.28|   68.48|   71.90|   70.54|   71.32|   59.88|
+|     | AGHQ                           |    0.18|    0.60|    3.44|   21.10|  120.02|  765.69|
+|     | CDF                            |   70.26|   69.18|   68.53|   68.80|   89.63|   59.74|
 |     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    2.30|    2.48|    9.88|    4.90|    4.44|    6.76|
+|     | Genz & Monahan (1999) Adaptive |    2.57|   14.74|  104.83|   51.55|   20.29|  116.38|
 |     | QMC                            |        |        |        |        |        |        |
-|     | Adaptive QMC                   |    2.92|    3.58|   29.92|    7.24|    8.00|    7.44|
+|     | Adaptive QMC                   |    5.05|   36.44|   14.06|   16.76|   10.42|   11.97|
 
 **Number of complete cases**
 
 |     |    2|    3|    4|    5|    6|    7|
 |-----|----:|----:|----:|----:|----:|----:|
-| 2   |   10|    9|    9|   10|   10|   10|
-| 4   |   10|   10|   10|   10|   10|   10|
-| 8   |   10|   10|   10|   10|   10|   10|
-| 16  |    8|   10|   10|   10|   10|   10|
-| 32  |   10|   10|   10|   10|   10|   10|
+| 2   |   24|   25|   25|   24|   25|   25|
+| 4   |   25|   25|   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|   25|   25|
+| 16  |   23|   24|   24|   25|   25|   25|
+| 32  |   25|   25|   25|   25|   25|   25|
 
 ``` r
 
@@ -1465,43 +1457,43 @@ show_run_times(meth = med_func, suffix = " (median)", FALSE)
 
 **Blank cells have at least one failure (median)**
 
-| n   | method/p                       |      2|      3|       4|      5|       6|       7|
-|:----|:-------------------------------|------:|------:|-------:|------:|-------:|-------:|
-| 2   | GHQ                            |   0.00|   0.20|    0.90|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    0.50|   3.60|   13.60|   90.50|
-|     | CDF                            |   0.00|   0.00|    0.00|   0.00|    0.00|    0.00|
-|     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   6.50|       |        |   7.40|    1.90|   12.90|
-|     | QMC                            |   5.20|  12.20|   15.20|       |        |        |
-|     | Adaptive QMC                   |  18.50|  26.70|    7.90|  25.10|   14.10|   27.40|
-| 4   | GHQ                            |   0.10|   0.20|    1.60|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    0.60|   4.40|   20.00|  130.00|
-|     | CDF                            |   0.40|   0.40|    0.40|   0.40|    0.40|    0.40|
-|     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   1.90|   0.60|    2.10|   1.00|    2.20|    0.70|
-|     | QMC                            |   6.90|  10.80|   26.80|       |        |        |
-|     | Adaptive QMC                   |   6.30|   4.40|    6.30|   7.30|    7.70|    7.40|
-| 8   | GHQ                            |   0.20|   1.00|    4.20|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    1.40|  12.10|   34.50|  225.10|
-|     | CDF                            |   4.70|   4.40|    4.50|   4.60|    4.60|    4.50|
-|     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   0.80|   5.70|    7.60|  10.20|    7.20|   20.60|
-|     | QMC                            |  13.10|  39.70|   49.00|       |        |        |
-|     | Adaptive QMC                   |   5.50|   7.60|    6.00|  20.40|   11.50|   23.80|
-| 16  | GHQ                            |       |   4.70|   26.20|       |        |        |
-|     | AGHQ                           |   0.20|   0.40|    3.30|  10.50|   63.80|  393.10|
-|     | CDF                            |  33.80|  32.40|   32.80|  32.60|   33.10|   31.20|
-|     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   1.30|   1.40|   20.90|   3.90|    3.10|    7.80|
-|     | QMC                            |  34.10|  81.50|  341.90|       |        |        |
-|     | Adaptive QMC                   |   2.00|   5.30|   32.40|   9.80|    7.90|    9.30|
-| 32  | GHQ                            |       |       |        |       |        |        |
-|     | AGHQ                           |   0.20|   0.40|    3.30|  19.20|  121.70|  614.80|
-|     | CDF                            |  68.30|  67.30|   68.00|  68.90|   69.60|   59.00|
-|     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   2.30|   2.40|    2.60|   2.60|    2.80|    2.40|
-|     | QMC                            |       |       |        |       |        |        |
-|     | Adaptive QMC                   |   2.90|   3.40|    4.50|   4.30|    6.50|    4.80|
+| n   | method/p                       |      2|      3|      4|      5|       6|       7|
+|:----|:-------------------------------|------:|------:|------:|------:|-------:|-------:|
+| 2   | GHQ                            |       |   0.20|   0.80|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|   0.60|   2.40|   13.80|   91.80|
+|     | CDF                            |   0.00|   0.00|   0.00|   0.00|    0.00|    0.00|
+|     | Genz & Monahan (1999)          |       |       |       |       |        |        |
+|     | Genz & Monahan (1999) Adaptive |   2.00|   6.60|  32.80|       |   40.80|   33.80|
+|     | QMC                            |   7.80|  12.00|  16.60|       |        |        |
+|     | Adaptive QMC                   |  12.40|  11.60|   9.80|   8.60|   21.20|   22.20|
+| 4   | GHQ                            |   0.00|   0.40|   1.60|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|   1.00|   7.20|   20.40|  376.80|
+|     | CDF                            |   0.40|   0.40|   0.40|   0.40|    0.40|    0.40|
+|     | Genz & Monahan (1999)          |       |       |       |       |        |        |
+|     | Genz & Monahan (1999) Adaptive |   3.80|   5.40|  37.80|  39.00|   24.00|  144.80|
+|     | QMC                            |  12.60|  15.80|  30.00|       |        |        |
+|     | Adaptive QMC                   |  15.40|   7.40|  14.60|  12.00|   11.20|   29.20|
+| 8   | GHQ                            |   0.20|   1.00|   4.60|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|   1.60|  12.20|   36.60|  214.80|
+|     | CDF                            |   4.60|   4.40|   4.60|   4.40|    4.80|    4.40|
+|     | Genz & Monahan (1999)          |       |       |       |       |        |        |
+|     | Genz & Monahan (1999) Adaptive |   0.40|   6.00|  11.20|  54.40|   67.00|   65.60|
+|     | QMC                            |  10.00|  60.00|  68.20|       |        |        |
+|     | Adaptive QMC                   |   3.00|   9.20|   8.60|  23.20|   12.60|   20.40|
+| 16  | GHQ                            |       |       |  34.80|       |        |        |
+|     | AGHQ                           |   0.20|   0.40|   1.80|  15.60|   65.00|  370.80|
+|     | CDF                            |  32.20|  32.80|  32.80|  32.00|   32.00|   30.40|
+|     | Genz & Monahan (1999)          |       |       |       |       |        |        |
+|     | Genz & Monahan (1999) Adaptive |   0.20|   0.40|  17.20|  91.60|   73.60|   29.40|
+|     | QMC                            |  21.60|  88.20|       |       |        |        |
+|     | Adaptive QMC                   |   3.20|   4.60|   8.80|  11.80|   21.60|   17.00|
+| 32  | GHQ                            |       |       |       |       |        |        |
+|     | AGHQ                           |   0.20|   0.60|   3.20|  20.00|  120.40|  703.20|
+|     | CDF                            |  70.40|  68.80|  68.20|  68.60|   70.00|   58.80|
+|     | Genz & Monahan (1999)          |       |       |       |       |        |        |
+|     | Genz & Monahan (1999) Adaptive |   0.40|   0.40|   4.00|   1.40|    2.20|    1.40|
+|     | QMC                            |       |       |       |       |        |        |
+|     | Adaptive QMC                   |   1.80|   3.00|   6.20|   6.20|    6.20|    7.60|
 
 ``` r
 show_run_times(meth = med_func, suffix = " (median)", na.rm = TRUE)
@@ -1511,34 +1503,34 @@ show_run_times(meth = med_func, suffix = " (median)", na.rm = TRUE)
 
 | n   | method/p                       |      2|      3|       4|      5|       6|       7|
 |:----|:-------------------------------|------:|------:|-------:|------:|-------:|-------:|
-| 2   | GHQ                            |   0.00|   0.20|    0.90|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    0.50|   3.60|   13.60|   90.50|
+| 2   | GHQ                            |   0.00|   0.20|    0.80|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|    0.60|   2.40|   13.80|   91.80|
 |     | CDF                            |   0.00|   0.00|    0.00|   0.00|    0.00|    0.00|
-|     | Genz & Monahan (1999) Adaptive |   6.50|   9.00|    0.60|   7.40|    1.90|   12.90|
-|     | QMC                            |   5.20|  12.20|   15.20|       |        |        |
-|     | Adaptive QMC                   |  18.50|  26.70|    7.90|  25.10|   14.10|   27.40|
-| 4   | GHQ                            |   0.10|   0.20|    1.60|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    0.60|   4.40|   20.00|  130.00|
+|     | Genz & Monahan (1999) Adaptive |   2.00|   6.60|   32.80|   8.80|   40.80|   33.80|
+|     | QMC                            |   7.80|  12.00|   16.60|       |        |        |
+|     | Adaptive QMC                   |  12.40|  11.60|    9.80|   8.60|   21.20|   22.20|
+| 4   | GHQ                            |   0.00|   0.40|    1.60|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|    1.00|   7.20|   20.40|  376.80|
 |     | CDF                            |   0.40|   0.40|    0.40|   0.40|    0.40|    0.40|
-|     | Genz & Monahan (1999) Adaptive |   1.90|   0.60|    2.10|   1.00|    2.20|    0.70|
-|     | QMC                            |   6.90|  10.80|   26.80|       |        |        |
-|     | Adaptive QMC                   |   6.30|   4.40|    6.30|   7.30|    7.70|    7.40|
-| 8   | GHQ                            |   0.20|   1.00|    4.20|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    1.40|  12.10|   34.50|  225.10|
-|     | CDF                            |   4.70|   4.40|    4.50|   4.60|    4.60|    4.50|
-|     | Genz & Monahan (1999) Adaptive |   0.80|   5.70|    7.60|  10.20|    7.20|   20.60|
-|     | QMC                            |  13.10|  39.70|   49.00|       |        |        |
-|     | Adaptive QMC                   |   5.50|   7.60|    6.00|  20.40|   11.50|   23.80|
-| 16  | GHQ                            |   0.20|   4.70|   26.20|       |        |        |
-|     | AGHQ                           |   0.20|   0.40|    3.30|  10.50|   63.80|  393.10|
-|     | CDF                            |  33.80|  32.40|   32.80|  32.60|   33.10|   31.20|
-|     | Genz & Monahan (1999) Adaptive |   1.30|   1.40|   20.90|   3.90|    3.10|    7.80|
-|     | QMC                            |  34.10|  81.50|  341.90|       |        |        |
-|     | Adaptive QMC                   |   2.00|   5.30|   32.40|   9.80|    7.90|    9.30|
-| 32  | AGHQ                           |   0.20|   0.40|    3.30|  19.20|  121.70|  614.80|
-|     | CDF                            |  68.30|  67.30|   68.00|  68.90|   69.60|   59.00|
-|     | Genz & Monahan (1999) Adaptive |   2.30|   2.40|    2.60|   2.60|    2.80|    2.40|
-|     | Adaptive QMC                   |   2.90|   3.40|    4.50|   4.30|    6.50|    4.80|
+|     | Genz & Monahan (1999) Adaptive |   3.80|   5.40|   37.80|  39.00|   24.00|  144.80|
+|     | QMC                            |  12.60|  15.80|   30.00|       |        |        |
+|     | Adaptive QMC                   |  15.40|   7.40|   14.60|  12.00|   11.20|   29.20|
+| 8   | GHQ                            |   0.20|   1.00|    4.60|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|    1.60|  12.20|   36.60|  214.80|
+|     | CDF                            |   4.60|   4.40|    4.60|   4.40|    4.80|    4.40|
+|     | Genz & Monahan (1999) Adaptive |   0.40|   6.00|   11.20|  54.40|   67.00|   65.60|
+|     | QMC                            |  10.00|  60.00|   68.20|       |        |        |
+|     | Adaptive QMC                   |   3.00|   9.20|    8.60|  23.20|   12.60|   20.40|
+| 16  | GHQ                            |   0.40|   5.70|   34.80|       |        |        |
+|     | AGHQ                           |   0.20|   0.40|    1.80|  15.60|   65.00|  370.80|
+|     | CDF                            |  32.20|  32.80|   32.80|  32.00|   32.00|   30.40|
+|     | Genz & Monahan (1999) Adaptive |   0.20|   0.40|   17.20|  91.60|   73.60|   29.40|
+|     | QMC                            |  21.60|  88.20|  368.60|       |        |        |
+|     | Adaptive QMC                   |   3.20|   4.60|    8.80|  11.80|   21.60|   17.00|
+| 32  | AGHQ                           |   0.20|   0.60|    3.20|  20.00|  120.40|  703.20|
+|     | CDF                            |  70.40|  68.80|   68.20|  68.60|   70.00|   58.80|
+|     | Genz & Monahan (1999) Adaptive |   0.40|   0.40|    4.00|   1.40|    2.20|    1.40|
+|     | Adaptive QMC                   |   1.80|   3.00|    6.20|   6.20|    6.20|    7.60|
 
 ``` r
 show_run_times(meth = med_func, suffix = " (median)", TRUE)
@@ -1549,50 +1541,50 @@ show_run_times(meth = med_func, suffix = " (median)", TRUE)
 | n   | method/p                       |      2|      3|       4|      5|       6|       7|
 |:----|:-------------------------------|------:|------:|-------:|------:|-------:|-------:|
 | 2   | GHQ                            |   0.00|   0.20|    0.80|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    0.40|   3.60|   13.60|   90.50|
+|     | AGHQ                           |   0.00|   0.20|    0.60|   2.40|   13.80|   91.80|
 |     | CDF                            |   0.00|   0.00|    0.00|   0.00|    0.00|    0.00|
 |     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   6.50|   9.00|    0.60|   7.40|    1.90|   12.90|
-|     | QMC                            |   5.20|  12.00|   14.60|       |        |        |
-|     | Adaptive QMC                   |  18.50|  24.40|    7.80|  25.10|   14.10|   27.40|
-| 4   | GHQ                            |   0.10|   0.20|    1.60|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    0.60|   4.40|   20.00|  130.00|
+|     | Genz & Monahan (1999) Adaptive |   1.80|   6.60|   32.80|   8.80|   40.80|   33.80|
+|     | QMC                            |   7.90|  12.00|   16.60|       |        |        |
+|     | Adaptive QMC                   |  11.90|  11.60|    9.80|   8.50|   21.20|   22.20|
+| 4   | GHQ                            |   0.00|   0.40|    1.60|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|    1.00|   7.20|   20.40|  376.80|
 |     | CDF                            |   0.40|   0.40|    0.40|   0.40|    0.40|    0.40|
 |     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   1.90|   0.60|    2.10|   1.00|    2.20|    0.70|
-|     | QMC                            |   6.90|  10.80|   26.80|       |        |        |
-|     | Adaptive QMC                   |   6.30|   4.40|    6.30|   7.30|    7.70|    7.40|
-| 8   | GHQ                            |   0.20|   1.00|    4.20|       |        |        |
-|     | AGHQ                           |   0.00|   0.20|    1.40|  12.10|   34.50|  225.10|
-|     | CDF                            |   4.70|   4.40|    4.50|   4.60|    4.60|    4.50|
+|     | Genz & Monahan (1999) Adaptive |   3.80|   5.40|   37.80|  39.00|   24.00|  144.80|
+|     | QMC                            |  12.60|  15.80|   30.00|       |        |        |
+|     | Adaptive QMC                   |  15.40|   7.40|   14.60|  12.00|   11.20|   29.20|
+| 8   | GHQ                            |   0.20|   1.00|    4.60|       |        |        |
+|     | AGHQ                           |   0.00|   0.20|    1.60|  12.20|   36.60|  214.80|
+|     | CDF                            |   4.60|   4.40|    4.60|   4.40|    4.80|    4.40|
 |     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   0.80|   5.70|    7.60|  10.20|    7.20|   20.60|
-|     | QMC                            |  13.10|  39.70|   49.00|       |        |        |
-|     | Adaptive QMC                   |   5.50|   7.60|    6.00|  20.40|   11.50|   23.80|
-| 16  | GHQ                            |   0.20|   4.70|   26.20|       |        |        |
-|     | AGHQ                           |   0.20|   0.40|    3.30|  10.50|   63.80|  393.10|
-|     | CDF                            |  33.80|  32.40|   32.80|  32.60|   33.10|   31.20|
+|     | Genz & Monahan (1999) Adaptive |   0.40|   6.00|   11.20|  54.40|   67.00|   65.60|
+|     | QMC                            |  10.00|  60.00|   68.20|       |        |        |
+|     | Adaptive QMC                   |   3.00|   9.20|    8.60|  23.20|   12.60|   20.40|
+| 16  | GHQ                            |   0.40|   5.70|   34.80|       |        |        |
+|     | AGHQ                           |   0.20|   0.40|    1.80|  15.60|   65.00|  370.80|
+|     | CDF                            |  32.20|  32.80|   32.70|  32.00|   32.00|   30.40|
 |     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   1.30|   1.40|   20.90|   3.90|    3.10|    7.80|
-|     | QMC                            |  36.30|  81.50|  341.90|       |        |        |
-|     | Adaptive QMC                   |   1.90|   5.30|   32.40|   9.80|    7.90|    9.30|
+|     | Genz & Monahan (1999) Adaptive |   0.20|   0.40|   17.90|  91.60|   73.60|   29.40|
+|     | QMC                            |  21.60|  70.30|  368.60|       |        |        |
+|     | Adaptive QMC                   |   3.20|   5.40|   10.10|  11.80|   21.60|   17.00|
 | 32  | GHQ                            |       |       |        |       |        |        |
-|     | AGHQ                           |   0.20|   0.40|    3.30|  19.20|  121.70|  614.80|
-|     | CDF                            |  68.30|  67.30|   68.00|  68.90|   69.60|   59.00|
+|     | AGHQ                           |   0.20|   0.60|    3.20|  20.00|  120.40|  703.20|
+|     | CDF                            |  70.40|  68.80|   68.20|  68.60|   70.00|   58.80|
 |     | Genz & Monahan (1999)          |       |       |        |       |        |        |
-|     | Genz & Monahan (1999) Adaptive |   2.30|   2.40|    2.60|   2.60|    2.80|    2.40|
+|     | Genz & Monahan (1999) Adaptive |   0.40|   0.40|    4.00|   1.40|    2.20|    1.40|
 |     | QMC                            |       |       |        |       |        |        |
-|     | Adaptive QMC                   |   2.90|   3.40|    4.50|   4.30|    6.50|    4.80|
+|     | Adaptive QMC                   |   1.80|   3.00|    6.20|   6.20|    6.20|    7.60|
 
 **Number of complete cases**
 
 |     |    2|    3|    4|    5|    6|    7|
 |-----|----:|----:|----:|----:|----:|----:|
-| 2   |   10|    9|    9|   10|   10|   10|
-| 4   |   10|   10|   10|   10|   10|   10|
-| 8   |   10|   10|   10|   10|   10|   10|
-| 16  |    8|   10|   10|   10|   10|   10|
-| 32  |   10|   10|   10|   10|   10|   10|
+| 2   |   24|   25|   25|   24|   25|   25|
+| 4   |   25|   25|   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|   25|   25|
+| 16  |   23|   24|   24|   25|   25|   25|
+| 32  |   25|   25|   25|   25|   25|   25|
 
 ``` r
 
@@ -1604,36 +1596,36 @@ show_run_times(meth = med_func, suffix = " (75% quantile)", na.rm = TRUE)
 
 **NAs have been removed. Cells may not be comparable (75% quantile)**
 
-| n   | method/p                       |       2|       3|       4|       5|       6|       7|
-|:----|:-------------------------------|-------:|-------:|-------:|-------:|-------:|-------:|
-| 2   | GHQ                            |    0.00|    0.20|    1.40|        |        |        |
-|     | AGHQ                           |    0.20|    0.20|    0.80|    5.15|   18.35|  220.95|
-|     | CDF                            |    0.00|    0.00|    0.15|    0.15|    0.15|    0.15|
-|     | Genz & Monahan (1999) Adaptive |   40.15|   23.80|   20.00|  432.95|   13.30|   23.40|
-|     | QMC                            |    7.55|   14.95|   22.60|        |        |        |
-|     | Adaptive QMC                   |  185.95|   51.65|   52.95|   46.80|   18.25|   48.50|
-| 4   | GHQ                            |    0.20|    0.40|    1.60|        |        |        |
-|     | AGHQ                           |    0.20|    0.20|    1.00|    7.40|   20.95|  139.05|
-|     | CDF                            |    0.40|    0.55|    0.55|    0.60|    0.40|    0.40|
-|     | Genz & Monahan (1999) Adaptive |    5.35|    9.10|   26.10|   19.15|   12.60|    6.60|
-|     | QMC                            |   11.45|   17.35|   42.70|        |        |        |
-|     | Adaptive QMC                   |   18.20|    7.90|   40.55|   58.10|   11.30|   45.70|
-| 8   | GHQ                            |    0.20|    1.45|    6.50|        |        |        |
-|     | AGHQ                           |    0.20|    0.20|    1.80|   12.70|   68.20|  234.25|
-|     | CDF                            |    4.80|    4.75|    4.80|    4.80|    4.80|    4.80|
-|     | Genz & Monahan (1999) Adaptive |    1.75|   22.15|   50.60|   54.00|   11.10|   35.05|
-|     | QMC                            |   22.30|   78.75|   76.00|        |        |        |
-|     | Adaptive QMC                   |   14.45|   23.10|   22.90|   35.75|   14.15|   36.30|
-| 16  | GHQ                            |    0.40|    7.90|   42.60|        |        |        |
-|     | AGHQ                           |    0.20|    0.55|    3.40|   10.80|   64.90|  452.30|
-|     | CDF                            |   35.75|   33.35|   33.60|   33.40|   33.80|   32.25|
-|     | Genz & Monahan (1999) Adaptive |    1.40|    2.60|   60.40|   23.45|   10.15|   22.40|
-|     | QMC                            |  121.70|  189.60|  901.95|        |        |        |
-|     | Adaptive QMC                   |    2.85|   12.35|   64.70|   29.15|   20.25|   19.75|
-| 32  | AGHQ                           |    0.20|    0.55|    3.40|   20.55|  123.55|  636.20|
-|     | CDF                            |   70.60|   69.20|   68.60|   71.85|   70.55|   61.15|
-|     | Genz & Monahan (1999) Adaptive |    2.40|    2.60|    2.75|    2.80|    3.15|    3.65|
-|     | Adaptive QMC                   |    3.00|    3.55|    9.10|    4.85|    9.15|    8.50|
+| n   | method/p                       |      2|       3|       4|       5|       6|       7|
+|:----|:-------------------------------|------:|-------:|-------:|-------:|-------:|-------:|
+| 2   | GHQ                            |   0.05|    0.20|    1.60|        |        |        |
+|     | AGHQ                           |   0.20|    0.20|    0.80|    4.80|   33.80|  263.60|
+|     | CDF                            |   0.20|    0.00|    0.00|    0.20|    0.00|    0.00|
+|     | Genz & Monahan (1999) Adaptive |  23.40|   35.20|   89.80|   53.25|  132.80|   73.80|
+|     | QMC                            |  11.00|   14.60|   23.20|        |        |        |
+|     | Adaptive QMC                   |  35.20|   39.60|   44.20|   61.60|   67.40|   39.20|
+| 4   | GHQ                            |   0.20|    0.40|    2.60|        |        |        |
+|     | AGHQ                           |   0.20|    0.20|    1.20|    7.40|   51.80|  391.20|
+|     | CDF                            |   0.60|    0.40|    0.40|    0.40|    0.40|    0.40|
+|     | Genz & Monahan (1999) Adaptive |  23.20|   27.80|  352.40|  182.80|   53.00|  440.60|
+|     | QMC                            |  18.60|   27.80|   37.60|        |        |        |
+|     | Adaptive QMC                   |  62.80|   34.20|   32.80|   50.20|   51.20|   73.40|
+| 8   | GHQ                            |   0.20|    1.40|    6.60|        |        |        |
+|     | AGHQ                           |   0.20|    0.40|    1.60|   12.80|   86.60|  266.60|
+|     | CDF                            |   5.00|    4.80|    4.80|    4.60|    5.00|    4.60|
+|     | Genz & Monahan (1999) Adaptive |   6.00|   19.60|  118.60|  337.60|  252.00|  202.80|
+|     | QMC                            |  23.80|  141.40|   95.40|        |        |        |
+|     | Adaptive QMC                   |  13.00|   32.20|   22.80|   42.80|   31.20|   43.20|
+| 16  | GHQ                            |   0.60|    7.60|   66.20|        |        |        |
+|     | AGHQ                           |   0.20|    0.40|    3.20|   23.00|  161.00|  401.00|
+|     | CDF                            |  32.80|   34.20|   33.60|   33.60|   33.40|   31.20|
+|     | Genz & Monahan (1999) Adaptive |   1.80|   12.20|   35.60|  196.80|  267.00|  108.20|
+|     | QMC                            |  45.60|  274.60|  667.50|        |        |        |
+|     | Adaptive QMC                   |   5.60|    9.80|   15.20|   43.40|   48.20|   28.80|
+| 32  | AGHQ                           |   0.20|    0.80|    3.60|   20.80|  124.00|  746.20|
+|     | CDF                            |  71.40|   71.20|   69.60|   70.60|   73.00|   60.40|
+|     | Genz & Monahan (1999) Adaptive |   0.40|    0.80|   67.20|   73.80|   31.40|   34.20|
+|     | Adaptive QMC                   |   4.60|    8.40|   11.80|   13.00|   12.80|   12.60|
 
 ``` r
 show_run_times(meth = med_func, suffix = " (75% quantile)", TRUE)
@@ -1641,53 +1633,53 @@ show_run_times(meth = med_func, suffix = " (75% quantile)", TRUE)
 
 **Only showing complete cases (75% quantile)**
 
-| n   | method/p                       |       2|       3|       4|       5|       6|       7|
-|:----|:-------------------------------|-------:|-------:|-------:|-------:|-------:|-------:|
-| 2   | GHQ                            |    0.00|    0.20|    1.40|        |        |        |
-|     | AGHQ                           |    0.20|    0.20|    0.80|    5.15|   18.35|  220.95|
-|     | CDF                            |    0.00|    0.00|    0.20|    0.15|    0.15|    0.15|
-|     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |   40.15|   23.80|   20.00|  432.95|   13.30|   23.40|
-|     | QMC                            |    7.55|   14.80|   16.00|        |        |        |
-|     | Adaptive QMC                   |  185.95|   41.60|   39.00|   46.80|   18.25|   48.50|
-| 4   | GHQ                            |    0.20|    0.40|    1.60|        |        |        |
-|     | AGHQ                           |    0.20|    0.20|    1.00|    7.40|   20.95|  139.05|
-|     | CDF                            |    0.40|    0.55|    0.55|    0.60|    0.40|    0.40|
-|     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    5.35|    9.10|   26.10|   19.15|   12.60|    6.60|
-|     | QMC                            |   11.45|   17.35|   42.70|        |        |        |
-|     | Adaptive QMC                   |   18.20|    7.90|   40.55|   58.10|   11.30|   45.70|
-| 8   | GHQ                            |    0.20|    1.45|    6.50|        |        |        |
-|     | AGHQ                           |    0.20|    0.20|    1.80|   12.70|   68.20|  234.25|
-|     | CDF                            |    4.80|    4.75|    4.80|    4.80|    4.80|    4.80|
-|     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    1.75|   22.15|   50.60|   54.00|   11.10|   35.05|
-|     | QMC                            |   22.30|   78.75|   76.00|        |        |        |
-|     | Adaptive QMC                   |   14.45|   23.10|   22.90|   35.75|   14.15|   36.30|
-| 16  | GHQ                            |    0.40|    7.90|   42.60|        |        |        |
-|     | AGHQ                           |    0.20|    0.55|    3.40|   10.80|   64.90|  452.30|
-|     | CDF                            |   35.65|   33.35|   33.60|   33.40|   33.80|   32.25|
-|     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    1.40|    2.60|   60.40|   23.45|   10.15|   22.40|
-|     | QMC                            |  178.90|  189.60|  901.95|        |        |        |
-|     | Adaptive QMC                   |    2.90|   12.35|   64.70|   29.15|   20.25|   19.75|
-| 32  | GHQ                            |        |        |        |        |        |        |
-|     | AGHQ                           |    0.20|    0.55|    3.40|   20.55|  123.55|  636.20|
-|     | CDF                            |   70.60|   69.20|   68.60|   71.85|   70.55|   61.15|
-|     | Genz & Monahan (1999)          |        |        |        |        |        |        |
-|     | Genz & Monahan (1999) Adaptive |    2.40|    2.60|    2.75|    2.80|    3.15|    3.65|
-|     | QMC                            |        |        |        |        |        |        |
-|     | Adaptive QMC                   |    3.00|    3.55|    9.10|    4.85|    9.15|    8.50|
+| n   | method/p                       |      2|       3|       4|       5|       6|       7|
+|:----|:-------------------------------|------:|-------:|-------:|-------:|-------:|-------:|
+| 2   | GHQ                            |   0.05|    0.20|    1.60|        |        |        |
+|     | AGHQ                           |   0.20|    0.20|    0.80|    4.80|   33.80|  263.60|
+|     | CDF                            |   0.20|    0.00|    0.00|    0.20|    0.00|    0.00|
+|     | Genz & Monahan (1999)          |       |        |        |        |        |        |
+|     | Genz & Monahan (1999) Adaptive |  19.95|   35.20|   89.80|   53.25|  132.80|   73.80|
+|     | QMC                            |  11.00|   14.60|   23.20|        |        |        |
+|     | Adaptive QMC                   |  35.75|   39.60|   44.20|   39.25|   67.40|   39.20|
+| 4   | GHQ                            |   0.20|    0.40|    2.60|        |        |        |
+|     | AGHQ                           |   0.20|    0.20|    1.20|    7.40|   51.80|  391.20|
+|     | CDF                            |   0.60|    0.40|    0.40|    0.40|    0.40|    0.40|
+|     | Genz & Monahan (1999)          |       |        |        |        |        |        |
+|     | Genz & Monahan (1999) Adaptive |  23.20|   27.80|  352.40|  182.80|   53.00|  440.60|
+|     | QMC                            |  18.60|   27.80|   37.60|        |        |        |
+|     | Adaptive QMC                   |  62.80|   34.20|   32.80|   50.20|   51.20|   73.40|
+| 8   | GHQ                            |   0.20|    1.40|    6.60|        |        |        |
+|     | AGHQ                           |   0.20|    0.40|    1.60|   12.80|   86.60|  266.60|
+|     | CDF                            |   5.00|    4.80|    4.80|    4.60|    5.00|    4.60|
+|     | Genz & Monahan (1999)          |       |        |        |        |        |        |
+|     | Genz & Monahan (1999) Adaptive |   6.00|   19.60|  118.60|  337.60|  252.00|  202.80|
+|     | QMC                            |  23.80|  141.40|   95.40|        |        |        |
+|     | Adaptive QMC                   |  13.00|   32.20|   22.80|   42.80|   31.20|   43.20|
+| 16  | GHQ                            |   0.60|    7.60|   63.80|        |        |        |
+|     | AGHQ                           |   0.20|    0.40|    3.20|   23.00|  161.00|  401.00|
+|     | CDF                            |  32.90|   34.05|   33.45|   33.60|   33.40|   31.20|
+|     | Genz & Monahan (1999)          |       |        |        |        |        |        |
+|     | Genz & Monahan (1999) Adaptive |   1.90|   13.55|   44.00|  196.80|  267.00|  108.20|
+|     | QMC                            |  43.90|  325.25|  667.50|        |        |        |
+|     | Adaptive QMC                   |   5.70|   10.05|   16.50|   43.40|   48.20|   28.80|
+| 32  | GHQ                            |       |        |        |        |        |        |
+|     | AGHQ                           |   0.20|    0.80|    3.60|   20.80|  124.00|  746.20|
+|     | CDF                            |  71.40|   71.20|   69.60|   70.60|   73.00|   60.40|
+|     | Genz & Monahan (1999)          |       |        |        |        |        |        |
+|     | Genz & Monahan (1999) Adaptive |   0.40|    0.80|   67.20|   73.80|   31.40|   34.20|
+|     | QMC                            |       |        |        |        |        |        |
+|     | Adaptive QMC                   |   4.60|    8.40|   11.80|   13.00|   12.80|   12.60|
 
 **Number of complete cases**
 
 |     |    2|    3|    4|    5|    6|    7|
 |-----|----:|----:|----:|----:|----:|----:|
-| 2   |   10|    9|    9|   10|   10|   10|
-| 4   |   10|   10|   10|   10|   10|   10|
-| 8   |   10|   10|   10|   10|   10|   10|
-| 16  |    8|   10|   10|   10|   10|   10|
-| 32  |   10|   10|   10|   10|   10|   10|
+| 2   |   24|   25|   25|   24|   25|   25|
+| 4   |   25|   25|   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|   25|   25|
+| 16  |   23|   24|   24|   25|   25|   25|
+| 32  |   25|   25|   25|   25|   25|   25|
 
 ``` r
 
@@ -1764,38 +1756,38 @@ show_scaled_mean_rmse(FALSE)
 
 **Blank cells have at least one failure**
 
-| n   | method/p                       |      2|      3|      4|      5|      6|      7|
-|:----|:-------------------------------|------:|------:|------:|------:|------:|------:|
-| 2   | GHQ                            |   7.25|   4.50|   7.27|       |       |       |
-|     | AGHQ                           |   4.55|   6.01|   5.33|   4.01|   4.34|   4.71|
-|     | CDF                            |   0.64|   1.19|   1.40|   1.09|   0.46|   0.37|
-|     | Genz & Monahan (1999) Adaptive |   6.37|       |       |   8.48|   7.44|   9.07|
-|     | QMC                            |  10.55|   9.98|   8.56|       |       |       |
-|     | Adaptive QMC                   |   7.49|   8.50|  11.74|   8.54|  12.07|   8.73|
-| 4   | GHQ                            |   7.12|   5.53|   7.38|       |       |       |
-|     | AGHQ                           |   5.65|   7.07|   5.20|   4.24|   4.04|   4.12|
-|     | CDF                            |   5.90|   3.61|   5.41|   4.14|   2.94|   5.31|
-|     | Genz & Monahan (1999) Adaptive |   8.06|   7.04|   9.74|  10.29|   8.98|  10.57|
-|     | QMC                            |   6.85|  10.06|   8.98|       |       |       |
-|     | Adaptive QMC                   |  12.65|   7.64|   9.25|   9.32|  10.44|  10.02|
-| 8   | GHQ                            |   7.32|   6.37|   7.10|       |       |       |
-|     | AGHQ                           |   5.73|   4.04|   4.08|   3.43|   4.06|   5.25|
-|     | CDF                            |   2.33|   2.13|   1.71|   1.86|   1.31|   1.59|
-|     | Genz & Monahan (1999) Adaptive |   8.59|   8.14|   7.80|  10.06|   8.54|   7.27|
-|     | QMC                            |  10.05|  10.48|   7.37|       |       |       |
-|     | Adaptive QMC                   |  10.54|   8.51|   7.17|   9.56|   9.04|   7.39|
-| 16  | GHQ                            |       |   9.67|   6.81|       |       |       |
-|     | AGHQ                           |   4.88|   5.55|   3.89|   4.01|   6.85|   4.68|
-|     | CDF                            |   2.11|   2.03|   1.97|   2.13|   1.42|   1.46|
-|     | Genz & Monahan (1999) Adaptive |   4.18|   6.55|  10.89|   7.35|   8.90|  11.98|
-|     | QMC                            |   7.36|  11.43|   6.89|       |       |       |
-|     | Adaptive QMC                   |  11.52|   7.93|   7.26|   8.28|  11.19|   9.56|
-| 32  | GHQ                            |       |       |       |       |       |       |
-|     | AGHQ                           |   6.03|   6.98|   5.72|   5.43|   2.99|   4.13|
-|     | CDF                            |   1.56|   2.46|   3.43|   3.78|   2.54|   2.72|
-|     | Genz & Monahan (1999) Adaptive |   1.68|   2.25|   5.78|   7.19|   8.11|   7.58|
-|     | QMC                            |       |       |       |       |       |       |
-|     | Adaptive QMC                   |   5.84|   4.66|   8.48|   8.91|  10.94|   8.31|
+| n   | method/p                       |     2|     3|      4|     5|      6|      7|
+|:----|:-------------------------------|-----:|-----:|------:|-----:|------:|------:|
+| 2   | GHQ                            |      |  4.75|   3.66|      |       |       |
+|     | AGHQ                           |  3.20|  3.54|   4.02|  3.90|   3.55|   3.13|
+|     | CDF                            |  0.66|  1.12|   0.58|  0.60|   0.79|   0.48|
+|     | Genz & Monahan (1999) Adaptive |  6.38|  5.85|   8.47|      |  12.12|   8.55|
+|     | QMC                            |  8.11|  7.20|   7.75|      |       |       |
+|     | Adaptive QMC                   |  5.81|  7.31|   7.88|  7.51|   7.95|   7.22|
+| 4   | GHQ                            |  5.20|  5.07|   5.39|      |       |       |
+|     | AGHQ                           |  3.68|  4.36|   3.56|  2.84|   3.78|   2.82|
+|     | CDF                            |  6.06|  6.33|   4.26|  4.10|   3.57|   4.16|
+|     | Genz & Monahan (1999) Adaptive |  6.79|  5.93|  11.83|  6.17|   7.90|   5.99|
+|     | QMC                            |  6.97|  8.08|   7.76|      |       |       |
+|     | Adaptive QMC                   |  8.65|  7.83|   7.41|  6.76|   7.94|   6.81|
+| 8   | GHQ                            |  6.09|  5.81|   5.52|      |       |       |
+|     | AGHQ                           |  3.51|  4.08|   2.14|  3.22|   3.15|   4.31|
+|     | CDF                            |  2.80|  2.40|   2.24|  2.94|   1.66|   1.98|
+|     | Genz & Monahan (1999) Adaptive |  5.29|  7.88|  10.26|  9.24|   7.26|  14.07|
+|     | QMC                            |  7.61|  8.78|   7.80|      |       |       |
+|     | Adaptive QMC                   |  9.06|  7.86|   8.16|  7.36|   7.45|   6.30|
+| 16  | GHQ                            |      |      |   6.62|      |       |       |
+|     | AGHQ                           |  3.66|  3.95|   3.44|  2.96|   3.36|   3.63|
+|     | CDF                            |  1.50|  2.23|   1.65|  1.38|   1.62|   1.25|
+|     | Genz & Monahan (1999) Adaptive |  4.37|  8.76|   7.45|  7.45|   7.67|   9.08|
+|     | QMC                            |  6.90|  7.74|       |      |       |       |
+|     | Adaptive QMC                   |  7.69|  7.53|   7.08|  8.79|   8.38|   6.69|
+| 32  | GHQ                            |      |      |       |      |       |       |
+|     | AGHQ                           |  5.17|  4.85|   4.22|  3.75|   3.31|   3.11|
+|     | CDF                            |  1.98|  2.93|   3.85|  3.02|   3.12|   3.90|
+|     | Genz & Monahan (1999) Adaptive |  4.47|  9.21|   6.85|  9.65|  10.10|  10.25|
+|     | QMC                            |      |      |       |      |       |       |
+|     | Adaptive QMC                   |  7.27|  6.78|   6.34|  7.18|   8.54|   7.55|
 
 ``` r
 show_scaled_mean_rmse(na.rm = TRUE)
@@ -1803,36 +1795,36 @@ show_scaled_mean_rmse(na.rm = TRUE)
 
 **NAs have been removed. Cells may not be comparable**
 
-| n   | method/p                       |      2|      3|      4|      5|      6|      7|
-|:----|:-------------------------------|------:|------:|------:|------:|------:|------:|
-| 2   | GHQ                            |   7.25|   4.50|   7.27|       |       |       |
-|     | AGHQ                           |   4.55|   6.01|   5.33|   4.01|   4.34|   4.71|
-|     | CDF                            |   0.64|   1.19|   1.40|   1.09|   0.46|   0.37|
-|     | Genz & Monahan (1999) Adaptive |   6.37|   8.97|   7.40|   8.48|   7.44|   9.07|
-|     | QMC                            |  10.55|   9.98|   8.56|       |       |       |
-|     | Adaptive QMC                   |   7.49|   8.50|  11.74|   8.54|  12.07|   8.73|
-| 4   | GHQ                            |   7.12|   5.53|   7.38|       |       |       |
-|     | AGHQ                           |   5.65|   7.07|   5.20|   4.24|   4.04|   4.12|
-|     | CDF                            |   5.90|   3.61|   5.41|   4.14|   2.94|   5.31|
-|     | Genz & Monahan (1999) Adaptive |   8.06|   7.04|   9.74|  10.29|   8.98|  10.57|
-|     | QMC                            |   6.85|  10.06|   8.98|       |       |       |
-|     | Adaptive QMC                   |  12.65|   7.64|   9.25|   9.32|  10.44|  10.02|
-| 8   | GHQ                            |   7.32|   6.37|   7.10|       |       |       |
-|     | AGHQ                           |   5.73|   4.04|   4.08|   3.43|   4.06|   5.25|
-|     | CDF                            |   2.33|   2.13|   1.71|   1.86|   1.31|   1.59|
-|     | Genz & Monahan (1999) Adaptive |   8.59|   8.14|   7.80|  10.06|   8.54|   7.27|
-|     | QMC                            |  10.05|  10.48|   7.37|       |       |       |
-|     | Adaptive QMC                   |  10.54|   8.51|   7.17|   9.56|   9.04|   7.39|
-| 16  | GHQ                            |   8.33|   9.67|   6.81|       |       |       |
-|     | AGHQ                           |   4.88|   5.55|   3.89|   4.01|   6.85|   4.68|
-|     | CDF                            |   2.11|   2.03|   1.97|   2.13|   1.42|   1.46|
-|     | Genz & Monahan (1999) Adaptive |   4.18|   6.55|  10.89|   7.35|   8.90|  11.98|
-|     | QMC                            |   7.36|  11.43|   6.89|       |       |       |
-|     | Adaptive QMC                   |  11.52|   7.93|   7.26|   8.28|  11.19|   9.56|
-| 32  | AGHQ                           |   6.03|   6.98|   5.72|   5.43|   2.99|   4.13|
-|     | CDF                            |   1.56|   2.46|   3.43|   3.78|   2.54|   2.72|
-|     | Genz & Monahan (1999) Adaptive |   1.68|   2.25|   5.78|   7.19|   8.11|   7.58|
-|     | Adaptive QMC                   |   5.84|   4.66|   8.48|   8.91|  10.94|   8.31|
+| n   | method/p                       |     2|     3|      4|     5|      6|      7|
+|:----|:-------------------------------|-----:|-----:|------:|-----:|------:|------:|
+| 2   | GHQ                            |  4.69|  4.75|   3.66|      |       |       |
+|     | AGHQ                           |  3.20|  3.54|   4.02|  3.90|   3.55|   3.13|
+|     | CDF                            |  0.66|  1.12|   0.58|  0.60|   0.79|   0.48|
+|     | Genz & Monahan (1999) Adaptive |  6.38|  5.85|   8.47|  8.45|  12.12|   8.55|
+|     | QMC                            |  8.11|  7.20|   7.75|      |       |       |
+|     | Adaptive QMC                   |  5.81|  7.31|   7.88|  7.51|   7.95|   7.22|
+| 4   | GHQ                            |  5.20|  5.07|   5.39|      |       |       |
+|     | AGHQ                           |  3.68|  4.36|   3.56|  2.84|   3.78|   2.82|
+|     | CDF                            |  6.06|  6.33|   4.26|  4.10|   3.57|   4.16|
+|     | Genz & Monahan (1999) Adaptive |  6.79|  5.93|  11.83|  6.17|   7.90|   5.99|
+|     | QMC                            |  6.97|  8.08|   7.76|      |       |       |
+|     | Adaptive QMC                   |  8.65|  7.83|   7.41|  6.76|   7.94|   6.81|
+| 8   | GHQ                            |  6.09|  5.81|   5.52|      |       |       |
+|     | AGHQ                           |  3.51|  4.08|   2.14|  3.22|   3.15|   4.31|
+|     | CDF                            |  2.80|  2.40|   2.24|  2.94|   1.66|   1.98|
+|     | Genz & Monahan (1999) Adaptive |  5.29|  7.88|  10.26|  9.24|   7.26|  14.07|
+|     | QMC                            |  7.61|  8.78|   7.80|      |       |       |
+|     | Adaptive QMC                   |  9.06|  7.86|   8.16|  7.36|   7.45|   6.30|
+| 16  | GHQ                            |  7.53|  6.80|   6.62|      |       |       |
+|     | AGHQ                           |  3.66|  3.95|   3.44|  2.96|   3.36|   3.63|
+|     | CDF                            |  1.50|  2.23|   1.65|  1.38|   1.62|   1.25|
+|     | Genz & Monahan (1999) Adaptive |  4.37|  8.76|   7.45|  7.45|   7.67|   9.08|
+|     | QMC                            |  6.90|  7.74|   7.43|      |       |       |
+|     | Adaptive QMC                   |  7.69|  7.53|   7.08|  8.79|   8.38|   6.69|
+| 32  | AGHQ                           |  5.17|  4.85|   4.22|  3.75|   3.31|   3.11|
+|     | CDF                            |  1.98|  2.93|   3.85|  3.02|   3.12|   3.90|
+|     | Genz & Monahan (1999) Adaptive |  4.47|  9.21|   6.85|  9.65|  10.10|  10.25|
+|     | Adaptive QMC                   |  7.27|  6.78|   6.34|  7.18|   8.54|   7.55|
 
 ``` r
 show_scaled_mean_rmse(TRUE)
@@ -1840,48 +1832,48 @@ show_scaled_mean_rmse(TRUE)
 
 **Only showing complete cases**
 
-| n   | method/p                       |      2|      3|      4|      5|      6|      7|
-|:----|:-------------------------------|------:|------:|------:|------:|------:|------:|
-| 2   | GHQ                            |   7.25|   4.69|   6.77|       |       |       |
-|     | AGHQ                           |   4.55|   5.68|   4.88|   4.01|   4.34|   4.71|
-|     | CDF                            |   0.64|   1.28|   0.35|   1.09|   0.46|   0.37|
-|     | Genz & Monahan (1999) Adaptive |   6.37|   8.97|   7.40|   8.48|   7.44|   9.07|
-|     | QMC                            |  10.55|   9.61|   8.10|       |       |       |
-|     | Adaptive QMC                   |   7.49|   7.31|  10.98|   8.54|  12.07|   8.73|
-| 4   | GHQ                            |   7.12|   5.53|   7.38|       |       |       |
-|     | AGHQ                           |   5.65|   7.07|   5.20|   4.24|   4.04|   4.12|
-|     | CDF                            |   5.90|   3.61|   5.41|   4.14|   2.94|   5.31|
-|     | Genz & Monahan (1999) Adaptive |   8.06|   7.04|   9.74|  10.29|   8.98|  10.57|
-|     | QMC                            |   6.85|  10.06|   8.98|       |       |       |
-|     | Adaptive QMC                   |  12.65|   7.64|   9.25|   9.32|  10.44|  10.02|
-| 8   | GHQ                            |   7.32|   6.37|   7.10|       |       |       |
-|     | AGHQ                           |   5.73|   4.04|   4.08|   3.43|   4.06|   5.25|
-|     | CDF                            |   2.33|   2.13|   1.71|   1.86|   1.31|   1.59|
-|     | Genz & Monahan (1999) Adaptive |   8.59|   8.14|   7.80|  10.06|   8.54|   7.27|
-|     | QMC                            |  10.05|  10.48|   7.37|       |       |       |
-|     | Adaptive QMC                   |  10.54|   8.51|   7.17|   9.56|   9.04|   7.39|
-| 16  | GHQ                            |   8.33|   9.67|   6.81|       |       |       |
-|     | AGHQ                           |   5.30|   5.55|   3.89|   4.01|   6.85|   4.68|
-|     | CDF                            |   2.29|   2.03|   1.97|   2.13|   1.42|   1.46|
-|     | Genz & Monahan (1999) Adaptive |   4.89|   6.55|  10.89|   7.35|   8.90|  11.98|
-|     | QMC                            |   6.77|  11.43|   6.89|       |       |       |
-|     | Adaptive QMC                   |  12.14|   7.93|   7.26|   8.28|  11.19|   9.56|
-| 32  | GHQ                            |       |       |       |       |       |       |
-|     | AGHQ                           |   6.03|   6.98|   5.72|   5.43|   2.99|   4.13|
-|     | CDF                            |   1.56|   2.46|   3.43|   3.78|   2.54|   2.72|
-|     | Genz & Monahan (1999) Adaptive |   1.68|   2.25|   5.78|   7.19|   8.11|   7.58|
-|     | QMC                            |       |       |       |       |       |       |
-|     | Adaptive QMC                   |   5.84|   4.66|   8.48|   8.91|  10.94|   8.31|
+| n   | method/p                       |     2|     3|      4|     5|      6|      7|
+|:----|:-------------------------------|-----:|-----:|------:|-----:|------:|------:|
+| 2   | GHQ                            |  4.69|  4.75|   3.66|      |       |       |
+|     | AGHQ                           |  3.08|  3.54|   4.02|  3.87|   3.55|   3.13|
+|     | CDF                            |  0.66|  1.12|   0.58|  0.61|   0.79|   0.48|
+|     | Genz & Monahan (1999) Adaptive |  6.53|  5.85|   8.47|  8.45|  12.12|   8.55|
+|     | QMC                            |  8.14|  7.20|   7.75|      |       |       |
+|     | Adaptive QMC                   |  5.82|  7.31|   7.88|  7.38|   7.95|   7.22|
+| 4   | GHQ                            |  5.20|  5.07|   5.39|      |       |       |
+|     | AGHQ                           |  3.68|  4.36|   3.56|  2.84|   3.78|   2.82|
+|     | CDF                            |  6.06|  6.33|   4.26|  4.10|   3.57|   4.16|
+|     | Genz & Monahan (1999) Adaptive |  6.79|  5.93|  11.83|  6.17|   7.90|   5.99|
+|     | QMC                            |  6.97|  8.08|   7.76|      |       |       |
+|     | Adaptive QMC                   |  8.65|  7.83|   7.41|  6.76|   7.94|   6.81|
+| 8   | GHQ                            |  6.09|  5.81|   5.52|      |       |       |
+|     | AGHQ                           |  3.51|  4.08|   2.14|  3.22|   3.15|   4.31|
+|     | CDF                            |  2.80|  2.40|   2.24|  2.94|   1.66|   1.98|
+|     | Genz & Monahan (1999) Adaptive |  5.29|  7.88|  10.26|  9.24|   7.26|  14.07|
+|     | QMC                            |  7.61|  8.78|   7.80|      |       |       |
+|     | Adaptive QMC                   |  9.06|  7.86|   8.16|  7.36|   7.45|   6.30|
+| 16  | GHQ                            |  7.53|  6.80|   6.62|      |       |       |
+|     | AGHQ                           |  3.85|  4.00|   3.36|  2.96|   3.36|   3.63|
+|     | CDF                            |  1.22|  2.25|   1.69|  1.38|   1.62|   1.25|
+|     | Genz & Monahan (1999) Adaptive |  4.52|  8.56|   7.10|  7.45|   7.67|   9.08|
+|     | QMC                            |  6.93|  7.93|   7.43|      |       |       |
+|     | Adaptive QMC                   |  7.75|  7.22|   7.11|  8.79|   8.38|   6.69|
+| 32  | GHQ                            |      |      |       |      |       |       |
+|     | AGHQ                           |  5.17|  4.85|   4.22|  3.75|   3.31|   3.11|
+|     | CDF                            |  1.98|  2.93|   3.85|  3.02|   3.12|   3.90|
+|     | Genz & Monahan (1999) Adaptive |  4.47|  9.21|   6.85|  9.65|  10.10|  10.25|
+|     | QMC                            |      |      |       |      |       |       |
+|     | Adaptive QMC                   |  7.27|  6.78|   6.34|  7.18|   8.54|   7.55|
 
 **Number of complete cases**
 
 |     |    2|    3|    4|    5|    6|    7|
 |-----|----:|----:|----:|----:|----:|----:|
-| 2   |   10|    9|    9|   10|   10|   10|
-| 4   |   10|   10|   10|   10|   10|   10|
-| 8   |   10|   10|   10|   10|   10|   10|
-| 16  |    8|   10|   10|   10|   10|   10|
-| 32  |   10|   10|   10|   10|   10|   10|
+| 2   |   24|   25|   25|   24|   25|   25|
+| 4   |   25|   25|   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|   25|   25|
+| 16  |   23|   24|   24|   25|   25|   25|
+| 32  |   25|   25|   25|   25|   25|   25|
 
 ``` r
 
@@ -1942,35 +1934,35 @@ show_n_nodes(FALSE)
 
 | n   | quantile/p |      2|      3|      4|    5|    6|    7|
 |:----|:-----------|------:|------:|------:|----:|----:|----:|
-| 2   | 0%         |   7.00|   6.00|   6.00|     |     |     |
-|     | 25%        |   8.00|   8.25|   7.00|     |     |     |
+| 2   | 0%         |   6.00|   6.00|   6.00|     |     |     |
+|     | 25%        |   8.00|   7.00|   7.00|     |     |     |
 |     | 50%        |   9.00|   9.00|   8.00|     |     |     |
 |     | 75%        |  10.00|   9.00|   9.00|     |     |     |
-|     | 100%       |  14.00|  10.00|  10.00|     |     |     |
-| 4   | 0%         |   9.00|   7.00|   7.00|     |     |     |
-|     | 25%        |  10.25|   8.00|   8.00|     |     |     |
+|     | 100%       |  14.00|  16.00|  13.00|     |     |     |
+| 4   | 0%         |   7.00|   7.00|   7.00|     |     |     |
+|     | 25%        |   9.00|   8.00|   8.00|     |     |     |
 |     | 50%        |  11.00|   9.00|   8.00|     |     |     |
-|     | 75%        |  12.00|  10.00|   8.00|     |     |     |
-|     | 100%       |  14.00|  11.00|   9.00|     |     |     |
-| 8   | 0%         |  10.00|   8.00|   7.00|     |     |     |
-|     | 25%        |  12.00|  10.25|   8.25|     |     |     |
-|     | 50%        |  13.00|  11.50|   9.00|     |     |     |
-|     | 75%        |  14.00|  12.75|  10.00|     |     |     |
-|     | 100%       |  21.00|  14.00|  12.00|     |     |     |
-| 16  | 0%         |  10.00|  13.00|  10.00|     |     |     |
-|     | 25%        |  12.50|  14.25|  11.00|     |     |     |
-|     | 50%        |  14.00|  15.50|  12.00|     |     |     |
-|     | 75%        |  16.00|  18.25|  13.50|     |     |     |
-|     | 100%       |  19.00|  24.00|  14.00|     |     |     |
+|     | 75%        |  12.00|   9.00|   9.00|     |     |     |
+|     | 100%       |  22.00|  10.00|  13.00|     |     |     |
+| 8   | 0%         |   8.00|   8.00|   8.00|     |     |     |
+|     | 25%        |  11.00|  10.00|   9.00|     |     |     |
+|     | 50%        |  13.00|  11.00|   9.00|     |     |     |
+|     | 75%        |  16.00|  12.00|  10.00|     |     |     |
+|     | 100%       |  24.00|  20.00|  14.00|     |     |     |
+| 16  | 0%         |  11.00|  10.00|   8.00|     |     |     |
+|     | 25%        |  15.50|  13.75|  11.00|     |     |     |
+|     | 50%        |  19.00|  16.50|  13.00|     |     |     |
+|     | 75%        |  21.00|  18.00|  15.00|     |     |     |
+|     | 100%       |  25.00|  24.00|  20.00|     |     |     |
 
 **Number of complete cases**
 
 |     |    2|    3|    4|    5|    6|    7|
 |-----|----:|----:|----:|----:|----:|----:|
-| 2   |   10|   10|   10|    0|    0|    0|
-| 4   |   10|   10|   10|    0|    0|    0|
-| 8   |   10|   10|   10|    0|    0|    0|
-| 16  |    8|   10|   10|    0|    0|    0|
+| 2   |   24|   25|   25|    0|    0|    0|
+| 4   |   25|   25|   25|    0|    0|    0|
+| 8   |   25|   25|   25|    0|    0|    0|
+| 16  |   23|   24|   25|    0|    0|    0|
 | 32  |    0|    0|    0|    0|    0|    0|
 
 ``` r
@@ -1979,43 +1971,43 @@ show_n_nodes(TRUE)
 
 **Only showing complete cases (Adaptive GHQ)**
 
-| n   | quantile/p |     2|     3|     4|     5|     6|     7|
-|:----|:-----------|-----:|-----:|-----:|-----:|-----:|-----:|
-| 2   | 0%         |  5.00|  6.00|  6.00|  6.00|  6.00|  6.00|
-|     | 25%        |  7.00|  7.00|  6.00|  6.00|  6.00|  6.00|
-|     | 50%        |  7.00|  7.00|  6.50|  6.50|  6.00|  6.00|
-|     | 75%        |  8.00|  7.00|  7.00|  7.00|  6.00|  6.75|
-|     | 100%       |  9.00|  9.00|  8.00|  8.00|  7.00|  8.00|
-| 4   | 0%         |  6.00|  6.00|  6.00|  6.00|  6.00|  6.00|
-|     | 25%        |  6.25|  6.00|  6.00|  6.00|  6.00|  6.00|
-|     | 50%        |  7.00|  6.00|  6.00|  6.00|  6.00|  6.00|
-|     | 75%        |  7.00|  7.00|  7.00|  7.00|  6.00|  6.00|
-|     | 100%       |  8.00|  7.00|  7.00|  7.00|  7.00|  7.00|
-| 8   | 0%         |  5.00|  5.00|  5.00|  6.00|  6.00|  6.00|
-|     | 25%        |  6.00|  6.00|  6.00|  6.00|  6.00|  6.00|
-|     | 50%        |  6.50|  6.50|  6.50|  7.00|  6.00|  6.00|
-|     | 75%        |  7.00|  7.00|  7.00|  7.00|  6.75|  6.00|
-|     | 100%       |  7.00|  7.00|  7.00|  7.00|  7.00|  7.00|
-| 16  | 0%         |  4.00|  5.00|  6.00|  6.00|  5.00|  6.00|
-|     | 25%        |  5.25|  6.00|  6.00|  6.00|  6.00|  6.00|
-|     | 50%        |  6.00|  6.00|  7.00|  6.00|  6.00|  6.00|
-|     | 75%        |  6.00|  6.75|  7.00|  6.00|  6.00|  6.00|
-|     | 100%       |  7.00|  7.00|  7.00|  7.00|  6.00|  7.00|
-| 32  | 0%         |  4.00|  4.00|  5.00|  5.00|  6.00|  4.00|
-|     | 25%        |  4.00|  5.00|  5.00|  5.25|  6.00|  6.00|
-|     | 50%        |  4.50|  5.00|  6.00|  6.00|  6.00|  6.00|
-|     | 75%        |  5.00|  5.75|  6.00|  6.00|  6.00|  6.00|
-|     | 100%       |  7.00|  6.00|  7.00|  6.00|  6.00|  6.00|
+| n   | quantile/p |     2|      3|     4|     5|     6|     7|
+|:----|:-----------|-----:|------:|-----:|-----:|-----:|-----:|
+| 2   | 0%         |  4.00|   6.00|  4.00|  5.00|  6.00|  5.00|
+|     | 25%        |  6.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  7.00|   7.00|  7.00|  6.00|  6.00|  6.00|
+|     | 75%        |  8.00|   7.00|  7.00|  7.00|  7.00|  7.00|
+|     | 100%       |  9.00|   9.00|  9.00|  9.00|  8.00|  8.00|
+| 4   | 0%         |  5.00|   5.00|  6.00|  5.00|  6.00|  6.00|
+|     | 25%        |  7.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  7.00|   7.00|  7.00|  7.00|  6.00|  7.00|
+|     | 75%        |  8.00|   7.00|  7.00|  7.00|  7.00|  7.00|
+|     | 100%       |  9.00|   9.00|  8.00|  8.00|  7.00|  7.00|
+| 8   | 0%         |  5.00|   5.00|  5.00|  6.00|  6.00|  6.00|
+|     | 25%        |  6.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  6.00|   7.00|  7.00|  7.00|  6.00|  6.00|
+|     | 75%        |  7.00|   7.00|  7.00|  7.00|  7.00|  6.00|
+|     | 100%       |  9.00|  10.00|  7.00|  7.00|  7.00|  7.00|
+| 16  | 0%         |  4.00|   5.00|  6.00|  6.00|  6.00|  6.00|
+|     | 25%        |  6.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  6.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 75%        |  7.00|   6.00|  7.00|  7.00|  7.00|  6.00|
+|     | 100%       |  9.00|   7.00|  7.00|  7.00|  8.00|  7.00|
+| 32  | 0%         |  4.00|   4.00|  4.00|  5.00|  6.00|  4.00|
+|     | 25%        |  4.00|   5.00|  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  5.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 75%        |  6.00|   6.00|  6.00|  6.00|  6.00|  6.00|
+|     | 100%       |  7.00|   7.00|  7.00|  7.00|  6.00|  7.00|
 
 **Number of complete cases**
 
 |     |    2|    3|    4|    5|    6|    7|
 |-----|----:|----:|----:|----:|----:|----:|
-| 2   |   10|   10|   10|   10|   10|   10|
-| 4   |   10|   10|   10|   10|   10|   10|
-| 8   |   10|   10|   10|   10|   10|   10|
-| 16  |   10|   10|   10|   10|   10|   10|
-| 32  |   10|   10|   10|   10|   10|   10|
+| 2   |   25|   25|   25|   25|   25|   25|
+| 4   |   25|   25|   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|   25|   25|
+| 16  |   25|   25|   25|   25|   25|   25|
+| 32  |   25|   25|   25|   25|   25|   25|
 
 Quasi-Monte Carlo Method
 ------------------------
@@ -2049,9 +2041,9 @@ microbenchmark::microbenchmark(
   mixprobit = get_sobol_seq(dim)(n), 
   randtoolbox = sobol(n = n, dim = dim), times = 1000)
 #> Unit: microseconds
-#>         expr   min     lq  mean median    uq  max neval
-#>    mixprobit  8.16  8.971 12.84  11.13 12.02 1930  1000
-#>  randtoolbox 54.32 56.898 61.08  58.18 59.44 1641  1000
+#>         expr    min     lq  mean median    uq  max neval
+#>    mixprobit  8.184  9.137 13.01  11.74 12.45 1882  1000
+#>  randtoolbox 56.308 58.138 61.69  59.44 60.45 1711  1000
 
 # w/ larger dim
 dim <- 50L
@@ -2061,9 +2053,9 @@ microbenchmark::microbenchmark(
   mixprobit = get_sobol_seq(dim)(n), 
   randtoolbox = sobol(n = n, dim = dim), times = 1000)
 #> Unit: microseconds
-#>         expr  min    lq  mean median    uq     max neval
-#>    mixprobit 16.8 19.83 23.48  23.24 25.33   55.34  1000
-#>  randtoolbox 73.6 79.38 91.29  83.27 99.90 2237.01  1000
+#>         expr   min   lq  mean median    uq     max neval
+#>    mixprobit 17.27 19.6 23.12  23.11 24.98   71.95  1000
+#>  randtoolbox 74.90 79.5 90.45  82.95 88.92 2272.79  1000
 
 #####
 # after having initialized
@@ -2086,12 +2078,12 @@ microbenchmark::microbenchmark(
   times = 1000)
 #> Unit: microseconds
 #>                        expr     min      lq    mean  median      uq     max
-#>       mixprobit   (1 point)   3.430   4.184   5.627   5.588   6.291   29.98
-#>       randtoolbox (1 point)  39.235  41.160  43.837  42.515  44.255  144.90
-#>    mixprobit   (100 points)   5.392   6.523   8.029   7.951   8.628   33.53
-#>    randtoolbox (100 points)  43.448  45.758  48.620  47.025  48.837  161.39
-#>  mixprobit   (10000 points) 182.166 193.924 213.377 195.948 198.697 1753.96
-#>  randtoolbox (10000 points) 371.994 386.466 433.988 390.746 398.165 5249.45
+#>       mixprobit   (1 point)   3.468   4.287   6.024   5.768   6.542   35.07
+#>       randtoolbox (1 point)  39.255  41.497  45.214  43.234  45.465  130.86
+#>    mixprobit   (100 points)   5.425   6.674   8.250   8.010   8.829   43.52
+#>    randtoolbox (100 points)  43.726  46.307  50.749  47.842  50.416  170.58
+#>  mixprobit   (10000 points) 184.878 193.649 219.485 195.989 202.626 6382.22
+#>  randtoolbox (10000 points) 374.304 385.772 449.611 391.553 408.792 2580.67
 #>  neval
 #>   1000
 #>   1000
@@ -2113,8 +2105,8 @@ microbenchmark::microbenchmark(
   randtoolbox = sobol(n = n, dim = dim, scrambling = 1L), times = 1000)
 #> Unit: microseconds
 #>         expr   min    lq  mean median    uq    max neval
-#>    mixprobit 273.8 280.4 286.2  282.1 286.3 2073.5  1000
-#>  randtoolbox 325.9 335.8 342.9  339.9 343.7  525.5  1000
+#>    mixprobit 280.1 282.8 292.0  287.2 290.7  534.1  1000
+#>  randtoolbox 333.4 341.6 358.4  346.4 354.5 2233.5  1000
 
 sobol_obj <- get_sobol_seq(dim, scrambling = 1L)
 invisible(sobol_obj(1L))
@@ -2133,19 +2125,19 @@ microbenchmark::microbenchmark(
   times = 1000)
 #> Unit: microseconds
 #>                        expr     min       lq     mean   median       uq
-#>       mixprobit   (1 point)   3.415    4.372    6.972    6.157    7.832
-#>       randtoolbox (1 point)  39.122   42.656   49.710   46.307   51.196
-#>    mixprobit   (100 points)   6.817    8.280   10.754    9.940   11.720
-#>    randtoolbox (100 points)  48.313   53.043   62.456   56.629   61.593
-#>  mixprobit   (10000 points) 288.546  348.953  428.397  364.229  392.659
-#>  randtoolbox (10000 points) 938.485 1002.052 1292.291 1025.233 1152.536
+#>       mixprobit   (1 point)   3.342    4.551    7.431    6.175    8.381
+#>       randtoolbox (1 point)  39.665   43.814   53.089   47.724   55.282
+#>    mixprobit   (100 points)   6.922    8.565   11.593   10.221   12.604
+#>    randtoolbox (100 points)  49.762   54.392   63.840   58.578   66.099
+#>  mixprobit   (10000 points) 293.876  346.339  404.203  361.417  377.736
+#>  randtoolbox (10000 points) 955.011 1005.116 1276.757 1032.117 1111.613
 #>       max neval
-#>     33.20  1000
-#>    134.99  1000
-#>     35.44  1000
-#>   2589.89  1000
-#>   3508.22  1000
-#>  30677.39  1000
+#>     57.79  1000
+#>    199.33  1000
+#>     77.56  1000
+#>    211.53  1000
+#>   1943.56  1000
+#>  34481.79  1000
 ```
 
 Lastly, the C++ interface we have created allow us to call the Fortran
@@ -2226,7 +2218,7 @@ get_sim_dat <- function(n, p, Sigma){
     # covariance matrix of random effects
     if(!has_Sigma)
       Sigma <- drop(                     
-        rWishart(1, 5 * p, diag(1 / 5 / p, p)))
+        rWishart(1, 5 * p, diag(1 / p / 5, p)))
     S_chol <- chol(Sigma)
     # random effects
     u <- drop(rnorm(p) %*% S_chol)       
@@ -2387,7 +2379,7 @@ comp <- function(f, ...)
 comp(qmc_aprx)
 #> [1] 0.003402
 comp(qmc_Aaprx)
-#> [1] 3.862e-05
+#> [1] 4.552e-05
 comp(cdf_aprx_cpp)
 #> [1] 0.0003842
 comp(function() sim_aprx(1L))
@@ -2403,9 +2395,9 @@ comp(function() sim_Aaprx(1L))
 comp(function() sim_Aaprx(2L))
 #> [1] 5.654e-05
 comp(function() sim_Aaprx(3L))
-#> [1] 3.411e-05
+#> [1] 7.011e-05
 comp(function() sim_Aaprx(4L))
-#> [1] 4.504e-05
+#> [1] 4.103e-05
 
 # compare computations times
 microbenchmark::microbenchmark(
@@ -2418,16 +2410,16 @@ microbenchmark::microbenchmark(
   times = 5)
 #> Unit: milliseconds
 #>                         expr    min     lq   mean median     uq    max neval
-#>                    GHQ (C++) 256.55 256.79 257.75 257.63 258.65 259.12     5
-#>                   AGHQ (C++) 225.06 225.20 225.55 225.49 225.81 226.21     5
-#>                    CDF (C++)  53.05  53.19  53.29  53.31  53.45  53.46     5
-#>                          QMC 910.88 912.93 914.19 915.06 915.32 916.78     5
-#>                 QMC Adaptive 489.05 643.23 698.32 705.80 772.74 880.76     5
-#>           Genz & Monahan (1) 907.80 909.52 912.14 910.66 915.92 916.81     5
-#>           Genz & Monahan (2) 918.19 918.59 920.55 920.19 922.48 923.28     5
-#>           Genz & Monahan (3) 923.22 924.81 927.93 925.75 926.45 939.43     5
-#>           Genz & Monahan (4) 917.70 920.09 921.14 921.33 921.70 924.88     5
-#>  Genz & Monahan Adaptive (2) 887.09 887.42 901.87 887.87 894.61 952.37     5
+#>                    GHQ (C++) 259.03 259.08 260.30 259.47 259.89 264.03     5
+#>                   AGHQ (C++) 225.02 225.30 225.79 225.70 225.97 226.97     5
+#>                    CDF (C++)  53.63  53.84  53.85  53.84  53.96  53.97     5
+#>                          QMC 912.34 914.79 915.93 915.63 916.52 920.37     5
+#>                 QMC Adaptive 478.79 496.33 671.10 707.54 778.18 894.66     5
+#>           Genz & Monahan (1) 935.29 938.59 939.30 939.40 939.89 943.33     5
+#>           Genz & Monahan (2) 945.24 946.56 953.86 947.24 964.58 965.66     5
+#>           Genz & Monahan (3) 951.46 951.46 953.47 952.99 954.63 956.82     5
+#>           Genz & Monahan (4) 948.20 955.42 955.95 956.71 959.52 959.88     5
+#>  Genz & Monahan Adaptive (2) 887.03 887.16 888.04 888.23 888.64 889.12     5
 ```
 
 The CDF approach is noticeably faster. One explanation is that the AGHQ
@@ -2463,8 +2455,8 @@ local({
   microbenchmark::microbenchmark(test_pnorm(u), times = 10)
 })
 #> Unit: milliseconds
-#>           expr   min  lq  mean median    uq max neval
-#>  test_pnorm(u) 462.8 465 465.5  465.3 466.4 468    10
+#>           expr   min    lq  mean median  uq   max neval
+#>  test_pnorm(u) 468.2 482.5 483.3  483.7 487 489.3    10
 ```
 
 In contrast, the CDF approximation can be implemented with only one
@@ -2490,8 +2482,8 @@ local({
   microbenchmark::microbenchmark(test_dnorm(u), times = 10)
 })
 #> Unit: milliseconds
-#>           expr   min    lq  mean median    uq  max neval
-#>  test_dnorm(u) 1.275 1.284 1.388  1.316 1.342 2.07    10
+#>           expr   min    lq  mean median   uq   max neval
+#>  test_dnorm(u) 1.254 1.267 1.394  1.301 1.34 2.225    10
 ```
 
 More Rigorous Comparison (Multinomial)
@@ -2500,7 +2492,7 @@ More Rigorous Comparison (Multinomial)
 Again, we perform a more rigorous comparison. We fix the relative error
 of the methods before hand such that the relative error is below
 `releps`,
-![2.5\\times 10^{-4}](https://latex.codecogs.com/svg.latex?2.5%5Ctimes%2010%5E%7B-4%7D "2.5\times 10^{-4}").
+![5\\times 10^{-4}](https://latex.codecogs.com/svg.latex?5%5Ctimes%2010%5E%7B-4%7D "5\times 10^{-4}").
 Ground truth is computed with brute force MC using `n_brute`,
 ![10^{6}](https://latex.codecogs.com/svg.latex?10%5E%7B6%7D "10^{6}"),
 samples.
@@ -2517,7 +2509,7 @@ ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
   max_maxpts = 1000000L, 
-  releps = 2.5e-4,
+  releps = 5e-4,
   min_releps = 1e-8,
   key_use = 3L, 
   n_reps = 20L, 
@@ -2690,7 +2682,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
           ex_params$min_releps / 10 else 
             releps_use / 2
         if(releps_use < ex_params$min_releps){
-          warning("found no releps for CDF method")
+          warning("found no releps")
           releps_use <- NA_integer_
           break
         }
@@ -2844,7 +2836,7 @@ print.sim_experiment <- function(x, ...){
     sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
     sprintf("                    QMC releps: %13.8f", x$qmc_releps),
     sprintf("           Adaptive QMC releps: %13.8f", x$Aqmc_releps), 
-    sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
+    sprintf("  Log-likelihood estimate (SE): %13.8f (%.8f)", x$ll_truth, 
             x$SE_truth), 
     "", sep = "\n")
   
@@ -2852,11 +2844,11 @@ print.sim_experiment <- function(x, ...){
   print(cbind(`Mean estimate (likelihood)`     = xx, 
               `Mean estimate (log-likelihood)` = log(xx)))
   
-  mult <- 1 / ex_params$releps
+  mult <- exp(ceiling(log10(1 / ex_params$releps)) * log(10))
   cat(sprintf("\nSD & RMSE (/%.2f)\n", mult))
   print(rbind(SD   = x$vals_n_comp_time ["sd", ],  
               RMSE = sqrt(x$vals_n_comp_time ["mse", ]), 
-              `sqrt rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
+              `Rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
   
   cat("\nComputation times\n")
   print(x$vals_n_comp_time["elapsed", ])
@@ -2867,520 +2859,512 @@ sim_experiment(n =  2L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             7
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
 #> Adaptive Genz & Monahan releps:    0.00097656
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00048828
-#>   Log-likelihood estiamte (SE):   -3.24068105 (0.00013983)
+#>            Adaptive QMC releps:    0.00097656
+#>   Log-likelihood estimate (SE):   -3.24068105 (0.00013983)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                          0.0391405                       -3.24060
-#> CDF                           0.0391405                       -3.24060
+#> CDF                           0.0391478                       -3.24041
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0391421                       -3.24056
+#> GenzMonahanA                  0.0391443                       -3.24050
 #> QMC                                  NA                             NA
-#> QMCA                          0.0391365                       -3.24070
+#> QMCA                          0.0391322                       -3.24081
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD             NA 0.0257844 0.0738150          NA    0.0593486  NA 0.0259887
-#> RMSE           NA 0.0230833 0.0515324          NA    0.0369666  NA 0.0624901
-#> sqrt rel RMSE  NA 0.1820211 0.4062211          NA    0.2914234  NA 0.4927829
+#> SD & RMSE (/10000.00)
+#>          GHQ      AGHQ      CDF GenzMonahan GenzMonahanA QMC     QMCA
+#> SD        NA 0.0644611 0.201026          NA     0.148375  NA 0.143214
+#> RMSE      NA 0.0577083 0.210461          NA     0.134508  NA 0.394766
+#> Rel RMSE  NA 0.4550527 1.659204          NA     1.060302  NA 3.115050
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0012       0.0004           NA       0.2180           NA 
+#>           NA       0.0014       0.0004           NA       0.1816           NA 
 #>         QMCA 
-#>       0.2808
+#>       0.2002
 sim_experiment(n =  4L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             7
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.00097656
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estiamte (SE):   -4.20237727 (0.00002783)
+#>            Adaptive QMC releps:    0.00195312
+#>   Log-likelihood estimate (SE):   -4.54621694 (0.00014011)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                          0.0149599                       -4.20238
-#> CDF                           0.0149617                       -4.20226
+#> AGHQ                          0.0106075                       -4.54619
+#> CDF                           0.0106075                       -4.54619
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0149607                       -4.20233
+#> GenzMonahanA                  0.0106069                       -4.54625
 #> QMC                                  NA                             NA
-#> QMCA                          0.0149569                       -4.20259
+#> QMCA                          0.0106010                       -4.54681
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ       AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD             NA 0.00144937 0.0122398          NA   0.00732307  NA 0.0174129
-#> RMSE           NA 0.00183983 0.0109913          NA   0.00430243  NA 0.0189290
-#> sqrt rel RMSE  NA 0.02926603 0.1748100          NA   0.06843401  NA 0.3011794
+#> SD & RMSE (/10000.00)
+#>          GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.0384036 0.0566167          NA    0.0402046  NA 0.0776298
+#> RMSE      NA 0.0410227 0.0240992          NA    0.0150587  NA 0.1105055
+#> Rel RMSE  NA 0.8510164 0.4996792          NA    0.3123028  NA 2.2938461
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0018       0.0036           NA       0.0068           NA 
+#>           NA       0.0026       0.0042           NA       0.5782           NA 
 #>         QMCA 
-#>       0.0262
+#>       0.1370
 sim_experiment(n =  8L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             4
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estiamte (SE):   -5.29648273 (0.00001757)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):   -6.68008479 (0.00000910)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                         0.00500908                       -5.29650
-#> CDF                          0.00501045                       -5.29623
+#> AGHQ                         0.00125569                       -6.68007
+#> CDF                          0.00125555                       -6.68018
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                 0.00501006                       -5.29631
+#> GenzMonahanA                 0.00125565                       -6.68010
 #> QMC                                  NA                             NA
-#> QMCA                         0.00500804                       -5.29671
+#> QMCA                         0.00125570                       -6.68006
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ       AGHQ        CDF GenzMonahan GenzMonahanA QMC       QMCA
-#> SD             NA 0.00485798 0.00600715          NA   0.00556349  NA 0.00604270
-#> RMSE           NA 0.00498136 0.00788271          NA   0.00642774  NA 0.00465613
-#> sqrt rel RMSE  NA 0.18780747 0.29700615          NA   0.24222428  NA 0.17551928
+#> SD & RMSE (/10000.00)
+#>          GHQ      AGHQ        CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.0144931 0.00238813          NA  0.000855228  NA 0.0223188
+#> RMSE      NA 0.0159272 0.00219466          NA  0.000792858  NA 0.0113883
+#> Rel RMSE  NA 1.9011503 0.26168183          NA  0.094523401  NA 1.3574522
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0034       0.0270           NA       0.0142           NA 
+#>           NA       0.0012       0.0270           NA       0.0020           NA 
 #>         QMCA 
-#>       0.0764
+#>       0.0052
 sim_experiment(n = 16L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             4
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             5
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -13.67674265 (0.00000918)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):  -13.82976408 (0.00002146)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                      0.00000114887                       -13.6767
-#> CDF                       0.00000114876                       -13.6768
+#> AGHQ                     0.000000985777                       -13.8298
+#> CDF                      0.000000985558                       -13.8301
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA              0.00000114884                       -13.6768
+#> GenzMonahanA             0.000000986245                       -13.8294
 #> QMC                                  NA                             NA
-#> QMCA                      0.00000114830                       -13.6772
+#> QMCA                     0.000000988604                       -13.8270
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ          AGHQ           CDF GenzMonahan   GenzMonahanA QMC
-#> SD             NA 0.00000451874 0.00000386630          NA 0.000000490378  NA
-#> RMSE           NA 0.00000522071 0.00000126295          NA 0.000000267524  NA
-#> sqrt rel RMSE  NA 0.33259409177 0.08037537828          NA 0.017026041836  NA
-#>                        QMCA
-#> SD            0.00000282131
-#> RMSE          0.00000289118
-#> sqrt rel RMSE 0.18408594204
+#> SD & RMSE (/10000.00)
+#>          GHQ         AGHQ           CDF GenzMonahan  GenzMonahanA QMC
+#> SD        NA 0.0000208433 0.00000920726          NA 0.00001029416  NA
+#> RMSE      NA 0.0000223650 0.00001005776          NA 0.00000776734  NA
+#> Rel RMSE  NA 1.6443106838 0.73842192178          NA 0.56940300840  NA
+#>                  QMCA
+#> SD       0.0000581899
+#> RMSE     0.0000582016
+#> Rel RMSE 4.2506449300
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0024       0.0580           NA       0.0274           NA 
+#>           NA       0.0044       0.0588           NA       0.0042           NA 
 #>         QMCA 
-#>       0.0280
+#>       0.0104
 sim_experiment(n = 32L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             4
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -30.38594583 (0.00000955)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):  -31.33059483 (0.00000509)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ              0.0000000000000636137                       -30.3859
-#> CDF               0.0000000000000636017                       -30.3861
+#> AGHQ              0.0000000000000247343                       -31.3306
+#> CDF               0.0000000000000247368                       -31.3305
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA      0.0000000000000636144                       -30.3859
+#> GenzMonahanA      0.0000000000000247320                       -31.3307
 #> QMC                                  NA                             NA
-#> QMCA              0.0000000000000636249                       -30.3858
+#> QMCA              0.0000000000000247384                       -31.3304
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ                 AGHQ                  CDF GenzMonahan
-#> SD             NA 0.000000000000650729 0.000000000001017432          NA
-#> RMSE           NA 0.000000000000726592 0.000000000000411247          NA
-#> sqrt rel RMSE  NA 0.376890213413737796 0.212648329295264976          NA
-#>                        GenzMonahanA QMC                 QMCA
-#> SD            0.0000000000000152932  NA 0.000000000000188053
-#> RMSE          0.0000000000000155237  NA 0.000000000000135125
-#> sqrt rel RMSE 0.0080310444752904921  NA 0.069872345927219942
+#> SD & RMSE (/10000.00)
+#>          GHQ                 AGHQ                  CDF GenzMonahan
+#> SD        NA 0.000000000000145916 0.000000000000560253          NA
+#> RMSE      NA 0.000000000000173329 0.000000000000596959          NA
+#> Rel RMSE  NA 0.223799798618338347 0.770224461783802328          NA
+#>                   GenzMonahanA QMC                 QMCA
+#> SD       0.0000000000000431757  NA 0.000000000000298354
+#> RMSE     0.0000000000000326354  NA 0.000000000000317902
+#> Rel RMSE 0.0421189560370839738  NA 0.410199404411256296
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0050       0.1338           NA       0.0594           NA 
+#>           NA       0.0084       0.1846           NA       0.0074           NA 
 #>         QMCA 
-#>       0.0596
+#>       0.0186
 
 sim_experiment(n =  2L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
-#>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.00048828
-#>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00048828
-#>   Log-likelihood estiamte (SE):   -2.63405864 (0.00005455)
-#> 
-#>              Mean estimate (likelihood) Mean estimate (log-likelihood)
-#> GHQ                                  NA                             NA
-#> AGHQ                          0.0717890                       -2.63402
-#> CDF                           0.0717903                       -2.63401
-#> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0717780                       -2.63418
-#> QMC                                  NA                             NA
-#> QMCA                          0.0717749                       -2.63422
-#> 
-#> SD & RMSE (/4000.00)
-#>               GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD             NA 0.0545572 0.0531526          NA    0.0543339  NA 0.0500033
-#> RMSE           NA 0.0521987 0.0216183          NA    0.0687996  NA 0.0690231
-#> sqrt rel RMSE  NA 0.2761059 0.1143215          NA    0.3639098  NA 0.3650859
-#> 
-#> Computation times
-#>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0064       0.0010           NA       0.0830           NA 
-#>         QMCA 
-#>       0.1270
-sim_experiment(n =  4L, p = 4L, n_threads = 6L)
-#>          # brute force samples:       1000000
-#>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             7
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
 #> Adaptive Genz & Monahan releps:    0.00097656
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estiamte (SE):   -6.03185860 (0.00005915)
+#>   Log-likelihood estimate (SE):   -3.63251414 (0.00009079)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                         0.00240104                       -6.03185
-#> CDF                          0.00240103                       -6.03186
+#> AGHQ                          0.0264491                       -3.63253
+#> CDF                           0.0264511                       -3.63246
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                 0.00240113                       -6.03182
+#> GenzMonahanA                  0.0264442                       -3.63272
 #> QMC                                  NA                             NA
-#> QMCA                         0.00240000                       -6.03229
+#> QMCA                          0.0264431                       -3.63276
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ        AGHQ        CDF GenzMonahan GenzMonahanA QMC
-#> SD             NA 0.000432330 0.00151168          NA   0.00363687  NA
-#> RMSE           NA 0.000487146 0.00131431          NA   0.00206703  NA
-#> sqrt rel RMSE  NA 0.033637837 0.09074296          NA   0.14271398  NA
-#>                     QMCA
-#> SD            0.00340086
-#> RMSE          0.00607416
-#> sqrt rel RMSE 0.41959210
+#> SD & RMSE (/10000.00)
+#>          GHQ     AGHQ      CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.160342 0.101783          NA    0.1000716  NA 0.0943676
+#> RMSE      NA 0.171667 0.067184          NA    0.0659293  NA 0.2002467
+#> Rel RMSE  NA 1.787974 0.699191          NA    0.6863310  NA 2.0854728
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0238       0.0222           NA       0.2760           NA 
+#>           NA       0.0064       0.0014           NA       0.1078           NA 
 #>         QMCA 
-#>       0.2442
-sim_experiment(n =  8L, p = 4L, n_threads = 6L)
+#>       0.1382
+sim_experiment(n =  4L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00195312
-#>   Log-likelihood estiamte (SE):   -7.99434464 (0.00002495)
+#>   Log-likelihood estimate (SE):   -4.31594164 (0.00004838)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                        0.000337360                       -7.99436
-#> CDF                         0.000337476                       -7.99402
+#> AGHQ                          0.0133551                       -4.31586
+#> CDF                           0.0133554                       -4.31583
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                0.000337377                       -7.99431
+#> GenzMonahanA                  0.0133542                       -4.31592
 #> QMC                                  NA                             NA
-#> QMCA                        0.000337279                       -7.99460
+#> QMCA                          0.0133574                       -4.31568
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ         AGHQ         CDF GenzMonahan GenzMonahanA QMC
-#> SD             NA 0.0000370784 0.000877290          NA 0.0001703123  NA
-#> RMSE           NA 0.0000555368 0.000469892          NA 0.0000574103  NA
-#> sqrt rel RMSE  NA 0.0205926511 0.174192170          NA 0.0212861025  NA
-#>                      QMCA
-#> SD            0.000760319
-#> RMSE          0.001059917
-#> sqrt rel RMSE 0.393256653
+#> SD & RMSE (/10000.00)
+#>          GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.0269801 0.0306629          NA    0.2449221  NA 0.0920126
+#> RMSE      NA 0.0317048 0.0283726          NA    0.0905854  NA 0.0954921
+#> Rel RMSE  NA 0.5499667 0.4922225          NA    1.5717433  NA 1.6565483
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0270       0.0454           NA       0.0210           NA 
+#>           NA       0.0136       0.0206           NA       0.0014           NA 
 #>         QMCA 
-#>       0.0528
+#>       0.0494
+sim_experiment(n =  8L, p = 4L, n_threads = 6L)
+#>          # brute force samples:       1000000
+#>                   # nodes  GHQ:            NA
+#>                   # nodes AGHQ:             5
+#>                     CDF releps:    0.50000000
+#>          Genz & Monahan releps:            NA
+#> Adaptive Genz & Monahan releps:    0.50000000
+#>                     QMC releps:            NA
+#>            Adaptive QMC releps:    0.03125000
+#>   Log-likelihood estimate (SE):  -11.67948074 (0.00003409)
+#> 
+#>              Mean estimate (likelihood) Mean estimate (log-likelihood)
+#> GHQ                                  NA                             NA
+#> AGHQ                      0.00000846589                       -11.6795
+#> CDF                       0.00000846650                       -11.6794
+#> GenzMonahan                          NA                             NA
+#> GenzMonahanA              0.00000847423                       -11.6785
+#> QMC                                  NA                             NA
+#> QMCA                      0.00000844708                       -11.6817
+#> 
+#> SD & RMSE (/10000.00)
+#>          GHQ        AGHQ          CDF GenzMonahan GenzMonahanA QMC        QMCA
+#> SD        NA 0.000195362 0.0000905215          NA 0.0000647472  NA 0.000303161
+#> RMSE      NA 0.000207106 0.0000346466          NA 0.0001529395  NA 0.000571861
+#> Rel RMSE  NA 2.099907925 0.3504424764          NA 1.5454129774  NA 5.779122627
+#> 
+#> Computation times
+#>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
+#>           NA       0.0124       0.0448           NA       0.0028           NA 
+#>         QMCA 
+#>       0.0090
 sim_experiment(n = 16L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             5
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -20.73678388 (0.00001526)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):  -20.26388662 (0.00001749)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                  0.000000000986578                       -20.7368
-#> CDF                   0.000000000986813                       -20.7365
+#> AGHQ                   0.00000000158304                       -20.2639
+#> CDF                    0.00000000158531                       -20.2625
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA          0.000000000986540                       -20.7368
+#> GenzMonahanA           0.00000000158401                       -20.2633
 #> QMC                                  NA                             NA
-#> QMCA                  0.000000000986709                       -20.7366
+#> QMCA                   0.00000000158010                       -20.2658
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ             AGHQ              CDF GenzMonahan
-#> SD             NA 0.00000000551674 0.00000000798033          NA
-#> RMSE           NA 0.00000000559046 0.00000000660674          NA
-#> sqrt rel RMSE  NA 0.27369242264521 0.32292187675169          NA
-#>                    GenzMonahanA QMC             QMCA
-#> SD            0.000000000501635  NA 0.00000000382651
-#> RMSE          0.000000000379769  NA 0.00000000372808
-#> sqrt rel RMSE 0.018563821994721  NA 0.18222020332058
+#> SD & RMSE (/10000.00)
+#>          GHQ            AGHQ             CDF GenzMonahan    GenzMonahanA QMC
+#> SD        NA 0.0000000308753 0.0000000325482          NA 0.0000000236767  NA
+#> RMSE      NA 0.0000000328604 0.0000000237588          NA 0.0000000202025  NA
+#> Rel RMSE  NA 1.0265807317577 0.7399587124463          NA 0.6292712087195  NA
+#>                     QMCA
+#> SD       0.0000000556885
+#> RMSE     0.0000000621916
+#> Rel RMSE 1.9437517718597
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0254       0.0954           NA       0.0404           NA 
+#>           NA       0.0256       0.0976           NA       0.0058           NA 
 #>         QMCA 
-#>       0.0404
+#>       0.0178
 sim_experiment(n = 32L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             4
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -36.82308328 (0.00000870)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):  -34.82637054 (0.00000881)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ            0.000000000000000101846                       -36.8231
-#> CDF             0.000000000000000101949                       -36.8221
+#> AGHQ            0.000000000000000750066                       -34.8264
+#> CDF             0.000000000000000749835                       -34.8267
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA    0.000000000000000101846                       -36.8231
+#> GenzMonahanA    0.000000000000000750038                       -34.8264
 #> QMC                                  NA                             NA
-#> QMCA            0.000000000000000101898                       -36.8226
+#> QMCA            0.000000000000000749429                       -34.8272
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ                   AGHQ                    CDF GenzMonahan
-#> SD             NA 0.00000000000000110366 0.00000000000000147859          NA
-#> RMSE           NA 0.00000000000000121789 0.00000000000000102099          NA
-#> sqrt rel RMSE  NA 0.32568980896186761065 0.27181620282080237727          NA
-#>                           GenzMonahanA QMC                    QMCA
-#> SD            0.0000000000000000400016  NA 0.000000000000000292456
-#> RMSE          0.0000000000000000350221  NA 0.000000000000000451737
-#> sqrt rel RMSE 0.0093383992254222111112  NA 0.120372396844913187586
+#> SD & RMSE (/10000.00)
+#>          GHQ                  AGHQ                   CDF GenzMonahan
+#> SD        NA 0.0000000000000133896 0.0000000000000250669          NA
+#> RMSE      NA 0.0000000000000154129 0.0000000000000107335          NA
+#> Rel RMSE  NA 0.5911595127466608979 0.4112291171137130164          NA
+#>                    GenzMonahanA QMC                  QMCA
+#> SD       0.00000000000000463723  NA 0.0000000000000143189
+#> RMSE     0.00000000000000244227  NA 0.0000000000000258599
+#> Rel RMSE 0.09348273778129093103  NA 0.9902553574312146223
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0222       0.2416           NA       0.0792           NA 
+#>           NA       0.0222       0.2362           NA       0.0114           NA 
 #>         QMCA 
-#>       0.0794
+#>       0.0334
 
 sim_experiment(n =  2L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
 #> Adaptive Genz & Monahan releps:    0.00097656
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00048828
-#>   Log-likelihood estiamte (SE):   -4.49985739 (0.00008550)
+#>            Adaptive QMC releps:    0.00097656
+#>   Log-likelihood estimate (SE):   -4.58816584 (0.00013172)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                          0.0111101                       -4.49990
-#> CDF                           0.0111102                       -4.49989
+#> AGHQ                          0.0101732                       -4.58800
+#> CDF                           0.0101727                       -4.58805
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0111100                       -4.49991
+#> GenzMonahanA                  0.0101730                       -4.58802
 #> QMC                                  NA                             NA
-#> QMCA                          0.0111078                       -4.50011
+#> QMCA                          0.0101673                       -4.58858
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ       AGHQ        CDF GenzMonahan GenzMonahanA QMC       QMCA
-#> SD             NA 0.00361222 0.01402317          NA    0.0168087  NA 0.00820978
-#> RMSE           NA 0.00558077 0.00475839          NA    0.0114257  NA 0.01323530
-#> sqrt rel RMSE  NA 0.11163433 0.09518072          NA    0.2285551  NA 0.26477639
+#> SD & RMSE (/10000.00)
+#>          GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.0543587 0.0401404          NA    0.0385572  NA 0.0371914
+#> RMSE      NA 0.0513290 0.0405918          NA    0.0273396  NA 0.0840234
+#> Rel RMSE  NA 1.1003872 0.8696305          NA    0.5857335  NA 1.8014777
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0484       0.0040           NA       0.1158           NA 
+#>           NA       0.0468       0.0034           NA       0.5646           NA 
 #>         QMCA 
-#>       0.2908
+#>       0.1364
 sim_experiment(n =  4L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
 #>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.00195312
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.00195312
-#>   Log-likelihood estiamte (SE):   -6.30078801 (0.00006019)
+#>            Adaptive QMC releps:    0.00390625
+#>   Log-likelihood estimate (SE):   -7.33194055 (0.00004392)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                         0.00183488                       -6.30078
-#> CDF                          0.00183463                       -6.30092
+#> AGHQ                        0.000654303                       -7.33194
+#> CDF                         0.000654420                       -7.33176
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                 0.00183473                       -6.30086
+#> GenzMonahanA                0.000654385                       -7.33181
 #> QMC                                  NA                             NA
-#> QMCA                         0.00183441                       -6.30103
+#> QMCA                        0.000655116                       -7.33070
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ       AGHQ        CDF GenzMonahan GenzMonahanA QMC       QMCA
-#> SD             NA 0.00374688 0.00256692          NA   0.00544000  NA 0.00490244
-#> RMSE           NA 0.00378022 0.00285647          NA   0.00464252  NA 0.00680727
-#> sqrt rel RMSE  NA 0.32716621 0.24711091          NA   0.40154331  NA 0.58920453
+#> SD & RMSE (/10000.00)
+#>          GHQ        AGHQ        CDF GenzMonahan GenzMonahanA QMC       QMCA
+#> SD        NA 0.000312852 0.00310824          NA   0.00358694  NA 0.00898013
+#> RMSE      NA 0.000293215 0.00174415          NA   0.00308864  NA 0.01224770
+#> Rel RMSE  NA 0.061123550 0.36350198          NA   0.64372414  NA 2.54874856
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0932       0.0270           NA       0.0388           NA 
+#>           NA       0.0938       0.0270           NA       0.0024           NA 
 #>         QMCA 
-#>       0.0820
+#>       0.0208
 sim_experiment(n =  8L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             6
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             7
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.00195312
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -16.75460646 (0.00004692)
+#>            Adaptive QMC releps:    0.00390625
+#>   Log-likelihood estimate (SE):  -13.11902127 (0.00013113)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                    0.0000000529141                       -16.7546
-#> CDF                     0.0000000529429                       -16.7541
+#> AGHQ                      0.00000200653                       -13.1191
+#> CDF                       0.00000200740                       -13.1187
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA            0.0000000529306                       -16.7543
+#> GenzMonahanA              0.00000200788                       -13.1184
 #> QMC                                  NA                             NA
-#> QMCA                    0.0000000528588                       -16.7556
+#> QMCA                      0.00000200387                       -13.1204
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ            AGHQ            CDF GenzMonahan   GenzMonahanA QMC
-#> SD             NA 0.0000000293992 0.000000288039          NA 0.000000115756  NA
-#> RMSE           NA 0.0000000300655 0.000000231959          NA 0.000000158649  NA
-#> sqrt rel RMSE  NA 0.0339182534290 0.261510291432          NA 0.178910563816  NA
-#>                         QMCA
-#> SD            0.000000428922
-#> RMSE          0.000000326308
-#> sqrt rel RMSE 0.368388520347
+#> SD & RMSE (/10000.00)
+#>          GHQ          AGHQ          CDF GenzMonahan GenzMonahanA QMC
+#> SD        NA 0.00000547939 0.0000161383          NA 0.0000137416  NA
+#> RMSE      NA 0.00000743078 0.0000129259          NA 0.0000447842  NA
+#> Rel RMSE  NA 0.28234761548 0.4908265434          NA 1.6974478910  NA
+#>                  QMCA
+#> SD       0.0000289944
+#> RMSE     0.0000520513
+#> Rel RMSE 1.9806475632
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.1826       0.0582           NA       0.0244           NA 
+#>           NA       0.3912       0.0594           NA       0.9682           NA 
 #>         QMCA 
-#>       0.0256
+#>       0.1828
 sim_experiment(n = 16L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             5
-#>                     CDF releps:    0.25000000
+#>                   # nodes AGHQ:             4
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -21.90374379 (0.00002276)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):  -25.41903334 (0.00003608)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
-#> AGHQ                  0.000000000307131                       -21.9037
-#> CDF                   0.000000000306814                       -21.9048
+#> AGHQ                0.00000000000913510                       -25.4189
+#> CDF                 0.00000000000913199                       -25.4192
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA          0.000000000307132                       -21.9037
+#> GenzMonahanA        0.00000000000914999                       -25.4173
 #> QMC                                  NA                             NA
-#> QMCA                  0.000000000306794                       -21.9048
+#> QMCA                0.00000000000914370                       -25.4180
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ             AGHQ              CDF GenzMonahan
-#> SD             NA 0.00000000202893 0.00000000298685          NA
-#> RMSE           NA 0.00000000204822 0.00000000185135          NA
-#> sqrt rel RMSE  NA 0.30503089775776 0.27553231311773          NA
-#>                    GenzMonahanA QMC             QMCA
-#> SD            0.000000000401057  NA 0.00000000190196
-#> RMSE          0.000000000404111  NA 0.00000000180472
-#> sqrt rel RMSE 0.060076294004817  NA 0.26855844793649
+#> SD & RMSE (/10000.00)
+#>          GHQ              AGHQ               CDF GenzMonahan      GenzMonahanA
+#> SD        NA 0.000000000208371 0.000000000233793          NA 0.000000000181917
+#> RMSE      NA 0.000000000194085 0.000000000157990          NA 0.000000000326714
+#> Rel RMSE  NA 0.836551775726754 0.680222665267043          NA 1.404296814728997
+#>          QMC              QMCA
+#> SD        NA 0.000000000426200
+#> RMSE      NA 0.000000000285087
+#> Rel RMSE  NA 1.226253794032091
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.1506       0.1336           NA       0.0494           NA 
+#>           NA       0.0512       0.1366           NA       0.0100           NA 
 #>         QMCA 
-#>       0.0500
+#>       0.0274
 sim_experiment(n = 32L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
-#>                   # nodes AGHQ:             5
-#>                     CDF releps:    0.01562500
+#>                   # nodes AGHQ:             4
+#>                     CDF releps:    0.50000000
 #>          Genz & Monahan releps:            NA
-#> Adaptive Genz & Monahan releps:    0.25000000
+#> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
-#>            Adaptive QMC releps:    0.25000000
-#>   Log-likelihood estiamte (SE):  -48.46144635 (0.00003392)
+#>            Adaptive QMC releps:    0.50000000
+#>   Log-likelihood estimate (SE):  -51.00739932 (0.00001390)
 #> 
-#>                 Mean estimate (likelihood) Mean estimate (log-likelihood)
-#> GHQ                                     NA                             NA
-#> AGHQ         0.000000000000000000000898392                       -48.4614
-#> CDF          0.000000000000000000000898787                       -48.4610
-#> GenzMonahan                             NA                             NA
-#> GenzMonahanA 0.000000000000000000000898769                       -48.4610
-#> QMC                                     NA                             NA
-#> QMCA         0.000000000000000000000898669                       -48.4611
+#>                  Mean estimate (likelihood) Mean estimate (log-likelihood)
+#> GHQ                                      NA                             NA
+#> AGHQ         0.0000000000000000000000704303                       -51.0074
+#> CDF          0.0000000000000000000000701911                       -51.0108
+#> GenzMonahan                              NA                             NA
+#> GenzMonahanA 0.0000000000000000000000704275                       -51.0075
+#> QMC                                      NA                             NA
+#> QMCA         0.0000000000000000000000704469                       -51.0072
 #> 
-#> SD & RMSE (/4000.00)
-#>               GHQ                        AGHQ                          CDF
-#> SD             NA 0.0000000000000000000123371 0.00000000000000000002058197
-#> RMSE           NA 0.0000000000000000000128404 0.00000000000000000000945192
-#> sqrt rel RMSE  NA 0.2960782939406608194055082 0.21715622031143497205896153
-#>               GenzMonahan                 GenzMonahanA QMC
-#> SD                     NA 0.00000000000000000000338603  NA
-#> RMSE                   NA 0.00000000000000000000486305  NA
-#> sqrt rel RMSE          NA 0.11165026808571372474165884  NA
-#>                                       QMCA
-#> SD            0.00000000000000000000737254
-#> RMSE          0.00000000000000000000556627
-#> sqrt rel RMSE 0.12779609799969363082006168
+#> SD & RMSE (/10000.00)
+#>          GHQ                         AGHQ                          CDF
+#> SD        NA 0.00000000000000000000353889 0.00000000000000000000529256
+#> RMSE      NA 0.00000000000000000000381121 0.00000000000000000000611734
+#> Rel RMSE  NA 1.06674818980795338418943174 1.71109461923616890111077282
+#>          GenzMonahan                   GenzMonahanA QMC
+#> SD                NA 0.0000000000000000000000864668  NA
+#> RMSE              NA 0.0000000000000000000001135112  NA
+#> Rel RMSE          NA 0.0315972094609262565967355840  NA
+#>                                   QMCA
+#> SD       0.000000000000000000000967315
+#> RMSE     0.000000000000000000001233921
+#> Rel RMSE 0.343530516303374555686644953
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.2888       1.5078           NA       0.0966           NA 
+#>           NA       0.1000       0.3492           NA       0.0190           NA 
 #>         QMCA 
-#>       0.0970
+#>       0.0518
 ```
 
 ``` r
 # number of observations in the cluster
-n_vals <- 2^(1:4)
+n_vals <- 2^(1:5)
 # number of random effects
-p_vals <- 3:5
+p_vals <- 3:6
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 10L
+n_runs <- 25L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -3487,27 +3471,34 @@ local({
   print(knitr::kable(
     table_out, align = c("l", "l", rep("r", length(p_vals)))))
 })
-#> **Number of complete cases**
-#> 
-#> 
-#> n    method/p                           3    4    5
-#> ---  -------------------------------  ---  ---  ---
-#> 2    AGHQ                              10   10   10
-#>      CDF                               10   10   10
-#>      Genz & Monahan (1999) Adaptive    10   10   10
-#>      Adaptive QMC                      10   10   10
-#> 4    AGHQ                              10   10   10
-#>      CDF                               10   10   10
-#>      Genz & Monahan (1999) Adaptive    10   10   10
-#>      Adaptive QMC                      10   10   10
-#> 8    AGHQ                              10   10   10
-#>      CDF                               10   10   10
-#>      Genz & Monahan (1999) Adaptive    10   10   10
-#>      Adaptive QMC                      10   10   10
-#> 16   AGHQ                              10   10   10
-#>      CDF                               10   10   10
-#>      Genz & Monahan (1999) Adaptive    10   10   10
-#>      Adaptive QMC                      10   10   10
+```
+
+**Number of complete cases**
+
+| n   | method/p                       |    3|    4|    5|    6|
+|:----|:-------------------------------|----:|----:|----:|----:|
+| 2   | AGHQ                           |   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|
+|     | Adaptive QMC                   |   25|   25|   25|   25|
+| 4   | AGHQ                           |   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|
+|     | Adaptive QMC                   |   25|   25|   25|   25|
+| 8   | AGHQ                           |   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|
+|     | Adaptive QMC                   |   25|   25|   25|   25|
+| 16  | AGHQ                           |   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|
+|     | Adaptive QMC                   |   25|   25|   25|   25|
+| 32  | AGHQ                           |   25|   25|   25|   25|
+|     | CDF                            |   25|   25|   25|   25|
+|     | Genz & Monahan (1999) Adaptive |   25|   25|   25|   25|
+|     | Adaptive QMC                   |   25|   25|   25|   25|
+
+``` r
 
 #####
 # table with computation times
@@ -3599,268 +3590,350 @@ show_run_times <- function(remove_nas = FALSE, na.rm = FALSE,
 }
 
 show_run_times(FALSE)
-#> **Blank cells have at least one failure (means)**
-#> 
-#> n    method/p                               3        4        5
-#> ---  -------------------------------  -------  -------  -------
-#> 2    GHQ                                                       
-#>      AGHQ                                1.14     9.60    66.84
-#>      CDF                                 1.10     4.94     4.64
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive      4.26   212.18   194.90
-#>      QMC                                                       
-#>      Adaptive QMC                       55.58   185.60   187.98
-#> 4    GHQ                                                       
-#>      AGHQ                                2.32    18.56   158.72
-#>      CDF                                 5.16    24.30    33.94
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     92.60   299.58   267.02
-#>      QMC                                                       
-#>      Adaptive QMC                      269.98   493.62   350.38
-#> 8    GHQ                                                       
-#>      AGHQ                                3.94    34.98   201.80
-#>      CDF                                31.94    54.76    73.42
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     69.08    47.54    88.76
-#>      QMC                                                       
-#>      Adaptive QMC                      100.66    90.98   143.62
-#> 16   GHQ                                                       
-#>      AGHQ                                5.04    40.30   206.70
-#>      CDF                                69.32   114.78   165.00
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     32.44    46.06    58.04
-#>      QMC                                                       
-#>      Adaptive QMC                       36.64    48.36    59.28
+```
+
+**Blank cells have at least one failure (means)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    1.07|    8.23|   68.23|   436.90|
+|     | CDF                            |    0.47|    1.38|    4.58|    12.64|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |   42.94|  138.94|  594.90|  1235.58|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |  154.00|  120.55|  113.09|   144.74|
+| 4   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    2.06|   13.62|  104.78|   666.82|
+|     | CDF                            |    4.66|   19.97|   32.14|    40.98|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |   19.43|  443.56|  175.98|   402.16|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   42.30|  130.76|   82.65|    81.96|
+| 8   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.03|   24.56|  157.10|   983.56|
+|     | CDF                            |   31.74|   50.02|   67.60|    90.55|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    2.50|   14.59|   18.19|    46.14|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   17.33|   34.48|   37.70|    69.10|
+| 16  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.99|   24.57|  177.78|   980.85|
+|     | CDF                            |   70.00|  109.29|  154.12|   210.58|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    4.69|    6.64|   11.30|    17.97|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   13.44|   22.78|   31.15|    45.88|
+| 32  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    6.00|   24.64|  114.82|   485.15|
+|     | CDF                            |  157.57|  264.41|  406.74|   575.29|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    9.44|   13.26|   22.61|    31.90|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   23.30|   37.85|   61.10|    77.93|
+
+``` r
 show_run_times(na.rm = TRUE)
-#> **NAs have been removed. Cells may not be comparable (means)**
-#> 
-#> n    method/p                               3        4        5
-#> ---  -------------------------------  -------  -------  -------
-#> 2    AGHQ                                1.14     9.60    66.84
-#>      CDF                                 1.10     4.94     4.64
-#>      Genz & Monahan (1999) Adaptive      4.26   212.18   194.90
-#>      Adaptive QMC                       55.58   185.60   187.98
-#> 4    AGHQ                                2.32    18.56   158.72
-#>      CDF                                 5.16    24.30    33.94
-#>      Genz & Monahan (1999) Adaptive     92.60   299.58   267.02
-#>      Adaptive QMC                      269.98   493.62   350.38
-#> 8    AGHQ                                3.94    34.98   201.80
-#>      CDF                                31.94    54.76    73.42
-#>      Genz & Monahan (1999) Adaptive     69.08    47.54    88.76
-#>      Adaptive QMC                      100.66    90.98   143.62
-#> 16   AGHQ                                5.04    40.30   206.70
-#>      CDF                                69.32   114.78   165.00
-#>      Genz & Monahan (1999) Adaptive     32.44    46.06    58.04
-#>      Adaptive QMC                       36.64    48.36    59.28
+```
+
+**NAs have been removed. Cells may not be comparable (means)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | AGHQ                           |    1.07|    8.23|   68.23|   436.90|
+|     | CDF                            |    0.47|    1.38|    4.58|    12.64|
+|     | Genz & Monahan (1999) Adaptive |   42.94|  138.94|  594.90|  1235.58|
+|     | Adaptive QMC                   |  154.00|  120.55|  113.09|   144.74|
+| 4   | AGHQ                           |    2.06|   13.62|  104.78|   666.82|
+|     | CDF                            |    4.66|   19.97|   32.14|    40.98|
+|     | Genz & Monahan (1999) Adaptive |   19.43|  443.56|  175.98|   402.16|
+|     | Adaptive QMC                   |   42.30|  130.76|   82.65|    81.96|
+| 8   | AGHQ                           |    3.03|   24.56|  157.10|   983.56|
+|     | CDF                            |   31.74|   50.02|   67.60|    90.55|
+|     | Genz & Monahan (1999) Adaptive |    2.50|   14.59|   18.19|    46.14|
+|     | Adaptive QMC                   |   17.33|   34.48|   37.70|    69.10|
+| 16  | AGHQ                           |    3.99|   24.57|  177.78|   980.85|
+|     | CDF                            |   70.00|  109.29|  154.12|   210.58|
+|     | Genz & Monahan (1999) Adaptive |    4.69|    6.64|   11.30|    17.97|
+|     | Adaptive QMC                   |   13.44|   22.78|   31.15|    45.88|
+| 32  | AGHQ                           |    6.00|   24.64|  114.82|   485.15|
+|     | CDF                            |  157.57|  264.41|  406.74|   575.29|
+|     | Genz & Monahan (1999) Adaptive |    9.44|   13.26|   22.61|    31.90|
+|     | Adaptive QMC                   |   23.30|   37.85|   61.10|    77.93|
+
+``` r
 show_run_times(TRUE)
-#> **Only showing complete cases (means)**
-#> 
-#> n    method/p                               3        4        5
-#> ---  -------------------------------  -------  -------  -------
-#> 2    GHQ                                                       
-#>      AGHQ                                1.14     9.60    66.84
-#>      CDF                                 1.10     4.94     4.64
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive      4.26   212.18   194.90
-#>      QMC                                                       
-#>      Adaptive QMC                       55.58   185.60   187.98
-#> 4    GHQ                                                       
-#>      AGHQ                                2.32    18.56   158.72
-#>      CDF                                 5.16    24.30    33.94
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     92.60   299.58   267.02
-#>      QMC                                                       
-#>      Adaptive QMC                      269.98   493.62   350.38
-#> 8    GHQ                                                       
-#>      AGHQ                                3.94    34.98   201.80
-#>      CDF                                31.94    54.76    73.42
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     69.08    47.54    88.76
-#>      QMC                                                       
-#>      Adaptive QMC                      100.66    90.98   143.62
-#> 16   GHQ                                                       
-#>      AGHQ                                5.04    40.30   206.70
-#>      CDF                                69.32   114.78   165.00
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     32.44    46.06    58.04
-#>      QMC                                                       
-#>      Adaptive QMC                       36.64    48.36    59.28
-#> 
-#> **Number of complete cases**
-#> 
-#>        3    4    5
-#> ---  ---  ---  ---
-#> 2     10   10   10
-#> 4     10   10   10
-#> 8     10   10   10
-#> 16    10   10   10
+```
+
+**Only showing complete cases (means)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    1.07|    8.23|   68.23|   436.90|
+|     | CDF                            |    0.47|    1.38|    4.58|    12.64|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |   42.94|  138.94|  594.90|  1235.58|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |  154.00|  120.55|  113.09|   144.74|
+| 4   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    2.06|   13.62|  104.78|   666.82|
+|     | CDF                            |    4.66|   19.97|   32.14|    40.98|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |   19.43|  443.56|  175.98|   402.16|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   42.30|  130.76|   82.65|    81.96|
+| 8   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.03|   24.56|  157.10|   983.56|
+|     | CDF                            |   31.74|   50.02|   67.60|    90.55|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    2.50|   14.59|   18.19|    46.14|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   17.33|   34.48|   37.70|    69.10|
+| 16  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.99|   24.57|  177.78|   980.85|
+|     | CDF                            |   70.00|  109.29|  154.12|   210.58|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    4.69|    6.64|   11.30|    17.97|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   13.44|   22.78|   31.15|    45.88|
+| 32  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    6.00|   24.64|  114.82|   485.15|
+|     | CDF                            |  157.57|  264.41|  406.74|   575.29|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    9.44|   13.26|   22.61|    31.90|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   23.30|   37.85|   61.10|    77.93|
+
+**Number of complete cases**
+
+|     |    3|    4|    5|    6|
+|-----|----:|----:|----:|----:|
+| 2   |   25|   25|   25|   25|
+| 4   |   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|
+| 16  |   25|   25|   25|   25|
+| 32  |   25|   25|   25|   25|
+
+``` r
 
 # show medians instead
 med_func <- function(x, na.rm)
   apply(x, 1, median, na.rm = na.rm)
 show_run_times(meth = med_func, suffix = " (median)", FALSE)
-#> **Blank cells have at least one failure (median)**
-#> 
-#> n    method/p                              3        4        5
-#> ---  -------------------------------  ------  -------  -------
-#> 2    GHQ                                                      
-#>      AGHQ                               1.10     7.70    55.90
-#>      CDF                                0.90     2.70     4.70
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive     4.30    28.70    94.60
-#>      QMC                                                      
-#>      Adaptive QMC                      45.10    74.40   125.90
-#> 4    GHQ                                                      
-#>      AGHQ                               2.00    14.80   114.00
-#>      CDF                                4.50    24.00    34.10
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive     8.30    13.70   109.30
-#>      QMC                                                      
-#>      Adaptive QMC                      34.10   107.50   232.60
-#> 8    GHQ                                                      
-#>      AGHQ                               3.90    29.00   218.40
-#>      CDF                               31.90    51.70    73.00
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive    16.60    23.00    29.10
-#>      QMC                                                      
-#>      Adaptive QMC                      17.40    60.10    84.10
-#> 16   GHQ                                                      
-#>      AGHQ                               4.80    29.10   178.20
-#>      CDF                               69.10   114.60   165.10
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive    32.40    45.30    57.50
-#>      QMC                                                      
-#>      Adaptive QMC                      32.90    45.60    59.10
+```
+
+**Blank cells have at least one failure (median)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    1.00|    7.20|   56.00|   392.20|
+|     | CDF                            |    0.40|    1.40|    4.40|    12.60|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    0.80|   29.00|   68.40|   400.80|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   31.00|   53.00|   55.40|   130.80|
+| 4   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    2.00|   12.40|  107.60|   781.40|
+|     | CDF                            |    4.60|   20.00|   31.80|    40.00|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    1.20|   71.80|   10.00|   133.00|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   20.40|   60.40|   70.60|    77.60|
+| 8   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.80|   28.20|  209.60|   590.20|
+|     | CDF                            |   31.60|   49.20|   67.40|    90.40|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    2.20|    3.40|    5.60|     8.80|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |    6.60|   22.00|   29.60|    34.80|
+| 16  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    4.40|   28.00|  170.40|  1015.40|
+|     | CDF                            |   67.40|  109.00|  153.40|   210.80|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    4.40|    6.60|   11.40|    17.40|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   11.20|   19.80|   30.40|    43.80|
+| 32  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    5.80|   24.60|  114.60|   458.00|
+|     | CDF                            |  153.40|  264.00|  405.00|   498.00|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    9.00|   13.20|   22.20|    29.80|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   21.60|   37.80|   59.40|    73.20|
+
+``` r
 show_run_times(meth = med_func, suffix = " (median)", na.rm = TRUE)
-#> **NAs have been removed. Cells may not be comparable (median)**
-#> 
-#> n    method/p                              3        4        5
-#> ---  -------------------------------  ------  -------  -------
-#> 2    AGHQ                               1.10     7.70    55.90
-#>      CDF                                0.90     2.70     4.70
-#>      Genz & Monahan (1999) Adaptive     4.30    28.70    94.60
-#>      Adaptive QMC                      45.10    74.40   125.90
-#> 4    AGHQ                               2.00    14.80   114.00
-#>      CDF                                4.50    24.00    34.10
-#>      Genz & Monahan (1999) Adaptive     8.30    13.70   109.30
-#>      Adaptive QMC                      34.10   107.50   232.60
-#> 8    AGHQ                               3.90    29.00   218.40
-#>      CDF                               31.90    51.70    73.00
-#>      Genz & Monahan (1999) Adaptive    16.60    23.00    29.10
-#>      Adaptive QMC                      17.40    60.10    84.10
-#> 16   AGHQ                               4.80    29.10   178.20
-#>      CDF                               69.10   114.60   165.10
-#>      Genz & Monahan (1999) Adaptive    32.40    45.30    57.50
-#>      Adaptive QMC                      32.90    45.60    59.10
+```
+
+**NAs have been removed. Cells may not be comparable (median)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | AGHQ                           |    1.00|    7.20|   56.00|   392.20|
+|     | CDF                            |    0.40|    1.40|    4.40|    12.60|
+|     | Genz & Monahan (1999) Adaptive |    0.80|   29.00|   68.40|   400.80|
+|     | Adaptive QMC                   |   31.00|   53.00|   55.40|   130.80|
+| 4   | AGHQ                           |    2.00|   12.40|  107.60|   781.40|
+|     | CDF                            |    4.60|   20.00|   31.80|    40.00|
+|     | Genz & Monahan (1999) Adaptive |    1.20|   71.80|   10.00|   133.00|
+|     | Adaptive QMC                   |   20.40|   60.40|   70.60|    77.60|
+| 8   | AGHQ                           |    3.80|   28.20|  209.60|   590.20|
+|     | CDF                            |   31.60|   49.20|   67.40|    90.40|
+|     | Genz & Monahan (1999) Adaptive |    2.20|    3.40|    5.60|     8.80|
+|     | Adaptive QMC                   |    6.60|   22.00|   29.60|    34.80|
+| 16  | AGHQ                           |    4.40|   28.00|  170.40|  1015.40|
+|     | CDF                            |   67.40|  109.00|  153.40|   210.80|
+|     | Genz & Monahan (1999) Adaptive |    4.40|    6.60|   11.40|    17.40|
+|     | Adaptive QMC                   |   11.20|   19.80|   30.40|    43.80|
+| 32  | AGHQ                           |    5.80|   24.60|  114.60|   458.00|
+|     | CDF                            |  153.40|  264.00|  405.00|   498.00|
+|     | Genz & Monahan (1999) Adaptive |    9.00|   13.20|   22.20|    29.80|
+|     | Adaptive QMC                   |   21.60|   37.80|   59.40|    73.20|
+
+``` r
 show_run_times(meth = med_func, suffix = " (median)", TRUE)
-#> **Only showing complete cases (median)**
-#> 
-#> n    method/p                              3        4        5
-#> ---  -------------------------------  ------  -------  -------
-#> 2    GHQ                                                      
-#>      AGHQ                               1.10     7.70    55.90
-#>      CDF                                0.90     2.70     4.70
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive     4.30    28.70    94.60
-#>      QMC                                                      
-#>      Adaptive QMC                      45.10    74.40   125.90
-#> 4    GHQ                                                      
-#>      AGHQ                               2.00    14.80   114.00
-#>      CDF                                4.50    24.00    34.10
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive     8.30    13.70   109.30
-#>      QMC                                                      
-#>      Adaptive QMC                      34.10   107.50   232.60
-#> 8    GHQ                                                      
-#>      AGHQ                               3.90    29.00   218.40
-#>      CDF                               31.90    51.70    73.00
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive    16.60    23.00    29.10
-#>      QMC                                                      
-#>      Adaptive QMC                      17.40    60.10    84.10
-#> 16   GHQ                                                      
-#>      AGHQ                               4.80    29.10   178.20
-#>      CDF                               69.10   114.60   165.10
-#>      Genz & Monahan (1999)                                    
-#>      Genz & Monahan (1999) Adaptive    32.40    45.30    57.50
-#>      QMC                                                      
-#>      Adaptive QMC                      32.90    45.60    59.10
-#> 
-#> **Number of complete cases**
-#> 
-#>        3    4    5
-#> ---  ---  ---  ---
-#> 2     10   10   10
-#> 4     10   10   10
-#> 8     10   10   10
-#> 16    10   10   10
+```
+
+**Only showing complete cases (median)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    1.00|    7.20|   56.00|   392.20|
+|     | CDF                            |    0.40|    1.40|    4.40|    12.60|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    0.80|   29.00|   68.40|   400.80|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   31.00|   53.00|   55.40|   130.80|
+| 4   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    2.00|   12.40|  107.60|   781.40|
+|     | CDF                            |    4.60|   20.00|   31.80|    40.00|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    1.20|   71.80|   10.00|   133.00|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   20.40|   60.40|   70.60|    77.60|
+| 8   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.80|   28.20|  209.60|   590.20|
+|     | CDF                            |   31.60|   49.20|   67.40|    90.40|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    2.20|    3.40|    5.60|     8.80|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |    6.60|   22.00|   29.60|    34.80|
+| 16  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    4.40|   28.00|  170.40|  1015.40|
+|     | CDF                            |   67.40|  109.00|  153.40|   210.80|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    4.40|    6.60|   11.40|    17.40|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   11.20|   19.80|   30.40|    43.80|
+| 32  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    5.80|   24.60|  114.60|   458.00|
+|     | CDF                            |  153.40|  264.00|  405.00|   498.00|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    9.00|   13.20|   22.20|    29.80|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   21.60|   37.80|   59.40|    73.20|
+
+**Number of complete cases**
+
+|     |    3|    4|    5|    6|
+|-----|----:|----:|----:|----:|
+| 2   |   25|   25|   25|   25|
+| 4   |   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|
+| 16  |   25|   25|   25|   25|
+| 32  |   25|   25|   25|   25|
+
+``` r
 
 # show quantiles instead
 med_func <- function(x, prob = .75, ...)
   apply(x, 1, function(z) quantile(na.omit(z), probs = prob))
 show_run_times(meth = med_func, suffix = " (75% quantile)", na.rm = TRUE)
-#> **NAs have been removed. Cells may not be comparable (75% quantile)**
-#> 
-#> n    method/p                               3        4        5
-#> ---  -------------------------------  -------  -------  -------
-#> 2    AGHQ                                1.20    12.60    59.25
-#>      CDF                                 1.75     7.80     4.80
-#>      Genz & Monahan (1999) Adaptive      4.40    52.75   170.50
-#>      Adaptive QMC                       87.85   267.65   305.20
-#> 4    AGHQ                                2.75    24.60   207.05
-#>      CDF                                 4.75    25.55    34.65
-#>      Genz & Monahan (1999) Adaptive     29.45   292.60   268.90
-#>      Adaptive QMC                      154.95   268.15   383.20
-#> 8    AGHQ                                4.15    30.85   220.90
-#>      CDF                                32.35    54.00    73.85
-#>      Genz & Monahan (1999) Adaptive     16.80    24.40    29.75
-#>      Adaptive QMC                       36.55   110.00   135.95
-#> 16   AGHQ                                5.00    57.85   184.10
-#>      CDF                                71.05   114.95   166.70
-#>      Genz & Monahan (1999) Adaptive     32.85    47.25    58.60
-#>      Adaptive QMC                       34.75    47.60    59.80
+```
+
+**NAs have been removed. Cells may not be comparable (75% quantile)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | AGHQ                           |    1.20|    7.20|   57.40|   400.00|
+|     | CDF                            |    0.40|    1.40|    4.60|    12.80|
+|     | Genz & Monahan (1999) Adaptive |   27.00|  106.20|  285.00|   912.00|
+|     | Adaptive QMC                   |   72.40|   80.80|  131.60|   181.20|
+| 4   | AGHQ                           |    2.00|   12.60|  110.80|   794.20|
+|     | CDF                            |    4.80|   20.40|   32.60|    41.40|
+|     | Genz & Monahan (1999) Adaptive |    1.40|  200.20|   77.20|   198.00|
+|     | Adaptive QMC                   |   37.20|   91.40|   90.40|   104.40|
+| 8   | AGHQ                           |    3.80|   28.80|  212.40|  1565.60|
+|     | CDF                            |   32.40|   50.00|   68.60|    91.80|
+|     | Genz & Monahan (1999) Adaptive |    2.40|    3.40|    5.80|    12.60|
+|     | Adaptive QMC                   |   21.60|   39.20|   55.00|    88.40|
+| 16  | AGHQ                           |    4.80|   28.60|  172.40|  1043.40|
+|     | CDF                            |   69.20|  110.20|  155.40|   214.20|
+|     | Genz & Monahan (1999) Adaptive |    4.60|    6.80|   11.60|    18.40|
+|     | Adaptive QMC                   |   11.40|   20.20|   30.80|    45.40|
+| 32  | AGHQ                           |    6.40|   25.20|  116.40|   524.80|
+|     | CDF                            |  155.40|  267.40|  414.20|   548.60|
+|     | Genz & Monahan (1999) Adaptive |    9.40|   13.60|   23.00|    33.20|
+|     | Adaptive QMC                   |   22.00|   38.40|   60.60|    82.40|
+
+``` r
 show_run_times(meth = med_func, suffix = " (75% quantile)", TRUE)
-#> **Only showing complete cases (75% quantile)**
-#> 
-#> n    method/p                               3        4        5
-#> ---  -------------------------------  -------  -------  -------
-#> 2    GHQ                                                       
-#>      AGHQ                                1.20    12.60    59.25
-#>      CDF                                 1.75     7.80     4.80
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive      4.40    52.75   170.50
-#>      QMC                                                       
-#>      Adaptive QMC                       87.85   267.65   305.20
-#> 4    GHQ                                                       
-#>      AGHQ                                2.75    24.60   207.05
-#>      CDF                                 4.75    25.55    34.65
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     29.45   292.60   268.90
-#>      QMC                                                       
-#>      Adaptive QMC                      154.95   268.15   383.20
-#> 8    GHQ                                                       
-#>      AGHQ                                4.15    30.85   220.90
-#>      CDF                                32.35    54.00    73.85
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     16.80    24.40    29.75
-#>      QMC                                                       
-#>      Adaptive QMC                       36.55   110.00   135.95
-#> 16   GHQ                                                       
-#>      AGHQ                                5.00    57.85   184.10
-#>      CDF                                71.05   114.95   166.70
-#>      Genz & Monahan (1999)                                     
-#>      Genz & Monahan (1999) Adaptive     32.85    47.25    58.60
-#>      QMC                                                       
-#>      Adaptive QMC                       34.75    47.60    59.80
-#> 
-#> **Number of complete cases**
-#> 
-#>        3    4    5
-#> ---  ---  ---  ---
-#> 2     10   10   10
-#> 4     10   10   10
-#> 8     10   10   10
-#> 16    10   10   10
+```
+
+**Only showing complete cases (75% quantile)**
+
+| n   | method/p                       |       3|       4|       5|        6|
+|:----|:-------------------------------|-------:|-------:|-------:|--------:|
+| 2   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    1.20|    7.20|   57.40|   400.00|
+|     | CDF                            |    0.40|    1.40|    4.60|    12.80|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |   27.00|  106.20|  285.00|   912.00|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   72.40|   80.80|  131.60|   181.20|
+| 4   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    2.00|   12.60|  110.80|   794.20|
+|     | CDF                            |    4.80|   20.40|   32.60|    41.40|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    1.40|  200.20|   77.20|   198.00|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   37.20|   91.40|   90.40|   104.40|
+| 8   | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    3.80|   28.80|  212.40|  1565.60|
+|     | CDF                            |   32.40|   50.00|   68.60|    91.80|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    2.40|    3.40|    5.80|    12.60|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   21.60|   39.20|   55.00|    88.40|
+| 16  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    4.80|   28.60|  172.40|  1043.40|
+|     | CDF                            |   69.20|  110.20|  155.40|   214.20|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    4.60|    6.80|   11.60|    18.40|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   11.40|   20.20|   30.80|    45.40|
+| 32  | GHQ                            |        |        |        |         |
+|     | AGHQ                           |    6.40|   25.20|  116.40|   524.80|
+|     | CDF                            |  155.40|  267.40|  414.20|   548.60|
+|     | Genz & Monahan (1999)          |        |        |        |         |
+|     | Genz & Monahan (1999) Adaptive |    9.40|   13.60|   23.00|    33.20|
+|     | QMC                            |        |        |        |         |
+|     | Adaptive QMC                   |   22.00|   38.40|   60.60|    82.40|
+
+**Number of complete cases**
+
+|     |    3|    4|    5|    6|
+|-----|----:|----:|----:|----:|
+| 2   |   25|   25|   25|   25|
+| 4   |   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|
+| 16  |   25|   25|   25|   25|
+| 32  |   25|   25|   25|   25|
+
+``` r
 
 #####
 # mean scaled RMSE table
@@ -3931,77 +4004,102 @@ show_scaled_mean_rmse <- function(remove_nas = FALSE, na.rm = FALSE){
 }
 
 show_scaled_mean_rmse(FALSE)
-#> **Blank cells have at least one failure**
-#> 
-#> n    method/p                              3       4      5
-#> ---  -------------------------------  ------  ------  -----
-#> 2    AGHQ                               5.29    3.15   6.09
-#>      CDF                                6.83    7.57   7.68
-#>      Genz & Monahan (1999) Adaptive     8.55    8.20   8.78
-#>      Adaptive QMC                      10.23   11.16   9.12
-#> 4    AGHQ                               3.37    4.55   3.50
-#>      CDF                                5.70    3.78   3.70
-#>      Genz & Monahan (1999) Adaptive     3.99   11.03   6.86
-#>      Adaptive QMC                       9.84   11.54   9.24
-#> 8    AGHQ                               2.42    1.69   3.30
-#>      CDF                                3.15    6.76   7.60
-#>      Genz & Monahan (1999) Adaptive     2.02    5.69   5.97
-#>      Adaptive QMC                       9.49    8.78   9.24
-#> 16   AGHQ                               6.43    5.88   5.92
-#>      CDF                                3.54   10.09   9.06
-#>      Genz & Monahan (1999) Adaptive     0.95    1.84   1.34
-#>      Adaptive QMC                       5.63    5.79   6.01
+```
+
+**Blank cells have at least one failure**
+
+| n   | method/p                       |      3|      4|      5|      6|
+|:----|:-------------------------------|------:|------:|------:|------:|
+| 2   | AGHQ                           |   8.03|   7.41|   8.37|   7.13|
+|     | CDF                            |  13.87|  10.19|   6.23|   4.73|
+|     | Genz & Monahan (1999) Adaptive |  17.04|  15.56|  17.87|  25.06|
+|     | Adaptive QMC                   |  20.52|  14.44|  20.85|  20.89|
+| 4   | AGHQ                           |   4.90|   7.80|   7.60|   7.13|
+|     | CDF                            |   5.40|   3.45|   4.39|   7.07|
+|     | Genz & Monahan (1999) Adaptive |  12.15|  16.28|  18.02|  20.65|
+|     | Adaptive QMC                   |  18.65|  20.34|  16.03|  19.67|
+| 8   | AGHQ                           |   8.34|   7.05|  10.15|   8.50|
+|     | CDF                            |   3.35|   6.68|   7.35|   8.19|
+|     | Genz & Monahan (1999) Adaptive |   6.00|  12.86|  19.19|  14.57|
+|     | Adaptive QMC                   |  17.65|  18.46|  21.65|  21.45|
+| 16  | AGHQ                           |  11.75|  14.45|  11.08|   9.63|
+|     | CDF                            |   3.50|   9.02|   9.55|  11.02|
+|     | Genz & Monahan (1999) Adaptive |   1.84|   6.76|   6.26|   6.90|
+|     | Adaptive QMC                   |  11.59|  13.23|  13.96|  13.81|
+| 32  | AGHQ                           |   8.64|  10.24|  11.48|  12.38|
+|     | CDF                            |   5.06|   8.24|  10.28|  16.48|
+|     | Genz & Monahan (1999) Adaptive |   1.12|   1.46|   1.72|   2.10|
+|     | Adaptive QMC                   |   5.02|   5.71|   5.65|   4.88|
+
+``` r
 show_scaled_mean_rmse(na.rm = TRUE)
-#> **NAs have been removed. Cells may not be comparable**
-#> 
-#> n    method/p                              3       4      5
-#> ---  -------------------------------  ------  ------  -----
-#> 2    AGHQ                               5.29    3.15   6.09
-#>      CDF                                6.83    7.57   7.68
-#>      Genz & Monahan (1999) Adaptive     8.55    8.20   8.78
-#>      Adaptive QMC                      10.23   11.16   9.12
-#> 4    AGHQ                               3.37    4.55   3.50
-#>      CDF                                5.70    3.78   3.70
-#>      Genz & Monahan (1999) Adaptive     3.99   11.03   6.86
-#>      Adaptive QMC                       9.84   11.54   9.24
-#> 8    AGHQ                               2.42    1.69   3.30
-#>      CDF                                3.15    6.76   7.60
-#>      Genz & Monahan (1999) Adaptive     2.02    5.69   5.97
-#>      Adaptive QMC                       9.49    8.78   9.24
-#> 16   AGHQ                               6.43    5.88   5.92
-#>      CDF                                3.54   10.09   9.06
-#>      Genz & Monahan (1999) Adaptive     0.95    1.84   1.34
-#>      Adaptive QMC                       5.63    5.79   6.01
+```
+
+**NAs have been removed. Cells may not be comparable**
+
+| n   | method/p                       |      3|      4|      5|      6|
+|:----|:-------------------------------|------:|------:|------:|------:|
+| 2   | AGHQ                           |   8.03|   7.41|   8.37|   7.13|
+|     | CDF                            |  13.87|  10.19|   6.23|   4.73|
+|     | Genz & Monahan (1999) Adaptive |  17.04|  15.56|  17.87|  25.06|
+|     | Adaptive QMC                   |  20.52|  14.44|  20.85|  20.89|
+| 4   | AGHQ                           |   4.90|   7.80|   7.60|   7.13|
+|     | CDF                            |   5.40|   3.45|   4.39|   7.07|
+|     | Genz & Monahan (1999) Adaptive |  12.15|  16.28|  18.02|  20.65|
+|     | Adaptive QMC                   |  18.65|  20.34|  16.03|  19.67|
+| 8   | AGHQ                           |   8.34|   7.05|  10.15|   8.50|
+|     | CDF                            |   3.35|   6.68|   7.35|   8.19|
+|     | Genz & Monahan (1999) Adaptive |   6.00|  12.86|  19.19|  14.57|
+|     | Adaptive QMC                   |  17.65|  18.46|  21.65|  21.45|
+| 16  | AGHQ                           |  11.75|  14.45|  11.08|   9.63|
+|     | CDF                            |   3.50|   9.02|   9.55|  11.02|
+|     | Genz & Monahan (1999) Adaptive |   1.84|   6.76|   6.26|   6.90|
+|     | Adaptive QMC                   |  11.59|  13.23|  13.96|  13.81|
+| 32  | AGHQ                           |   8.64|  10.24|  11.48|  12.38|
+|     | CDF                            |   5.06|   8.24|  10.28|  16.48|
+|     | Genz & Monahan (1999) Adaptive |   1.12|   1.46|   1.72|   2.10|
+|     | Adaptive QMC                   |   5.02|   5.71|   5.65|   4.88|
+
+``` r
 show_scaled_mean_rmse(TRUE)
-#> **Only showing complete cases**
-#> 
-#> n    method/p                              3       4      5
-#> ---  -------------------------------  ------  ------  -----
-#> 2    AGHQ                               5.29    3.15   6.09
-#>      CDF                                6.83    7.57   7.68
-#>      Genz & Monahan (1999) Adaptive     8.55    8.20   8.78
-#>      Adaptive QMC                      10.23   11.16   9.12
-#> 4    AGHQ                               3.37    4.55   3.50
-#>      CDF                                5.70    3.78   3.70
-#>      Genz & Monahan (1999) Adaptive     3.99   11.03   6.86
-#>      Adaptive QMC                       9.84   11.54   9.24
-#> 8    AGHQ                               2.42    1.69   3.30
-#>      CDF                                3.15    6.76   7.60
-#>      Genz & Monahan (1999) Adaptive     2.02    5.69   5.97
-#>      Adaptive QMC                       9.49    8.78   9.24
-#> 16   AGHQ                               6.43    5.88   5.92
-#>      CDF                                3.54   10.09   9.06
-#>      Genz & Monahan (1999) Adaptive     0.95    1.84   1.34
-#>      Adaptive QMC                       5.63    5.79   6.01
-#> 
-#> **Number of complete cases**
-#> 
-#>        3    4    5
-#> ---  ---  ---  ---
-#> 2     10   10   10
-#> 4     10   10   10
-#> 8     10   10   10
-#> 16    10   10   10
+```
+
+**Only showing complete cases**
+
+| n   | method/p                       |      3|      4|      5|      6|
+|:----|:-------------------------------|------:|------:|------:|------:|
+| 2   | AGHQ                           |   8.03|   7.41|   8.37|   7.13|
+|     | CDF                            |  13.87|  10.19|   6.23|   4.73|
+|     | Genz & Monahan (1999) Adaptive |  17.04|  15.56|  17.87|  25.06|
+|     | Adaptive QMC                   |  20.52|  14.44|  20.85|  20.89|
+| 4   | AGHQ                           |   4.90|   7.80|   7.60|   7.13|
+|     | CDF                            |   5.40|   3.45|   4.39|   7.07|
+|     | Genz & Monahan (1999) Adaptive |  12.15|  16.28|  18.02|  20.65|
+|     | Adaptive QMC                   |  18.65|  20.34|  16.03|  19.67|
+| 8   | AGHQ                           |   8.34|   7.05|  10.15|   8.50|
+|     | CDF                            |   3.35|   6.68|   7.35|   8.19|
+|     | Genz & Monahan (1999) Adaptive |   6.00|  12.86|  19.19|  14.57|
+|     | Adaptive QMC                   |  17.65|  18.46|  21.65|  21.45|
+| 16  | AGHQ                           |  11.75|  14.45|  11.08|   9.63|
+|     | CDF                            |   3.50|   9.02|   9.55|  11.02|
+|     | Genz & Monahan (1999) Adaptive |   1.84|   6.76|   6.26|   6.90|
+|     | Adaptive QMC                   |  11.59|  13.23|  13.96|  13.81|
+| 32  | AGHQ                           |   8.64|  10.24|  11.48|  12.38|
+|     | CDF                            |   5.06|   8.24|  10.28|  16.48|
+|     | Genz & Monahan (1999) Adaptive |   1.12|   1.46|   1.72|   2.10|
+|     | Adaptive QMC                   |   5.02|   5.71|   5.65|   4.88|
+
+**Number of complete cases**
+
+|     |    3|    4|    5|    6|
+|-----|----:|----:|----:|----:|
+| 2   |   25|   25|   25|   25|
+| 4   |   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|
+| 16  |   25|   25|   25|   25|
+| 32  |   25|   25|   25|   25|
+
+``` r
 
 #####
 # (A)GHQ node table
@@ -4054,54 +4152,66 @@ show_n_nodes <- function(adaptive){
 }
 
 show_n_nodes(FALSE)
-#> **Only showing complete cases (GHQ)**
-#> 
-#> |n  |quantile/p |  3|  4|  5|
-#> |:--|:----------|--:|--:|--:|
-#> 
-#> **Number of complete cases**
-#> 
-#>        3    4    5
-#> ---  ---  ---  ---
-#> 2      0    0    0
-#> 4      0    0    0
-#> 8      0    0    0
-#> 16     0    0    0
-show_n_nodes(TRUE)
-#> **Only showing complete cases (Adaptive GHQ)**
-#> 
-#> n    quantile/p       3      4      5
-#> ---  -----------  -----  -----  -----
-#> 2    0%            6.00   6.00   5.00
-#>      25%           6.00   6.00   6.00
-#>      50%           6.00   6.00   6.00
-#>      75%           6.00   6.75   6.00
-#>      100%          7.00   7.00   7.00
-#> 4    0%            6.00   6.00   6.00
-#>      25%           6.00   6.00   6.00
-#>      50%           6.00   6.00   6.00
-#>      75%           6.75   6.75   6.75
-#>      100%          7.00   7.00   7.00
-#> 8    0%            5.00   6.00   5.00
-#>      25%           6.00   6.00   5.00
-#>      50%           6.00   6.00   6.00
-#>      75%           6.00   6.00   6.00
-#>      100%          7.00   7.00   7.00
-#> 16   0%            4.00   5.00   5.00
-#>      25%           5.00   5.00   5.00
-#>      50%           5.00   5.00   5.00
-#>      75%           5.00   6.00   5.00
-#>      100%          6.00   6.00   6.00
-#> 
-#> **Number of complete cases**
-#> 
-#>        3    4    5
-#> ---  ---  ---  ---
-#> 2     10   10   10
-#> 4     10   10   10
-#> 8     10   10   10
-#> 16    10   10   10
 ```
+
+**Only showing complete cases (GHQ)**
+
+| n   | quantile/p |    3|    4|    5|    6|
+|:----|:-----------|----:|----:|----:|----:|
+
+**Number of complete cases**
+
+|     |    3|    4|    5|    6|
+|-----|----:|----:|----:|----:|
+| 2   |    0|    0|    0|    0|
+| 4   |    0|    0|    0|    0|
+| 8   |    0|    0|    0|    0|
+| 16  |    0|    0|    0|    0|
+| 32  |    0|    0|    0|    0|
+
+``` r
+show_n_nodes(TRUE)
+```
+
+**Only showing complete cases (Adaptive GHQ)**
+
+| n   | quantile/p |     3|     4|     5|     6|
+|:----|:-----------|-----:|-----:|-----:|-----:|
+| 2   | 0%         |  5.00|  6.00|  5.00|  5.00|
+|     | 25%        |  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  6.00|  6.00|  6.00|  6.00|
+|     | 75%        |  6.00|  6.00|  6.00|  6.00|
+|     | 100%       |  7.00|  7.00|  7.00|  7.00|
+| 4   | 0%         |  5.00|  4.00|  5.00|  5.00|
+|     | 25%        |  6.00|  6.00|  6.00|  6.00|
+|     | 50%        |  6.00|  6.00|  6.00|  6.00|
+|     | 75%        |  6.00|  6.00|  6.00|  6.00|
+|     | 100%       |  7.00|  7.00|  6.00|  6.00|
+| 8   | 0%         |  4.00|  4.00|  5.00|  4.00|
+|     | 25%        |  4.00|  5.00|  5.00|  5.00|
+|     | 50%        |  6.00|  6.00|  6.00|  5.00|
+|     | 75%        |  6.00|  6.00|  6.00|  6.00|
+|     | 100%       |  6.00|  6.00|  6.00|  6.00|
+| 16  | 0%         |  4.00|  4.00|  4.00|  4.00|
+|     | 25%        |  4.00|  5.00|  5.00|  5.00|
+|     | 50%        |  5.00|  5.00|  5.00|  5.00|
+|     | 75%        |  5.00|  5.00|  5.00|  5.00|
+|     | 100%       |  5.00|  5.00|  6.00|  5.00|
+| 32  | 0%         |  4.00|  4.00|  4.00|  4.00|
+|     | 25%        |  4.00|  4.00|  4.00|  4.00|
+|     | 50%        |  4.00|  4.00|  4.00|  4.00|
+|     | 75%        |  4.00|  4.00|  4.00|  4.00|
+|     | 100%       |  5.00|  4.00|  4.00|  4.00|
+
+**Number of complete cases**
+
+|     |    3|    4|    5|    6|
+|-----|----:|----:|----:|----:|
+| 2   |   25|   25|   25|   25|
+| 4   |   25|   25|   25|   25|
+| 8   |   25|   25|   25|   25|
+| 16  |   25|   25|   25|   25|
+| 32  |   25|   25|   25|   25|
 
 ### Approximating the Inner Integral
 
@@ -4264,11 +4374,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L))
 #> Unit: microseconds
 #>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3  905.1  928.1  965.7  937.4  956.6 1794.6   100
-#>   AGHQ 7 1742.2 1787.9 1819.9 1798.8 1835.3 2185.7   100
-#>    GHQ 3  607.8  623.3  636.1  625.9  639.3  997.6   100
-#>    GHQ 7 1411.8 1449.7 1484.5 1463.3 1490.9 1989.8   100
-#>   GHQ 21 4164.4 4268.4 4332.1 4300.6 4382.1 5722.7   100
+#>   AGHQ 3  904.7  927.9  933.5  929.9  935.2 1010.8   100
+#>   AGHQ 7 1731.0 1775.5 1782.2 1777.8 1781.2 2068.1   100
+#>    GHQ 3  607.1  623.5  626.1  624.5  627.4  747.1   100
+#>    GHQ 7 1410.5 1447.6 1458.0 1449.2 1458.5 1761.4   100
+#>   GHQ 21 4197.3 4301.6 4321.5 4311.5 4328.8 4731.7   100
 ```
 
 The adaptive version is much more precise. Moreover, the it seems that 5
@@ -4319,12 +4429,12 @@ microbenchmark::microbenchmark(
   ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 1L),
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 1L))
 #> Unit: microseconds
-#>     expr    min     lq   mean median     uq  max neval
-#>   AGHQ 3 1196.5 1227.2 1235.2 1230.2 1242.1 1372   100
-#>   AGHQ 7 2394.8 2460.6 2477.9 2471.9 2485.8 2848   100
-#>    GHQ 3  864.1  886.7  898.9  888.4  899.3 1282   100
-#>    GHQ 7 2036.4 2088.0 2101.8 2091.1 2106.4 2395   100
-#>   GHQ 21 6101.0 6256.8 6291.1 6269.5 6320.8 6734   100
+#>     expr    min     lq mean median     uq  max neval
+#>   AGHQ 3 1194.9 1224.4 1237   1226 1232.9 1474   100
+#>   AGHQ 7 2392.9 2455.3 2467   2458 2464.7 2695   100
+#>    GHQ 3  857.5  880.1  895    882  893.8 1193   100
+#>    GHQ 7 2006.5 2065.7 2073   2069 2077.3 2274   100
+#>   GHQ 21 6042.6 6208.7 6231   6219 6235.9 6769   100
 ```
 
 ``` r
@@ -4370,12 +4480,12 @@ microbenchmark::microbenchmark(
   ` GHQ 7`  = n_adap(7L , n_times = 1000L, order = 2L),
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 2L))
 #> Unit: microseconds
-#>     expr     min      lq    mean  median      uq   max neval
-#>   AGHQ 3  1240.6  1272.4  1284.5  1277.0  1291.8  1400   100
-#>   AGHQ 7  2446.5  2507.6  2558.2  2523.6  2559.7  3242   100
-#>    GHQ 3   903.4   927.7   944.7   933.8   941.9  1167   100
-#>    GHQ 7  2008.8  2059.9  2088.2  2068.9  2081.6  2629   100
-#>   GHQ 21 15536.7 15939.4 16125.3 16014.8 16170.8 17913   100
+#>     expr     min      lq    mean median      uq   max neval
+#>   AGHQ 3  1232.5  1264.8  1272.9   1269  1275.0  1369   100
+#>   AGHQ 7  2439.4  2507.5  2521.9   2517  2530.3  2689   100
+#>    GHQ 3   908.6   931.8   945.1    934   940.2  1333   100
+#>    GHQ 7  2024.3  2074.3  2084.9   2077  2091.1  2285   100
+#>   GHQ 21 15691.6 16014.0 16060.3  16041 16077.1 16924   100
 ```
 
 It does not take much more time and using an adaptive method only seems

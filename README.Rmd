@@ -391,7 +391,7 @@ ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
   max_maxpts = 2500000L, 
-  releps = 2.5e-4,
+  releps = 2e-4,
   min_releps = 1e-6,
   key_use = 3L, 
   n_reps = 20L, 
@@ -583,7 +583,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
           ex_params$min_releps / 10 else 
             releps_use / 2
         if(releps_use < ex_params$min_releps){
-          warning("found no releps for CDF method")
+          warning("found no releps")
           releps_use <- NA_integer_
           break
         }
@@ -736,7 +736,7 @@ print.sim_experiment <- function(x, ...){
     sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
     sprintf("                    QMC releps: %13.8f", x$qmc_releps),
     sprintf("           Adaptive QMC releps: %13.8f", x$Aqmc_releps), 
-    sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
+    sprintf("  Log-likelihood estimate (SE): %13.8f (%.8f)", x$ll_truth, 
             x$SE_truth), 
     "", sep = "\n")
   
@@ -744,11 +744,11 @@ print.sim_experiment <- function(x, ...){
   print(cbind(`Mean estimate (likelihood)`     = xx, 
               `Mean estimate (log-likelihood)` = log(xx)))
   
-  mult <- 1 / ex_params$releps
+  mult <- exp(ceiling(log10(1 / ex_params$releps)) * log(10))
   cat(sprintf("\nSD & RMSE (/%.2f)\n", mult))
   print(rbind(SD   = x$vals_n_comp_time ["sd", ],  
               RMSE = sqrt(x$vals_n_comp_time ["mse", ]), 
-              `sqrt rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
+              `Rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
   
   cat("\nComputation times\n")
   print(x$vals_n_comp_time["elapsed", ])
@@ -777,7 +777,7 @@ p_vals <- 2:7
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 10L
+n_runs <- 25L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -1290,7 +1290,7 @@ get_sim_dat <- function(n, p, Sigma){
     # covariance matrix of random effects
     if(!has_Sigma)
       Sigma <- drop(                     
-        rWishart(1, 5 * p, diag(1 / 5 / p, p)))
+        rWishart(1, 5 * p, diag(1 / p / 5, p)))
     S_chol <- chol(Sigma)
     # random effects
     u <- drop(rnorm(p) %*% S_chol)       
@@ -1488,13 +1488,14 @@ rm(list = setdiff(ls(), cur_vars))
 ```
 
 ## More Rigorous Comparison (Multinomial)
+
 ```{r mult_default_params, cache = 1, echo = FALSE}
 # default parameters
 ex_params <- list(
   streak_length = 4L, 
   max_b = 25L, 
   max_maxpts = 1000000L, 
-  releps = 2.5e-4,
+  releps = 5e-4,
   min_releps = 1e-8,
   key_use = 3L, 
   n_reps = 20L, 
@@ -1685,7 +1686,7 @@ sim_experiment <- function(n, p, releps = ex_params$releps,
           ex_params$min_releps / 10 else 
             releps_use / 2
         if(releps_use < ex_params$min_releps){
-          warning("found no releps for CDF method")
+          warning("found no releps")
           releps_use <- NA_integer_
           break
         }
@@ -1839,7 +1840,7 @@ print.sim_experiment <- function(x, ...){
     sprintf("Adaptive Genz & Monahan releps: %13.8f", x$Asim_releps), 
     sprintf("                    QMC releps: %13.8f", x$qmc_releps),
     sprintf("           Adaptive QMC releps: %13.8f", x$Aqmc_releps), 
-    sprintf("  Log-likelihood estiamte (SE): %13.8f (%.8f)", x$ll_truth, 
+    sprintf("  Log-likelihood estimate (SE): %13.8f (%.8f)", x$ll_truth, 
             x$SE_truth), 
     "", sep = "\n")
   
@@ -1847,11 +1848,11 @@ print.sim_experiment <- function(x, ...){
   print(cbind(`Mean estimate (likelihood)`     = xx, 
               `Mean estimate (log-likelihood)` = log(xx)))
   
-  mult <- 1 / ex_params$releps
+  mult <- exp(ceiling(log10(1 / ex_params$releps)) * log(10))
   cat(sprintf("\nSD & RMSE (/%.2f)\n", mult))
   print(rbind(SD   = x$vals_n_comp_time ["sd", ],  
               RMSE = sqrt(x$vals_n_comp_time ["mse", ]), 
-              `sqrt rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
+              `Rel RMSE` = x$vals_n_comp_time["rel_rmse", ]) * mult)
   
   cat("\nComputation times\n")
   print(x$vals_n_comp_time["elapsed", ])
@@ -1879,13 +1880,13 @@ sim_experiment(n = 32L, p = 5L, n_threads = 6L)
 
 ```{r mult_run_larger_sim_ex, message = FALSE, warning = FALSE}
 # number of observations in the cluster
-n_vals <- 2^(1:4)
+n_vals <- 2^(1:5)
 # number of random effects
-p_vals <- 3:5
+p_vals <- 3:6
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 10L
+n_runs <- 25L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -1934,7 +1935,7 @@ ex_output <- (function(){
 ```{r mult_meta_create_table, ref.label = "meta_create_table", eval = TRUE}
 ```
 
-```{r mult_create_table, ref.label = "create_table", eval = TRUE}
+```{r mult_create_table, ref.label = "create_table", eval = TRUE, results = "asis"}
 ```
 
 ### Approximating the Inner Integral
