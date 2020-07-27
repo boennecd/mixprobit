@@ -2,7 +2,8 @@
 *    $Id: mvt.f 355 2019-06-19 09:59:17Z thothorn $
 *
       SUBROUTINE MVTDST( N, NU, LOWER, UPPER, INFIN, CORREL, DELTA,
-     &                   MAXPTS, ABSEPS, RELEPS, ERROR, VALUE, INFORM )
+     &                   MAXPTS, ABSEPS, RELEPS, ERROR, VALUE, INFORM,
+     &                   INTVLS )
 *
 *     A subroutine for computing non-central multivariate t probabilities.
 *     This subroutine uses an algorithm (QRSVN) described in the paper
@@ -55,9 +56,10 @@
 *                           decrease ERROR;
 *            if INFORM = 2, N > 1000 or N < 1.
 *            if INFORM = 3, correlation matrix not positive semi-definite.
+*     INTVLS INTEGER number of integrands evaluations.
 *
       EXTERNAL MVSUBR
-      INTEGER N, ND, NU, INFIN(*), MAXPTS, INFORM, IVLS
+      INTEGER N, ND, NU, INFIN(*), MAXPTS, INFORM, IVLS, INTVLS
       DOUBLE PRECISION CORREL(*), LOWER(*), UPPER(*), DELTA(*), RELEPS,
      &                 ABSEPS, ERROR, VALUE, E(1), V(1)
       COMMON /PTBLCK/IVLS
@@ -74,12 +76,14 @@
 *
 *           Call the lattice rule integration subroutine
 *
+            IVLS = MIN(ND * 100, 1000)
             CALL MVKBRV( ND, IVLS, MAXPTS, 1, MVSUBR, ABSEPS, RELEPS,
      &                    E(1), V, INFORM )
             ERROR = E(1)
             VALUE = V(1)
          ENDIF
       ENDIF
+      INTVLS = IVLS
 
       END
 *
@@ -1145,7 +1149,8 @@
             VAREST(K) = 0
          END DO
          SAMPLS = MINSMP
-         DO I = MIN( NDIM, 10 ), PLIM
+*         DO I = MIN( NDIM, 10 ), PLIM
+         DO I = 1, PLIM
             NP = I
             IF ( MINVLS .LT. 2*SAMPLS*P(I) ) GO TO 10
          END DO

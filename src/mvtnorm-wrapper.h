@@ -11,7 +11,7 @@ cor_vec_res get_cor_vec(const arma::mat&);
 
 struct cdf_res {
   double error, value;
-  int inform;
+  int inform, intvls;
 };
 
 cdf_res cdf(arma::vec, arma::vec, arma::vec, arma::mat const&,

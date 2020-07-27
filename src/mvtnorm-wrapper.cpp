@@ -11,7 +11,7 @@ void F77_NAME(mvtdst)(
     double const* /* delta */, int const* /* maxpts  */,
     double const* /* abseps */, double const* /* releps */,
     double* /* error */, double* /* value */,
-    int* /* inform */);
+    int* /* inform */, int* /* intvls */);
 }
 
 namespace pmvnorm {
@@ -74,17 +74,17 @@ cdf_res cdf(arma::vec const &lower, arma::vec const &upper,
   assert(cor_vec.size() == (udim * (udim - 1L)) / 2L);
   assert(abseps > 0. || releps > 0.);
 
-  int const maxpts_arg = maxpts <= 0L ? dim * 1000L : maxpts,
+  int const maxpts_arg = maxpts <= 0L ? dim * 100L : maxpts,
                     nu = 0L;
-  int inform;
+  int inform, intvls;
   double value, error;
 
   F77_NAME(mvtdst)(
       &dim, &nu, lower.begin(), upper.begin(), infin.begin(),
       cor_vec.begin(), mean.begin(), &maxpts_arg, &abseps, &releps, &error,
-      &value, &inform);
+      &value, &inform, &intvls);
 
-  return { error, value, inform };
+  return { error, value, inform, intvls };
 }
 
 cdf_res cdf(arma::vec lower, arma::vec upper, arma::vec mean,

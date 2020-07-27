@@ -27,7 +27,8 @@ Rcpp::List pmvnorm_cpp(arma::vec const &lower, arma::vec const &upper,
 
   return Rcpp::List::create(Named("value")  = res.value,
                             Named("error")  = res.error,
-                            Named("inform") = res.inform);
+                            Named("inform") = res.inform,
+                            Named("intvls") = res.intvls);
 }
 
 // [[Rcpp::export]]
@@ -194,6 +195,7 @@ Rcpp::NumericVector aprx_binary_mix_cdf(
   NumericVector out = NumericVector::create(res.value);
   out.attr("inform") = res.inform;
   out.attr("error")  = res.error;
+  out.attr("intvls") = res.intvls;
 
   return out;
 }
@@ -233,6 +235,7 @@ Rcpp::NumericVector aprx_mult_mix_cdf(
   NumericVector out = NumericVector::create(res.value);
   out.attr("inform") = res.inform;
   out.attr("error")  = res.error;
+  out.attr("intvls") = res.intvls;
 
   return out;
 }
