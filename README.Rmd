@@ -184,7 +184,7 @@ aprx <- within(list(), {
   #   abseps: bsolute error tolerance.
   #   releps: relative error tolerance.
   #   is_adaptive: logical for whether to use adaptive method.
-  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = 1e-5, releps = -1, 
+  get_sim_mth <- function(y, eta, Z, S, maxpts, abseps = -1, releps = 1e-3, 
                           is_adaptive = FALSE)
     # Args: 
     #   key: integer which determines degree of integration rule.
@@ -777,7 +777,7 @@ p_vals <- 2:7
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 25L
+n_runs <- 100L
 
 ex_output <- (function(){
   # setup directory to store data
@@ -1430,7 +1430,9 @@ One explanation is that the AGHQ we are
 using, as of this writing, for the integrand with other methods uses 
 $8(c - 1)$ evaluations of the standard normal distribution's CDF with $c$
 being the number of categories per observation in the cluster plus the 
-overhead of finding the mode. In the example above, this means that we do 
+$K$ evaluations of the inverse normal CDF, and the 
+overhead of finding the mode. 
+In the example above, this means that we do 
 `8 * n * (p - 1)`, `r 8 * n * (p - 1)`, CDF evaluations for each of the 
 `maxpts`, `r maxpts`, evaluations. We show how long this takes to compute 
 below when the evaluations points are drawn from the standard normal 
@@ -1443,30 +1445,35 @@ local({
     #include <RcppArmadillo.h>
     
     //[[Rcpp::export]]
-    double test_pnorm(arma::vec const &x){
+    double test_pnorm(arma::vec const &x, arma::vec const  &unifs){
       double out(0), p, cp;
       for(auto xi : x){
-        p = xi;
-        R::pnorm_both(xi, &p, &cp, 1L, 1L);
-        out += p;
+        for(size_t j = 0; j < 8L; ++j){
+          p = xi + (j - 3.5) / 3.5;
+          R::pnorm_both(xi, &p, &cp, 1L, 1L);
+        }
       }
+      
+      for(auto ui : unifs)
+        out += R::qnorm5(ui, 0, 1, 1L, 0L);
       return out;
     }")
   
-  u <- rnorm(8 * n * (p - 1) * maxpts)
-  microbenchmark::microbenchmark(test_pnorm(u), times = 10)
+  u <- rnorm(n * (p - 1) * maxpts)
+  uni <- runif(p * maxpts)
+  microbenchmark::microbenchmark(test_pnorm(u, uni), times = 10)
 })
 ```
 
 In contrast, the CDF approximation can be implemented with only 
-one evaluation of the CDF and 
-`n * (p - 1) - 1`, `r n * (p - 1) - 1`, evaluations of the log of the 
+`n * p`  evaluation of the CDF, `n (p - 1)` evulations of the inverse CDF 
+and `n * (p - 1) - 1`, `r n * (p - 1) - 1`, evaluations of the log of the 
 standard normal distribution's PDF for each of `maxpts`, `r maxpts`, 
 evaluations. This is much faster to evaluate as shown below
 
 ```{r pdf_is_fast, cache = 1}
 local({
-  u <- rnorm(n * (p - 1) * maxpts - 1L)
+  u <- rnorm(n * p * maxpts)
   Rcpp::sourceCpp(code = "
     // [[Rcpp::depends(RcppArmadillo)]]
     #include <RcppArmadillo.h>
@@ -1474,8 +1481,15 @@ local({
     //[[Rcpp::export]]
     double test_dnorm(arma::vec const &x){
       static double const norm_const = 1. / std::sqrt(2 * M_PI);
-      double out(0);
-      for(auto xi : x)
+      double out(0), p, cp;
+      for(auto xi : x){
+        p = xi;
+        R::pnorm_both(xi, &p, &cp, 1L, 1L);
+        out += p;
+      }
+      for(auto xi : x) // we do an extra one. Will not matter...
+        out += R::qnorm5(xi, 0, 1, 1L, 0L);
+      for(auto xi : x) // we do an extra one. Will not matter...
         out += -.5 * xi * xi;
       return out * norm_const;
     }")
@@ -1886,7 +1900,7 @@ p_vals <- 3:6
 # grid with all configurations
 gr_vals <- expand.grid(n = n_vals, p = p_vals)
 # number of replications per configuration
-n_runs <- 25L
+n_runs <- 100L
 
 ex_output <- (function(){
   # setup directory to store data
