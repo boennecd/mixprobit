@@ -39,13 +39,15 @@ Rcpp::List pmvnorm_cpp_restrict(
   parallelrng::set_rng_seeds(1L);
 
   using Rcpp::Named;
+  restrictcdf::cdf<restrictcdf::deriv>::set_working_memory
+    (mean.size(), 1L);
   auto const res = ([&]{
     if(gradient)
       return restrictcdf::cdf<restrictcdf::deriv>
-        (mean, cov).approximate(maxpts, abseps, releps);
+        (mean, cov, true).approximate(maxpts, abseps, releps);
 
     return restrictcdf::cdf<restrictcdf::likelihood>
-      (mean, cov).approximate(maxpts, abseps, releps);
+      (mean, cov, true).approximate(maxpts, abseps, releps);
   })();
 
   return Rcpp::List::create(Named("value")  = res.finest,
@@ -291,6 +293,7 @@ class aprx_binary_mix_cdf_structured_diag {
   std::vector<cluster_data> const comp_dat;
   unsigned const n_threads,
                 n_clusters = comp_dat.size();
+  size_t const max_cdf_dim;
   bool const gradient;
 
 public:
@@ -303,7 +306,14 @@ public:
     for(unsigned i = 0; i < n; ++i)
       out.emplace_back(Rcpp::as<Rcpp::List>(data[i]));
     return out;
-  })()), n_threads(n_threads), gradient(gradient)
+  })()), n_threads(n_threads),
+  max_cdf_dim(([&](){
+    size_t out(0);
+    for(auto &x : comp_dat)
+      if(x.n > out)
+        out = x.n;
+      return out;
+  })()), gradient(gradient)
   { }
 
   /* approximates the log-likelihood */
@@ -317,6 +327,8 @@ public:
       omp_set_num_threads(n_use);
 #endif
       parallelrng::set_rng_seeds(n_use);
+      restrictcdf::cdf<restrictcdf::deriv>::set_working_memory
+        (max_cdf_dim, n_use);
     }
 
     /* compute variance parameters and then approximate the
@@ -324,6 +336,7 @@ public:
     arma::vec const vars = arma::exp(2 * log_sds);
     arma::vec out(1L + gradient * (beta.n_elem + log_sds.n_elem),
                   arma::fill::zeros);
+
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) reduction(+:out)
 #endif
@@ -353,7 +366,7 @@ public:
 
       if(gradient){
         auto output = restrictcdf::cdf<restrictcdf::deriv>
-          (-eta, S).approximate(maxpts, abseps, releps);
+          (-eta, S, true).approximate(maxpts, abseps, releps, 0L);
 
         double const phat = output.finest[0L];
         arma::vec d_eta(output.finest.memptr() + 1L, n, false),
@@ -394,7 +407,7 @@ public:
       } else
         out += arma::log(
           restrictcdf::cdf<restrictcdf::likelihood>
-          (-eta, S).approximate(maxpts, abseps, releps).finest);
+          (-eta, S, true).approximate(maxpts, abseps, releps, 0L).finest);
     }
 
     return out;

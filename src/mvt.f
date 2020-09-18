@@ -94,7 +94,7 @@
       INTEGER N, NF, NUIN, INFIN(*), NL
       DOUBLE PRECISION W(*),F(*), LOWER(*),UPPER(*), CORREL(*), DELTA(*)
       PARAMETER ( NL = 1000 )
-      INTEGER INFI(NL), NU, ND, INFORM, NY
+      INTEGER INFI(NL), NU, ND, INFORM, NY, IDX(NL)
       DOUBLE PRECISION COV(NL*(NL+1)/2), A(NL), B(NL), DL(NL), Y(NL)
       DOUBLE PRECISION MVCHNV, SNU, R, VL, ER, DI, EI
       SAVE NU, SNU, INFI, A, B, DL, COV
@@ -116,7 +116,8 @@
 *     Initialization and computation of covariance Cholesky factor.
 *
       CALL MVSORT( N, LOWER, UPPER, DELTA, CORREL, INFIN, Y, .TRUE.,
-     &            ND,     A,     B,    DL,    COV,  INFI, INFORM )
+     &            ND,     A,     B,    DL,    COV,  INFI, INFORM,
+     &            IDX,  .TRUE.)
       NU = NUIN
       CALL MVSPCL( ND, NU, A, B, DL, COV, INFI, SNU, VL, ER, INFORM )
       END
@@ -255,15 +256,20 @@
       END
 *
       SUBROUTINE MVSORT( N, LOWER, UPPER, DELTA, CORREL, INFIN, Y,PIVOT,
-     &                  ND,     A,     B,    DL,    COV,  INFI, INFORM )
+     &                  ND,     A,     B,    DL,    COV,  INFI, INFORM,
+     &                  IDX, DOSCALE  )
 *
 *     Subroutine to sort integration limits and determine Cholesky factor.
 *
+*     Benjamin Christoffersen added the IDX argument. It keeps track of the
+*     original indices. The DOSCALE argument is added to determine whether
+*     to scale the composition to have ones in the diagonal.
+*
       INTEGER N, ND, INFIN(*), INFI(*), INFORM
-      LOGICAL PIVOT
+      LOGICAL PIVOT, DOSCALE
       DOUBLE PRECISION     A(*),     B(*),    DL(*),    COV(*),
      &                 LOWER(*), UPPER(*), DELTA(*), CORREL(*), Y(*)
-      INTEGER I, J, K, L, M, II, IJ, IL, JL, JMIN
+      INTEGER I, J, K, L, M, II, IJ, IL, JL, JMIN, IDX(*)
       DOUBLE PRECISION SUMSQ, AJ, BJ, SUM, EPS, EPSI, D, E
       DOUBLE PRECISION CVDIAG, AMIN, BMIN, DEMIN, MVTDNS
       PARAMETER ( EPS = 1D-10 )
@@ -299,7 +305,7 @@
             IF ( INFI(I) .GE. 0 ) THEN
                DO J = 1, I-1
                   IF ( INFI(J) .LT. 0 ) THEN
-                     CALL MVSWAP( J, I, A, B, DL, INFI, N, COV )
+                     CALL MVSWAP( J, I, A, B, DL, INFI, N, COV, IDX )
                      GO TO 10
                   ENDIF
                END DO
@@ -343,7 +349,7 @@
                IJ = IJ + J
             END DO
             IF ( JMIN .GT. I ) THEN
-               CALL MVSWAP( I, JMIN, A, B, DL, INFI, N, COV )
+               CALL MVSWAP( I, JMIN, A, B, DL, INFI, N, COV, IDX )
             END IF
             IF ( COV(II+I) .LT. -EPSI ) THEN
                INFORM = 3
@@ -378,13 +384,17 @@
                   IF ( INFI(I) .EQ. 1 ) Y(I) = AMIN
                   IF ( INFI(I) .EQ. 2 ) Y(I) = ( AMIN + BMIN )/2
                END IF
-               DO J = 1, I
-                  II = II + 1
-                  COV(II) = COV(II)/CVDIAG
-               END DO
-                A(I) =  A(I)/CVDIAG
-                B(I) =  B(I)/CVDIAG
-               DL(I) = DL(I)/CVDIAG
+               IF(DOSCALE) THEN
+                  DO J = 1, I
+                     II = II + 1
+                     COV(II) = COV(II)/CVDIAG
+                  END DO
+                  A(I) =  A(I)/CVDIAG
+                  B(I) =  B(I)/CVDIAG
+                  DL(I) = DL(I)/CVDIAG
+               ELSE
+                  II = II + I
+               END IF
             ELSE
                IL = II + I
                DO L = I+1, ND
@@ -478,18 +488,24 @@
       Y = T
       END
 *
-      SUBROUTINE MVSWAP( P, Q, A, B, D, INFIN, N, C )
+      SUBROUTINE MVSWAP( P, Q, A, B, D, INFIN, N, C, IDX )
 *
 *     Swaps rows and columns P and Q in situ, with P <= Q.
 *
+*     Benjamin Christoffersen added the IDX argument to keep track
+*     of the original indices.
+*
       DOUBLE PRECISION A(*), B(*), C(*), D(*)
-      INTEGER INFIN(*), P, Q, N, I, J, II, JJ
+      INTEGER INFIN(*), IDX(*), P, Q, N, I, J, II, JJ
       CALL MVSSWP( A(P), A(Q) )
       CALL MVSSWP( B(P), B(Q) )
       CALL MVSSWP( D(P), D(Q) )
       J = INFIN(P)
       INFIN(P) = INFIN(Q)
       INFIN(Q) = J
+      J = IDX(P)
+      IDX(P) = IDX(Q)
+      IDX(Q) = J
       JJ = ( P*( P - 1 ) )/2
       II = ( Q*( Q - 1 ) )/2
       CALL MVSSWP( C(JJ+P), C(II+Q) )
@@ -582,8 +598,6 @@
       PARAMETER ( ZERO = 0, TWOPI = 6.283185307179586D0 )
       DOUBLE PRECISION X(10,3), W(10,3), AS, A, B, C, D, RS, XS
       DOUBLE PRECISION MVPHI, SN, ASR, H, K, BS, HS, HK
-      SAVE X, W
-!$OMP THREADPRIVATE(X, W)
 *     Gauss Legendre Points and Weights, N =  6
       DATA ( W(I,1), X(I,1), I = 1, 3 ) /
      *  0.1713244923791705D+00,-0.9324695142031522D+00,
@@ -998,8 +1012,6 @@
       DOUBLE PRECISION DIFINT, FINVAL(FLIM), VARSQR(FLIM), VAREST(FLIM),
      &     VARPRD, X(NLIM), R(NLIM), VK(NLIM), VALUES(FLIM), FS(FLIM)
       PARAMETER ( ONE = 1 )
-      SAVE P, C, SAMPLS, NP, VAREST
-!$OMP THREADPRIVATE(P, C, SAMPLS, NP, VAREST)
 *
 *    Optimal Parameters for Lattice Rules
 *

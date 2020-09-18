@@ -1,3 +1,6 @@
+#ifndef MVTNORM_WRAPPER_H
+#define MVTNORM_WRAPPER_H
+
 #include "arma-wrap.h"
 
 namespace pmvnorm {
@@ -23,3 +26,5 @@ cdf_res cdf(arma::vec const&, arma::vec const&, arma::ivec const&,
             int const maxpts = -1L, double const abseps = -1,
             double const releps = 1e-5);
 }
+
+#endif

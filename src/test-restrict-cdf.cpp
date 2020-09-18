@@ -37,12 +37,15 @@ context("restrictcdf unit tests") {
           << -1.788 << -3.957 << -0.648 << 11.735;
     sigma.reshape(4L, 4L);
 
+    restrictcdf::cdf<restrictcdf::deriv>::set_working_memory
+      (4L, 1L);
+
     double const abseps = std::pow(std::numeric_limits<double>::epsilon(),
                                    .33);
     double constexpr E_prop(0.0181507102495727);
     {
       auto res = restrictcdf::cdf<restrictcdf::likelihood>(
-        mean, sigma).approximate(1000000L, abseps, -1);
+        mean, sigma, true).approximate(1000000L, abseps, -1);
 
       expect_true(res.inform == 0L);
       expect_true(res.abserr                        < 100. * abseps);
@@ -104,8 +107,10 @@ context("restrictcdf unit tests") {
 
     double const abseps = std::pow(
       std::numeric_limits<double>::epsilon(), .4);
+    restrictcdf::cdf<restrictcdf::deriv>::set_working_memory
+      (4L, 1L);
     auto res = restrictcdf::cdf<restrictcdf::deriv>(
-      mean, sigma).approximate(1000000L, abseps, -1);
+      mean, sigma, true).approximate(1000000L, abseps, -1);
 
     expect_true(res.inform == 0L);
     expect_true(res.finest.n_elem == expect.n_elem);
