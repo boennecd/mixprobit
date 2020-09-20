@@ -5,8 +5,8 @@ pmvnorm_cpp <- function(lower, upper, mean, cov, maxpts, abseps, releps) {
     .Call('_mixprobit_pmvnorm_cpp', PACKAGE = 'mixprobit', lower, upper, mean, cov, maxpts, abseps, releps)
 }
 
-pmvnorm_cpp_restrict <- function(mean, cov, maxpts, abseps, releps, gradient = FALSE) {
-    .Call('_mixprobit_pmvnorm_cpp_restrict', PACKAGE = 'mixprobit', mean, cov, maxpts, abseps, releps, gradient)
+pmvnorm_cpp_restrict <- function(mean, cov, maxpts, abseps, releps, gradient = FALSE, minvls = 0L) {
+    .Call('_mixprobit_pmvnorm_cpp_restrict', PACKAGE = 'mixprobit', mean, cov, maxpts, abseps, releps, gradient, minvls)
 }
 
 aprx_binary_mix <- function(y, eta, Z, Sigma, maxpts, abseps, releps, key = 2L, is_adaptive = FALSE) {
@@ -29,8 +29,8 @@ aprx_mult_mix_cdf <- function(n_alt, eta, Z, Sigma, maxpts, abseps, releps) {
     .Call('_mixprobit_aprx_mult_mix_cdf', PACKAGE = 'mixprobit', n_alt, eta, Z, Sigma, maxpts, abseps, releps)
 }
 
-aprx_binary_mix_cdf_get_ptr <- function(data, n_threads, gradient = FALSE) {
-    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads, gradient)
+aprx_binary_mix_cdf_get_ptr <- function(data, n_threads, gradient = FALSE, minvls = 0L) {
+    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads, gradient, minvls)
 }
 
 aprx_binary_mix_cdf_eval <- function(ptr, beta, log_sds, maxpts, abseps, releps) {

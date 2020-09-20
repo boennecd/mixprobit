@@ -14,7 +14,7 @@ extern "C" {
 
 sobol_gen::sobol_gen
   (int const dimen, int const scrambling, int const seed):
-  dimen(dimen){
+  dimen(dimen) {
   if(dimen < 1L or dimen > 1111L)
     throw std::invalid_argument("sobol_gen::sobol_gen(): invalid dimen");
   else if(scrambling < 0L or scrambling > 3L)

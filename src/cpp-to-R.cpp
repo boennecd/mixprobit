@@ -35,7 +35,7 @@ Rcpp::List pmvnorm_cpp(arma::vec const &lower, arma::vec const &upper,
 Rcpp::List pmvnorm_cpp_restrict(
     arma::vec const &mean, arma::mat const &cov,
     int const maxpts, double const abseps, double const releps,
-    bool const gradient = false){
+    bool const gradient = false, int const minvls = 0L){
   parallelrng::set_rng_seeds(1L);
 
   using Rcpp::Named;
@@ -44,10 +44,10 @@ Rcpp::List pmvnorm_cpp_restrict(
   auto const res = ([&]{
     if(gradient)
       return restrictcdf::cdf<restrictcdf::deriv>
-        (mean, cov, true).approximate(maxpts, abseps, releps);
+        (mean, cov, true).approximate(maxpts, abseps, releps, minvls);
 
     return restrictcdf::cdf<restrictcdf::likelihood>
-      (mean, cov, true).approximate(maxpts, abseps, releps);
+      (mean, cov, true).approximate(maxpts, abseps, releps, minvls);
   })();
 
   return Rcpp::List::create(Named("value")  = res.finest,
@@ -295,10 +295,12 @@ class aprx_binary_mix_cdf_structured_diag {
                 n_clusters = comp_dat.size();
   size_t const max_cdf_dim;
   bool const gradient;
+  size_t const minvls;
 
 public:
   aprx_binary_mix_cdf_structured_diag
-  (Rcpp::List data, unsigned const n_threads, bool const gradient):
+  (Rcpp::List data, unsigned const n_threads, bool const gradient,
+   size_t const minvls):
   comp_dat(([&](){
     unsigned const n = data.size();
     std::vector<cluster_data> out;
@@ -313,7 +315,7 @@ public:
       if(x.n > out)
         out = x.n;
       return out;
-  })()), gradient(gradient)
+  })()), gradient(gradient), minvls(minvls)
   { }
 
   /* approximates the log-likelihood */
@@ -366,7 +368,8 @@ public:
 
       if(gradient){
         auto output = restrictcdf::cdf<restrictcdf::deriv>
-          (-eta, S, true).approximate(maxpts, abseps, releps, 0L);
+          (-eta, S, true).approximate(maxpts, abseps, releps,
+           static_cast<int>(minvls));
 
         double const phat = output.finest[0L];
         arma::vec d_eta(output.finest.memptr() + 1L, n, false),
@@ -407,7 +410,8 @@ public:
       } else
         out += arma::log(
           restrictcdf::cdf<restrictcdf::likelihood>
-          (-eta, S, true).approximate(maxpts, abseps, releps, 0L).finest);
+          (-eta, S, true).approximate(maxpts, abseps, releps,
+           static_cast<int>(minvls)).finest);
     }
 
     return out;
@@ -420,9 +424,10 @@ public:
  * a given point. */
 // [[Rcpp::export]]
 SEXP aprx_binary_mix_cdf_get_ptr
-  (Rcpp::List data, unsigned const n_threads, bool const gradient = false){
+  (Rcpp::List data, unsigned const n_threads, bool const gradient = false,
+   unsigned const minvls = 0L){
   using dat_T = aprx_binary_mix_cdf_structured_diag;
-  return Rcpp::XPtr<dat_T>(new dat_T(data, n_threads, gradient), true);
+  return Rcpp::XPtr<dat_T>(new dat_T(data, n_threads, gradient, 0L), true);
 }
 
 // [[Rcpp::export]]

@@ -24,8 +24,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // pmvnorm_cpp_restrict
-Rcpp::List pmvnorm_cpp_restrict(arma::vec const& mean, arma::mat const& cov, int const maxpts, double const abseps, double const releps, bool const gradient);
-RcppExport SEXP _mixprobit_pmvnorm_cpp_restrict(SEXP meanSEXP, SEXP covSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP gradientSEXP) {
+Rcpp::List pmvnorm_cpp_restrict(arma::vec const& mean, arma::mat const& cov, int const maxpts, double const abseps, double const releps, bool const gradient, int const minvls);
+RcppExport SEXP _mixprobit_pmvnorm_cpp_restrict(SEXP meanSEXP, SEXP covSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP gradientSEXP, SEXP minvlsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -35,7 +35,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
     Rcpp::traits::input_parameter< bool const >::type gradient(gradientSEXP);
-    rcpp_result_gen = Rcpp::wrap(pmvnorm_cpp_restrict(mean, cov, maxpts, abseps, releps, gradient));
+    Rcpp::traits::input_parameter< int const >::type minvls(minvlsSEXP);
+    rcpp_result_gen = Rcpp::wrap(pmvnorm_cpp_restrict(mean, cov, maxpts, abseps, releps, gradient, minvls));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -132,15 +133,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_cdf_get_ptr
-SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads, bool const gradient);
-RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP, SEXP gradientSEXP) {
+SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads, bool const gradient, unsigned const minvls);
+RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP, SEXP gradientSEXP, SEXP minvlsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< bool const >::type gradient(gradientSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_get_ptr(data, n_threads, gradient));
+    Rcpp::traits::input_parameter< unsigned const >::type minvls(minvlsSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_get_ptr(data, n_threads, gradient, minvls));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -342,13 +344,13 @@ RcppExport SEXP run_testthat_tests();
 
 static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_pmvnorm_cpp", (DL_FUNC) &_mixprobit_pmvnorm_cpp, 7},
-    {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 6},
+    {"_mixprobit_pmvnorm_cpp_restrict", (DL_FUNC) &_mixprobit_pmvnorm_cpp_restrict, 7},
     {"_mixprobit_aprx_binary_mix", (DL_FUNC) &_mixprobit_aprx_binary_mix, 9},
     {"_mixprobit_aprx_mult_mix", (DL_FUNC) &_mixprobit_aprx_mult_mix, 9},
     {"_mixprobit_aprx_jac_binary_mix", (DL_FUNC) &_mixprobit_aprx_jac_binary_mix, 10},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
     {"_mixprobit_aprx_mult_mix_cdf", (DL_FUNC) &_mixprobit_aprx_mult_mix_cdf, 7},
-    {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 3},
+    {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 4},
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 6},
