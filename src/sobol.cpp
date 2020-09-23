@@ -35,9 +35,9 @@ void sobol_gen::operator()(double * out){
   double * o = out, *q = quasi.get();
   for(int i = 0; i < dimen; ++i, ++o, ++q){
     double val = *q;
-    if(__builtin_expect(val < std::numeric_limits<double>::epsilon(), 0))
+    if(val < std::numeric_limits<double>::epsilon())
       val = std::numeric_limits<double>::epsilon();
-    if(__builtin_expect(val >= 1., 0))
+    if(val >= 1.)
       val = 1. - std::numeric_limits<double>::epsilon();
     *o = val;
   }

@@ -294,13 +294,13 @@ class aprx_binary_mix_cdf_structured_diag {
   unsigned const n_threads,
                 n_clusters = comp_dat.size();
   size_t const max_cdf_dim;
-  bool const gradient;
+  bool const gradient, do_reorder;
   size_t const minvls;
 
 public:
   aprx_binary_mix_cdf_structured_diag
   (Rcpp::List data, unsigned const n_threads, bool const gradient,
-   size_t const minvls):
+   size_t const minvls, bool const do_reorder):
   comp_dat(([&](){
     unsigned const n = data.size();
     std::vector<cluster_data> out;
@@ -314,8 +314,8 @@ public:
     for(auto &x : comp_dat)
       if(x.n > out)
         out = x.n;
-      return out;
-  })()), gradient(gradient), minvls(minvls)
+    return out;
+  })()), gradient(gradient), do_reorder(do_reorder), minvls(minvls)
   { }
 
   /* approximates the log-likelihood */
@@ -368,7 +368,7 @@ public:
 
       if(gradient){
         auto output = restrictcdf::cdf<restrictcdf::deriv>
-          (-eta, S, true).approximate(maxpts, abseps, releps,
+          (-eta, S, do_reorder).approximate(maxpts, abseps, releps,
            static_cast<int>(minvls));
 
         double const phat = output.finest[0L];
@@ -410,7 +410,7 @@ public:
       } else
         out += arma::log(
           restrictcdf::cdf<restrictcdf::likelihood>
-          (-eta, S, true).approximate(maxpts, abseps, releps,
+          (-eta, S, do_reorder).approximate(maxpts, abseps, releps,
            static_cast<int>(minvls)).finest);
     }
 
@@ -425,9 +425,10 @@ public:
 // [[Rcpp::export]]
 SEXP aprx_binary_mix_cdf_get_ptr
   (Rcpp::List data, unsigned const n_threads, bool const gradient = false,
-   unsigned const minvls = 0L){
+   unsigned const minvls = 0L, bool const do_reorder = true){
   using dat_T = aprx_binary_mix_cdf_structured_diag;
-  return Rcpp::XPtr<dat_T>(new dat_T(data, n_threads, gradient, 0L), true);
+  return Rcpp::XPtr<dat_T>(
+    new dat_T(data, n_threads, gradient, 0L, do_reorder), true);
 }
 
 // [[Rcpp::export]]

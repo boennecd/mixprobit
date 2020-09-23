@@ -39,11 +39,11 @@ extern "C" {
 
 inline double dnorm_std(double x, int const give_log)
 {
-    if(__builtin_expect(isinf(x), 0))
+    if(isinf(x))
       return give_log ? -INFINITY : 0.;
     x = fabs(x);
     static double const too_large = 2 * sqrt(DBL_MAX);
-    if (__builtin_expect(x >= too_large, 0))
+    if (x >= too_large)
       return give_log ? -INFINITY : 0.;
 
     if (give_log)
@@ -88,15 +88,15 @@ inline double dnorm_std(double x, int const give_log)
 inline double dnorm_w(double x, double const mu, double const sigma,
                     int const give_log)
 {
-    if(__builtin_expect(isnan(x) || isnan(mu) || isnan(sigma), 0))
+    if(isnan(x) || isnan(mu) || isnan(sigma))
 	    return x + mu + sigma;
-    else if(__builtin_expect(sigma < 0, 0))
+    else if(sigma < 0)
       return NAN;
-    else if(__builtin_expect(isinf(sigma), 0))
+    else if(isinf(sigma))
       return give_log ? -INFINITY : 0.;
-    else if(__builtin_expect(isinf(x) && mu == x, 0))
+    else if(isinf(x) && mu == x)
       return NAN;
-    else if(__builtin_expect(sigma == 0, 0))
+    else if(sigma == 0)
       return (x == mu) ? INFINITY : (give_log ? -INFINITY : 0.);
 
     double const out = dnorm_std((x - mu) / sigma, give_log);

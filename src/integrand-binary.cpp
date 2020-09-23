@@ -28,7 +28,7 @@ arma::vec mix_binary::gr(double const *par) const {
     double const lp = eta[i] + colvecdot(Z, i, par_vec),
                  s = y[i] > 0 ? 1 : -1;
 
-    double const f = dnorm_std(s * lp,     1L),
+    double const f = dnorm_std(s * lp, 1L),
                  F = pnorm_std(s * lp, 1L, 1L);
     gr += s * std::exp(f - F)  * Z.col(i);
   }
@@ -47,7 +47,7 @@ arma::mat mix_binary::Hessian(double const *par) const {
     double const lp = eta[i] + colvecdot(Z, i, par_vec);
 
     double const lpu = y[i] > 0 ? lp : -lp,
-                 fl  = dnorm_std(lpu,     1L),
+                 fl  = dnorm_std(lpu, 1L),
                  f   = std::exp(fl),
                  Fl  = pnorm_std(lpu, 1L, 1L),
                  F   = std::exp(Fl),
@@ -78,7 +78,7 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
     double const lp = eta[i] + colvecdot(Z, i, par_vec),
                pnrm = y[i] > 0 ? pnorm_std(lp, 1L, 1L) :
                                  pnorm_std(lp, 0L, 1L),
-               dnrm =            dnorm_std(lp,     1L),
+               dnrm =            dnorm_std(lp, 1L),
                fac  = y[i] > 0 ?  std::exp(dnrm - pnrm) :
                                  -std::exp(dnrm - pnrm);
 

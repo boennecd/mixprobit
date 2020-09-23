@@ -133,8 +133,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // aprx_binary_mix_cdf_get_ptr
-SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads, bool const gradient, unsigned const minvls);
-RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP, SEXP gradientSEXP, SEXP minvlsSEXP) {
+SEXP aprx_binary_mix_cdf_get_ptr(Rcpp::List data, unsigned const n_threads, bool const gradient, unsigned const minvls, bool const do_reorder);
+RcppExport SEXP _mixprobit_aprx_binary_mix_cdf_get_ptr(SEXP dataSEXP, SEXP n_threadsSEXP, SEXP gradientSEXP, SEXP minvlsSEXP, SEXP do_reorderSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -142,7 +142,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< unsigned const >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< bool const >::type gradient(gradientSEXP);
     Rcpp::traits::input_parameter< unsigned const >::type minvls(minvlsSEXP);
-    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_get_ptr(data, n_threads, gradient, minvls));
+    Rcpp::traits::input_parameter< bool const >::type do_reorder(do_reorderSEXP);
+    rcpp_result_gen = Rcpp::wrap(aprx_binary_mix_cdf_get_ptr(data, n_threads, gradient, minvls, do_reorder));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -350,7 +351,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_aprx_jac_binary_mix", (DL_FUNC) &_mixprobit_aprx_jac_binary_mix, 10},
     {"_mixprobit_aprx_binary_mix_cdf", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf, 7},
     {"_mixprobit_aprx_mult_mix_cdf", (DL_FUNC) &_mixprobit_aprx_mult_mix_cdf, 7},
-    {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 4},
+    {"_mixprobit_aprx_binary_mix_cdf_get_ptr", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_get_ptr, 5},
     {"_mixprobit_aprx_binary_mix_cdf_eval", (DL_FUNC) &_mixprobit_aprx_binary_mix_cdf_eval, 6},
     {"_mixprobit_set_GH_rule_cached", (DL_FUNC) &_mixprobit_set_GH_rule_cached, 1},
     {"_mixprobit_aprx_binary_mix_ghq", (DL_FUNC) &_mixprobit_aprx_binary_mix_ghq, 6},

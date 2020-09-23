@@ -15,12 +15,13 @@ inline void inplace_tri_mat_mult(arma::vec &x, arma::mat const &trimat){
 }
 
 /* compute the dot product with a given column and a vector */
-inline double colvecdot(arma::mat const &X, size_t const i, arma::vec &x){
+inline double colvecdot(arma::mat const &X, size_t const i,
+                        arma::vec const &x) {
   double out(0.);
-  size_t const n = X.n_rows;
+  int const n = X.n_rows;
   double const *d1 = X.colptr(i),
                *d2 = x.memptr();
-  for(unsigned i = 0; i < n; ++i, ++d1, ++d2)
+  for(int i = 0; i < n; ++i, ++d1, ++d2)
     out += *d1 * *d2;
   return out;
 }

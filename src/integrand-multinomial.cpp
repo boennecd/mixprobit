@@ -34,7 +34,7 @@ public:
     double out = -1;
     for(auto l : lp){
       double const val = l + a,
-              dnrm_log = dnorm_std     (val, 1L), // R::dnorm4(val, 0, 1,     1L),
+              dnrm_log = dnorm_std(val, 1L),
               pnrm_log = pnorm_std_aprx(val),
                    rat = std::exp(dnrm_log - pnrm_log);
       out -= rat * (val + rat);
@@ -178,7 +178,7 @@ arma::vec multinomial::gr(double const *par) const {
     double new_term_denom(start_val);
     for(unsigned j = 0; j < n_alt; ++j){
       double const lpj = a + lp[j],
-              dnrm_log = dnorm_std(lpj,     1L),
+              dnrm_log = dnorm_std(lpj, 1L),
               pnrm_log = pnorm_std(lpj, 1L, 1L);
 
       new_term_denom += pnrm_log;
@@ -289,7 +289,7 @@ arma::mat multinomial::Hessian(double const *par) const {
     /* compute dnorm and pnorms */
     for(unsigned j = 0; j < n_alt; ++j){
       double const lpj = a + lp[j];
-      dnrms_log[j] = dnorm_std(lpj,     1L);
+      dnrms_log[j] = dnorm_std(lpj, 1L);
       pnrms_log[j] = pnorm_std(lpj, 1L, 1L);
     }
 

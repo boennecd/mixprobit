@@ -29,8 +29,8 @@ aprx_mult_mix_cdf <- function(n_alt, eta, Z, Sigma, maxpts, abseps, releps) {
     .Call('_mixprobit_aprx_mult_mix_cdf', PACKAGE = 'mixprobit', n_alt, eta, Z, Sigma, maxpts, abseps, releps)
 }
 
-aprx_binary_mix_cdf_get_ptr <- function(data, n_threads, gradient = FALSE, minvls = 0L) {
-    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads, gradient, minvls)
+aprx_binary_mix_cdf_get_ptr <- function(data, n_threads, gradient = FALSE, minvls = 0L, do_reorder = TRUE) {
+    .Call('_mixprobit_aprx_binary_mix_cdf_get_ptr', PACKAGE = 'mixprobit', data, n_threads, gradient, minvls, do_reorder)
 }
 
 aprx_binary_mix_cdf_eval <- function(ptr, beta, log_sds, maxpts, abseps, releps) {
