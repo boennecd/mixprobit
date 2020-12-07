@@ -110,7 +110,7 @@ context("restrictcdf unit tests") {
     restrictcdf::cdf<restrictcdf::deriv>::set_working_memory
       (4L, 1L);
     auto res = restrictcdf::cdf<restrictcdf::deriv>(
-      mean, sigma, true).approximate(1000000L, abseps, -1);
+      mean, sigma, true).approximate(10000000L, abseps, -1);
 
     expect_true(res.inform == 0L);
     expect_true(res.finest.n_elem == expect.n_elem);

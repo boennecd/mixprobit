@@ -1009,8 +1009,9 @@
       PARAMETER ( PLIM = 28, NLIM = 1000, KLIM = 100, FLIM = 5000 )
       PARAMETER ( MINSMP = 8 )
       INTEGER P(PLIM), C(PLIM,KLIM-1), PR(NLIM)
-      DOUBLE PRECISION DIFINT, FINVAL(FLIM), VARSQR(FLIM), VAREST(FLIM),
-     &     VARPRD, X(NLIM), R(NLIM), VK(NLIM), VALUES(FLIM), FS(FLIM)
+      DOUBLE PRECISION DIFINT, FINVAL(FLIM), M(FLIM), FINEST_VAR(FLIM),
+     &     SIG_NEW, X(NLIM), R(NLIM), VK(NLIM), VALUES(FLIM), FS(FLIM),
+     &     SIG_OLD, W_DENOM
       PARAMETER ( ONE = 1 )
 *
 *    Optimal Parameters for Lattice Rules
@@ -1158,7 +1159,7 @@
       IF ( MINVLS .GE. 0 ) THEN
          DO K = 1, NF
             FINEST(K) = 0
-            VAREST(K) = 0
+            FINEST_VAR(K) = 0
          END DO
          SAMPLS = MINSMP
 *         DO I = MIN( NDIM, 10 ), PLIM
@@ -1181,28 +1182,43 @@
       END DO
       DO K = 1, NF
          FINVAL(K) = 0
-         VARSQR(K) = 0
+         M(K) = 0
       END DO
 *
       DO I = 1, SAMPLS
          CALL MVKRSV( NDIM,KLIM,VALUES, P(NP),VK, NF,FUNSUB, X,R,PR,FS )
          DO K = 1, NF
-            DIFINT = ( VALUES(K) - FINVAL(K) )/I
-            FINVAL(K) = FINVAL(K) + DIFINT
-            VARSQR(K) = ( I - 2 )*VARSQR(K)/I + DIFINT**2
+            DIFINT = VALUES(K) - FINVAL(K)
+            FINVAL(K) = FINVAL(K) + DIFINT / I
+            M(K)      = M(K) + DIFINT * (VALUES(K) - FINVAL(K))
          END DO
       END DO
 *
       INTVLS = INTVLS + 2*SAMPLS*P(NP)
-      KMX = 1
+      KMX = 0
       DO K = 1, NF
-         VARPRD = VAREST(K)*VARSQR(K)
-         FINEST(K) = FINEST(K) + ( FINVAL(K) - FINEST(K) )/( 1+VARPRD )
-         IF ( VARSQR(K) .GT. 0 ) VAREST(K) = ( 1 + VARPRD )/VARSQR(K)
-         IF ( ABS(FINEST(K)) .GT. ABS(FINEST(KMX)) ) KMX = K
+         SIG_NEW = (M(K) / (SAMPLS - 1)) / SAMPLS
+         IF ( FINEST_VAR(K) .LE. 0 ) THEN
+            FINEST(K)     = FINVAL(K)
+            FINEST_VAR(K) = SIG_NEW
+         ELSE IF ( SIG_NEW .GT. 0 ) THEN
+            SIG_OLD = FINEST_VAR(K)
+            W_DENOM = 1 / SIG_NEW + 1 / SIG_OLD
+            FINEST(K) = ( FINEST(K) / SIG_OLD + FINVAL(K) / SIG_NEW ) /
+     &       W_DENOM
+
+            FINEST_VAR(K) = SIG_OLD * SIG_NEW / (SIG_OLD + SIG_NEW)
+         ELSE
+            FINEST(K) = FINVAL(K)
+         END IF
+
+         ABSERR = 7 * SQRT(FINEST_VAR(K)) / 2
+         IF ( ABSERR .GT. MAX( ABSEPS, ABS(FINEST(K))*RELEPS ) ) THEN
+            KMX = KMX + 1
+         END IF
       END DO
-      ABSERR = 7*SQRT( VARSQR(KMX)/( 1 + VARPRD ) )/2
-      IF ( ABSERR .GT. MAX( ABSEPS, ABS(FINEST(KMX))*RELEPS ) ) THEN
+
+      IF ( KMX .GT. 0 ) THEN
          IF ( NP .LT. PLIM ) THEN
             NP = NP + 1
          ELSE
