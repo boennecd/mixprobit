@@ -60,6 +60,9 @@ arma::mat mix_binary::Hessian(double const *par) const {
 }
 
 void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
+  if(is_dim_reduced())
+    throw std::runtime_error("mix_binary::Jacobian not implemented");
+
   using arma::uword;
   memcpy(par_vec.begin(), par, sizeof(double) * n_par);
   assert(X);

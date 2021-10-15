@@ -111,7 +111,7 @@ public:
      pvnorm(x) * f(mode + (-Hessian)^-1/2 * x) / pvnorm(x) */
 template <typename other_integrand>
 class adaptive final : public base_integrand {
-  bool const use_chol; /* eitehr we use a Cholesky or a SV-decomposition */
+  bool const use_chol; /* either we use a Cholesky or a SV-decomposition */
 
   /* compute terms from multivariate normal cumulative distribution
    * function and transform the x vector for subsequent calls */

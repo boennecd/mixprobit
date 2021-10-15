@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // pmvnorm_cpp
 Rcpp::List pmvnorm_cpp(arma::vec const& lower, arma::vec const& upper, arma::vec const& mean, arma::mat const& cov, int const maxpts, double const abseps, double const releps);
 RcppExport SEXP _mixprobit_pmvnorm_cpp(SEXP lowerSEXP, SEXP upperSEXP, SEXP meanSEXP, SEXP covSEXP, SEXP maxptsSEXP, SEXP absepsSEXP, SEXP relepsSEXP) {

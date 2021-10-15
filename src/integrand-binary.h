@@ -13,6 +13,10 @@ class mix_binary final : public base_integrand {
   mutable arma::vec par_vec = arma::vec(n_par),
                     wk_mem  = arma::vec(X ? n_par : 0L);
 
+  bool is_dim_reduced() const {
+    return Z.n_rows < Zorg.n_rows;
+  }
+
   static arma::mat set_Z(arma::mat const &Zin, arma::mat const &S){
 #ifndef NDEBUG
     std::size_t const k = Zin.n_rows;
@@ -20,14 +24,19 @@ class mix_binary final : public base_integrand {
     assert(S.n_rows == k);
     assert(S.n_cols == k);
 
-    return arma::chol(S) * Zin;
+    if(Zin.n_rows <= Zin.n_cols)
+      return arma::chol(S) * Zin;
+
+    arma::mat new_vcov{Zin.t() * S * Zin};
+    return arma::chol(new_vcov);
   }
 
 public:
   mix_binary(arma::ivec const &y, arma::vec const &eta,
              arma::mat const &Zin, arma::mat const &Sigma,
              arma::mat const *X = nullptr):
-  y(y), eta(eta), Zorg(Zin), Z(set_Z(Zin, Sigma)), X(X),
+  y(y), eta(eta), Zorg(Zin),
+  Z(set_Z(Zin, Sigma)), X(X),
   d_Sigma_chol(([&]{
     if(!X)
       return arma::mat();
@@ -36,8 +45,7 @@ public:
     assert(eta.n_elem == n);
     assert(Z.n_cols   == n);
     assert(n_par > 1L);
-    if(X)
-      assert(X->n_cols == n);
+    assert(!X || X->n_cols == n);
   }
 
   double operator()
