@@ -6,7 +6,7 @@
 
 namespace integrand {
 double mix_binary::operator()(double const *par, bool const ret_log) const {
-  memcpy(par_vec.begin(), par, sizeof(double) * n_par);
+  std::copy(par, par + n_par, par_vec.begin());
   double out(0);
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + colvecdot(Z, i, par_vec);
@@ -21,8 +21,7 @@ double mix_binary::operator()(double const *par, bool const ret_log) const {
 }
 
 arma::vec mix_binary::gr(double const *par) const {
-  memcpy(par_vec.begin(), par, sizeof(double) * n_par);
-
+  std::copy(par, par + n_par, par_vec.begin());
   arma::vec gr(n_par, arma::fill::zeros);
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + colvecdot(Z, i, par_vec),
@@ -37,7 +36,7 @@ arma::vec mix_binary::gr(double const *par) const {
 }
 
 arma::mat mix_binary::Hessian(double const *par) const {
-  memcpy(par_vec.begin(), par, sizeof(double) * n_par);
+  std::copy(par, par + n_par, par_vec.begin());
   arma::mat He(n_par, n_par, arma::fill::zeros);
   constexpr int const ONE(1L);
   constexpr char const U('U');
@@ -61,10 +60,11 @@ arma::mat mix_binary::Hessian(double const *par) const {
 
 void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
   if(is_dim_reduced())
+    // TODO: have to implement this
     throw std::runtime_error("mix_binary::Jacobian not implemented");
 
   using arma::uword;
-  memcpy(par_vec.begin(), par, sizeof(double) * n_par);
+  std::copy(par, par + n_par, par_vec.begin());
   assert(X);
   uword const vcov_dim = (n_par * (n_par + 1L)) / 2L;
   assert(d_Sigma_chol.n_rows == vcov_dim);
@@ -76,33 +76,66 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
   arma::vec fix_part(jac.memptr() + 1L, X->n_rows, false);
   arma::vec vcov_part(jac.memptr() + 1L + X->n_rows, vcov_dim, false);
 
-  wk_mem.zeros();
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + colvecdot(Z, i, par_vec),
-               pnrm = y[i] > 0 ? pnorm_std(lp, 1L, 1L) :
-                                 pnorm_std(lp, 0L, 1L),
+               pnrm = y[i] > 0 ? pnorm_std(lp, 1L, 1L)
+                               : pnorm_std(lp, 0L, 1L),
                dnrm =            dnorm_std(lp, 1L),
-               fac  = y[i] > 0 ?  std::exp(dnrm - pnrm) :
-                                 -std::exp(dnrm - pnrm);
+               fac  = y[i] > 0 ?  std::exp(dnrm - pnrm)
+                               : -std::exp(dnrm - pnrm);
 
     integrand += pnrm;
     fix_part  += fac * X->col(i);
-    wk_mem    += fac * Zorg.col(i);
   }
 
-  integrand  = std::exp(integrand);
+  double const weight{std::exp(integrand)};
+  integrand  = weight;
   fix_part  *= integrand;
-  wk_mem    *= integrand;
 
-  /* TODO: we can do this afterwards */
-  uword ij(0);
-  for(uword j = 0; j < n_par; ++j)
-    for(uword i = 0; i <= j; ++i, ++ij){
-      double const ele = par_vec.at(i) * wk_mem.at(j),
-                   *sp = d_Sigma_chol.memptr() + ij;
+  /* if C^TC = Sigma then we need to compute
+   *
+   *   [weight] * 1/2 C^(-1)(x.x^T - I)C^(-1).
+   *
+   * We compute the [weight] * (x.x^T - I) for now.
+   */
+  par_vec *= std::sqrt(weight);
+  double * vc_part_i{vcov_part.begin()};
+  for(uword j = 0; j < n_par; ++j){
+    for(uword i = 0; i < j; ++i)
+      *vc_part_i++ = par_vec[i] * par_vec[j];
+    *vc_part_i++ = par_vec[j] * par_vec[j] - weight;
+  }
+}
 
-      for(uword k = 0; k <= ij; ++k, sp += vcov_dim)
-        vcov_part.at(k) += ele * *sp;
-    }
+void mix_binary::Jacobian_post_process(arma::vec &jac) const {
+  if(is_dim_reduced())
+    // TODO: have to implement this
+    throw std::runtime_error("mix_binary::Jacobian not implemented");
+
+  arma::mat const Sigma_chol(arma::chol(Sigma));
+  arma::mat r1(n_par, n_par),
+            r2(n_par, n_par);
+
+  double * const vcov_part{jac.memptr() + 1L + X->n_rows};
+  {
+    double * vc_ij{vcov_part};
+    for(arma::uword j = 0; j < n_par; ++j)
+      for(arma::uword i = 0; i <= j; ++i){
+        r1(i, j) = *vc_ij   / 2;
+        r1(j, i) = *vc_ij++ / 2;
+      }
+  }
+
+  arma::solve(r2, arma::trimatu(Sigma_chol), r1);
+  arma::inplace_trans(r2);
+  arma::solve(r1, arma::trimatu(Sigma_chol), r2);
+
+  // copy the upper part
+  double * vc_ij{vcov_part};
+  for(arma::uword j = 0; j < n_par; ++j){
+    for(arma::uword i = 0; i < j; ++i)
+      *vc_ij++ = 2 * r1(i, j);
+    *vc_ij++ = r1(j, j);
+  }
 }
 }

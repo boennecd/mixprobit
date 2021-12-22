@@ -45,7 +45,7 @@ public:
   ~base_integrand() = default;
 };
 
-/* adds an iid normal distiribution factor to the integrand */
+/* adds an iid normal distribution factor to the integrand */
 template <typename other_integrand>
 class mvn final : public base_integrand {
   other_integrand const &other_terms;

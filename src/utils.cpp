@@ -1,7 +1,8 @@
 #include "utils.h"
+using arma::uword;
+
 arma::mat dchol(arma::mat const &X, bool const upper)
 {
-  using arma::uword;
   uword const ndim = X.n_rows,
     nvech = (ndim * (ndim + 1L)) / 2L;
   arma::mat out(nvech, nvech, arma::fill::zeros);
@@ -83,4 +84,25 @@ arma::mat dchol(arma::mat const &X, bool const upper)
   }
 
   return out;
+}
+
+arma::mat dcond_vcov
+  (arma::mat const &H, arma::mat const &dH_inv, arma::mat const &Sigma){
+  arma::uword const n{H.n_cols};
+  arma::mat res = dH_inv,
+            dum(n, n);
+
+  auto perform_solve =
+    [](arma::mat &res, arma::mat const &lhs, arma::mat const &rhs){
+      if(!arma::solve(res, lhs, rhs, arma::solve_opts::likely_sympd))
+        throw std::runtime_error("dcond_vcov: solve failed");
+    };
+
+  perform_solve(dum, H, res);
+  perform_solve(res, Sigma, dum);
+  arma::inplace_trans(res);
+  perform_solve(dum, H, res);
+  perform_solve(res, Sigma, dum);
+
+  return res;
 }

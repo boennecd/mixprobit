@@ -173,7 +173,7 @@ context("ranrth-wrapper unit tests") {
     arma::ivec y;
     y << 0L << 0L << 0L << 0L;
 
-    constexpr double const abseps = 1e-3;
+    constexpr double const releps = 1e-1;
     arma::vec expec;
     expec << 0.223175338758645
           << 0.0103246106433447 << -0.0160370124670925
@@ -182,23 +182,27 @@ context("ranrth-wrapper unit tests") {
           << 0.00618822615335066 << -0.00709493339802656;
     arma::uword const ex_dim = 1L + q + (p * (p + 1L)) / 2L;
     for(int key = 1L; key < 5L; ++key){
+      mix_binary bin(y, eta, Z, S, &X);
       set_integrand(std::unique_ptr<base_integrand>(
           new mix_binary(y, eta, Z, S, &X)));
       auto run_test = [&]{
-        auto res = jac_arpx(1000000L, key, abseps, -1.);
+        auto res = jac_arpx(10000000L, key, -1, releps);
+        bin.Jacobian_post_process(res.value);
+
         expect_true(res.value.n_elem == ex_dim);
         expect_true(res.err.n_elem == ex_dim);
 
         expect_true(res.inform == 0L);
         for(unsigned i = 0; i < res.err.n_elem; ++i){
-          expect_true(res.err[i] < 4 * abseps);
-          expect_true(std::abs(res.value[i] - expec[i]) < 4 * abseps);
+          expect_true(res.err[i] < 4 * releps * std::abs(res.value[i]));
+          expect_true(std::abs(res.value[i] - expec[i]) <
+            4 * std::abs(expec[i]) * releps);
         }
       };
       run_test();
 
       /* test w/ adaptive method */
-      mix_binary bin(y, eta, Z, S, &X);
+
       mvn<mix_binary> m(bin);
 
       set_integrand(std::unique_ptr<base_integrand>(

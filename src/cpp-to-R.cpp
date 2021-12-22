@@ -139,20 +139,19 @@ Rcpp::NumericVector aprx_jac_binary_mix(
 
   parallelrng::set_rng_seeds(1L);
   auto const res = ([&](){
+    mix_binary bin(y, eta, Z, Sigma, &X);
     if(is_adaptive){
-      mix_binary bin(y, eta, Z, Sigma, &X);
       mvn<mix_binary > mix_bin(bin);
-
       set_integrand(std::unique_ptr<base_integrand>(
           new adaptive<mvn<mix_binary> > (mix_bin, true)));
 
-      return jac_arpx(maxpts, key, abseps, releps);
-    }
+    } else
+      set_integrand(std::unique_ptr<base_integrand>(
+          new mix_binary(y, eta, Z, Sigma, &X)));
 
-    set_integrand(std::unique_ptr<base_integrand>(
-        new mix_binary(y, eta, Z, Sigma, &X)));
-
-    return jac_arpx(maxpts, key, abseps, releps);
+    auto res = jac_arpx(maxpts, key, abseps, releps);
+    bin.Jacobian_post_process(res.value);
+    return res;
   })();
 
   NumericVector out(Rcpp::wrap(res.value));

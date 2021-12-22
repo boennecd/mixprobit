@@ -1,6 +1,7 @@
 #ifndef MIX_UTILS_H
 #define MIX_UTILS_H
 #include "arma-wrap.h"
+#include <memory.h>
 
 /* C++ version of the dtrmv BLAS function */
 inline void inplace_tri_mat_mult(arma::vec &x, arma::mat const &trimat){
@@ -38,6 +39,18 @@ inline double log_exp_add(double const t1, double const t2){
  *    upper: logical for whether vech denotes the upper triangular part.
  */
 arma::mat dchol(arma::mat const&, bool const upper = false);
+
+/* Given Sigma symmetric positive define matrices Sigma and K, let
+ *
+ *   H = K + Sigma^(-1)
+ *
+ * Then given the gradient with respect to H^-1, the function applies the chain
+ * rule and computes the derivatives with respect to Sigma. These is given by
+ *
+ *   vec(Sigma^-1H^-1vec^-1(<gradient>)H^-1Sigma^-1)
+ */
+arma::mat dcond_vcov(arma::mat const &H, arma::mat const &dH_inv,
+                     arma::mat const &Sigma);
 
 /* very simple importance sampler with so-called location and scaled
  * balanced antithetic variables for multivariate normal distributed

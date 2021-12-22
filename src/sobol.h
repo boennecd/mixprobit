@@ -9,16 +9,13 @@ public:
   int const dimen;
 
 private:
-  std::unique_ptr<double[]> quasi =
-    std::unique_ptr<double[]>(new double[dimen]);
+  std::unique_ptr<double[]> quasi{new double[dimen]};
   int count = 0L,
          ll = 0L;
-  std::unique_ptr<int[]> sv =
-    std::unique_ptr<int   []>(new int   [dimen * 30L]);;
+  std::unique_ptr<int[]> sv{new int[dimen * 30L]};
 
 public:
-  sobol_gen(int const dimen, int const scrambling, int const seed);
-  sobol_gen(int const dimen): sobol_gen(dimen, 0L, 4711L) { }
+  sobol_gen(int const dimen, int const scrambling = 0, int const seed = 4711);
 
   /* sets the next vector to the array. No checks on the pointer */
   void operator()(double*);

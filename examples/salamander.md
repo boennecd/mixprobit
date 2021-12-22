@@ -1,5 +1,4 @@
-Salamander Data Set
-===================
+# Salamander Data Set
 
 Load the data
 
@@ -20,7 +19,7 @@ sala <- within(sala, {
 })
 ```
 
-Assign cluster (TODO: we must be able to this in a smart way...)
+Assign cluster (TODO: we must be able to this in a smart way…)
 
 ``` r
 sala$cl <- with(sala, {
@@ -74,7 +73,6 @@ with(sala, {
 ![](fig-salamander/asg_cluster-1.png)
 
 ``` r
-
 # get summary stats for clusters
 local({
   sum_dat <- sapply(split(sala, sala$cl), function(x){
@@ -106,8 +104,7 @@ Assign the formulas that we need
 frm <- list(X = ~ wsm * wsf, Z = ~ female + male - 1)
 ```
 
-Fit Model Without Random Effects
---------------------------------
+## Fit Model Without Random Effects
 
 ``` r
 summary(glm_fit <- glm(update(frm$X, y ~ .), binomial("probit"), sala))
@@ -141,13 +138,12 @@ logLik(glm_fit)
 #> 'log Lik.' -222.8 (df=4)
 ```
 
-lmec
-----
+## lmec
 
-Will not work as the `varstruct` argument can only be `"unstructured"` or `"diagonal"`.
+Will not work as the `varstruct` argument can only be `"unstructured"`
+or `"diagonal"`.
 
-Stan
-----
+## Stan
 
 Here is the Stan file we use.
 
@@ -215,23 +211,24 @@ stan_fit <- within(list(), {
 #> post-warmup draws per chain=10000, total post-warmup draws=40000.
 #> 
 #>           mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
-#> beta[1]   0.62       0 0.26  0.13  0.45  0.62  0.79  1.15 14508    1
-#> beta[2]  -0.43       0 0.29 -1.02 -0.62 -0.43 -0.23  0.14 19425    1
-#> beta[3]  -1.81       0 0.35 -2.54 -2.03 -1.80 -1.57 -1.15 10552    1
-#> beta[4]   2.22       0 0.38  1.51  1.96  2.22  2.47  2.98 11073    1
-#> sigma[1]  0.72       0 0.16  0.42  0.60  0.71  0.82  1.06  4804    1
-#> sigma[2]  0.76       0 0.17  0.45  0.65  0.75  0.87  1.13  4811    1
+#> beta[1]   0.63       0 0.26  0.14  0.45  0.62  0.80  1.15 16478    1
+#> beta[2]  -0.43       0 0.29 -1.02 -0.62 -0.43 -0.23  0.14 20650    1
+#> beta[3]  -1.81       0 0.35 -2.53 -2.04 -1.80 -1.57 -1.16 12027    1
+#> beta[4]   2.23       0 0.38  1.52  1.97  2.22  2.47  2.99 12028    1
+#> sigma[1]  0.72       0 0.16  0.42  0.60  0.71  0.82  1.06  5041    1
+#> sigma[2]  0.77       0 0.17  0.47  0.65  0.76  0.87  1.13  5605    1
 #> 
-#> Samples were drawn using NUTS(diag_e) at Mon Feb  3 16:31:54 2020.
+#> Samples were drawn using NUTS(diag_e) at Tue Dec 21 17:06:40 2021.
 #> For each parameter, n_eff is a crude measure of effective sample size,
 #> and Rhat is the potential scale reduction factor on split chains (at 
 #> convergence, Rhat=1).
 ```
 
-glmer (Laplace Approximation)
------------------------------
+## glmer (Laplace Approximation)
 
-We only use the Laplace approximation from `glmer` as adaptive Gauss–Hermite quadrature is not available with crossed random effects (and would take forever with this data set).
+We only use the Laplace approximation from `glmer` as adaptive
+Gauss–Hermite quadrature is not available with crossed random effects
+(and would take forever with this data set).
 
 ``` r
 library(lme4)
@@ -270,10 +267,10 @@ glmer_fit <- within(list(), {
 #>   nAGQ > 1 is only available for models with a single, scalar random-effects term
 ```
 
-CDF Approximation and Genz & Monahan Approximation
---------------------------------------------------
+## CDF Approximation and Genz & Monahan Approximation
 
-Fit models with the CDF approximation like in Pawitan et al. (2004) and the method by Genz and Monahan (1999).
+Fit models with the CDF approximation like in Pawitan et al. (2004) and
+the method by Genz and Monahan (1999).
 
 ``` r
 library(mixprobit)
@@ -282,6 +279,7 @@ library(parallel)
 
 <!-- knitr::opts_knit$set(output.dir = ".") -->
 <!-- knitr::load_cache("cdf_arpx", path = "cache-salamander/") -->
+
 ``` r
 mix_prob_fit <- within(list(), {
   # setup cluster
@@ -488,6 +486,7 @@ mix_prob_fit <- within(list(), {
       } else
         cat("Gradient test passed (GM)\n")
   })
+  browser()
   
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
@@ -532,51 +531,77 @@ mix_prob_fit <- within(list(), {
 })
 #> Gradient test passed
 #> Gradient test passed (GM)
+#> Called from: eval(substitute(expr), e)
+#> debug at <text>#209: fit_CDF_cpp_fast <- take_time(opt_use(par, ll_cpp, maxpts = 5000L, 
+#>     releps = 0.1, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1, gr = ll_cpp_grad)
 #> 
-#> initial  value 0.993384 
-#> iter  10 value 0.932458
-#> iter  20 value 0.928764
-#> iter  30 value 0.928316
-#> iter  40 value 0.928310
-#> final  value 0.928309 
+#> initial  value 0.993383 
+#> iter  10 value 0.941301
+#> iter  20 value 0.928813
+#> iter  30 value 0.928774
+#> final  value 0.928767 
 #> converged
 #> 
+#> debug at <text>#214: GM_meth <- mixprobit:::aprx_binary_mix
+#> debug at <text>#215: formals(GM_meth)$is_adaptive <- TRUE
+#> debug at <text>#216: GM_meth_gr <- mixprobit:::aprx_jac_binary_mix
+#> debug at <text>#217: formals(GM_meth_gr)$is_adaptive <- TRUE
+#> debug at <text>#218: gr <- function(...) {
+#>     args <- list(...)
+#>     args$meth <- GM_meth_gr
+#>     do.call(ll_func_gr, args)
+#> }
+#> debug at <text>#224: fit_Genz_Monahan_fast <- take_time(opt_use(par, ll_func, gr, 
+#>     maxpts = 1000L, releps = 0.1, meth = GM_meth))
 #> Running:
 #>   opt_use(par, ll_func, gr, maxpts = 1000L, releps = 0.1, meth = GM_meth)
 #> 
 #> initial  value 0.993383 
-#> iter  10 value 0.934811
-#> iter  20 value 0.928878
-#> iter  30 value 0.928220
-#> iter  40 value 0.928215
-#> final  value 0.928215 
+#> iter  10 value 0.934767
+#> iter  20 value 0.928882
+#> iter  30 value 0.928225
+#> iter  40 value 0.928219
+#> final  value 0.928219 
 #> converged
 #> 
+#> debug at <text>#230: eps_use <- 1e-04
+#> debug at <text>#231: cdf_par <- fit_CDF_cpp_fast$par
+#> debug at <text>#232: fit_CDF_cpp <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
+#>     releps = eps_use, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use, 
 #>       gr = ll_cpp_grad)
 #> 
-#> initial  value 0.928387 
-#> final  value 0.928386 
+#> initial  value 0.928804 
+#> iter  10 value 0.928576
+#> final  value 0.928564 
 #> converged
 #> 
+#> debug at <text>#234: fit_CDF_cpp_wo_grad <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
+#>     releps = eps_use))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use)
 #> 
-#> initial  value 0.928387 
-#> final  value 0.928385 
+#> initial  value 0.928804 
+#> iter  10 value 0.928617
+#> final  value 0.928577 
 #> converged
 #> 
+#> debug at <text>#236: fit_CDF <- take_time(opt_use(cdf_par, ll_func, maxpts = 100000L, 
+#>     releps = eps_use, meth = mixprobit:::aprx_binary_mix_cdf))
 #> Running:
 #>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = eps_use, 
 #>       meth = mixprobit:::aprx_binary_mix_cdf)
 #> 
-#> initial  value 0.928568 
-#> final  value 0.928563 
+#> initial  value 0.928758 
+#> final  value 0.928757 
 #> converged
 #> 
+#> debug at <text>#240: gmo_start <- fit_Genz_Monahan_fast$par
+#> debug at <text>#241: fit_Genz_Monahan <- take_time(opt_use(gmo_start, ll_func, gr, 
+#>     maxpts = 100000L, releps = eps_use, meth = GM_meth))
 #> Running:
 #>   opt_use(gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use, 
 #>       meth = GM_meth)
@@ -584,9 +609,13 @@ mix_prob_fit <- within(list(), {
 #> initial  value 0.928557 
 #> final  value 0.928557 
 #> converged
+#> 
+#> debug at <text>#246: fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- fit_CDF$q <- fit_Genz_Monahan$q <- fit_CDF_cpp_wo_grad$q <- q
 ```
 
-Show the estimates of the methods. The `_cpp` function differs by using an almost purely C++ implementation which supports computation in parallel.
+Show the estimates of the methods. The `_cpp` function differs by using
+an almost purely C++ implementation which supports computation in
+parallel.
 
 ``` r
 local({
@@ -630,13 +659,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6208     -0.4290     -1.7242      2.1243 
+#>      0.5840     -0.3892     -1.6414      2.0409 
 #> 
 #> Random effect standard deviations              
-#> 0.7073 0.6835 
+#> 0.6790 0.6494 
 #> 
-#> Log-likelihood estimate -206.82
-#> Computation time 21.28/0.43 (seconds total/per function evaluation)
+#> Log-likelihood estimate -206.92
+#> Computation time 2.63/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -644,13 +673,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6182     -0.4287     -1.7216      2.1267 
+#>      0.6173     -0.4280     -1.7192      2.1237 
 #> 
 #> Random effect standard deviations              
-#> 0.7103 0.6807 
+#> 0.7077 0.6781 
 #> 
-#> Log-likelihood estimate -206.79
-#> Computation time 14.45/0.03 (seconds total/per function evaluation)
+#> Log-likelihood estimate -206.80
+#> Computation time 11.02/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -658,13 +687,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6217     -0.4274     -1.7250      2.1268 
+#>      0.5843     -0.3889     -1.6420      2.0405 
 #> 
 #> Random effect standard deviations              
-#> 0.7094 0.6824 
+#> 0.6794 0.6492 
 #> 
-#> Log-likelihood estimate -206.87
-#> Computation time 43.66/0.53 (seconds total/per function evaluation)
+#> Log-likelihood estimate -206.92
+#> Computation time 42.51/0.64 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -672,13 +701,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6206     -0.4305     -1.7228      2.1249 
+#>      0.6163     -0.4278     -1.7139      2.1177 
 #> 
 #> Random effect standard deviations              
-#> 0.7075 0.6817 
+#> 0.7041 0.6759 
 #> 
-#> Log-likelihood estimate -206.83
-#> Computation time 5.92/0.66 (seconds total/per function evaluation)
+#> Log-likelihood estimate -206.87
+#> Computation time 28.50/0.84 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -686,13 +715,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6178     -0.4295     -1.7209      2.1291 
+#>      0.5967     -0.4011     -1.6976      2.0993 
 #> 
 #> Random effect standard deviations              
-#> 0.7089 0.6829 
+#> 0.7076 0.6820 
 #> 
-#> Log-likelihood estimate -206.83
-#> Computation time 29.84/0.45 (seconds total/per function evaluation)
+#> Log-likelihood estimate -206.88
+#> Computation time 137.84/0.53 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -700,22 +729,22 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.6182     -0.4297     -1.7210      2.1268 
+#>      0.6173     -0.4289     -1.7188      2.1243 
 #> 
 #> Random effect standard deviations              
-#> 0.7095 0.6808 
+#> 0.7086 0.6799 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 17.78/0.27 (seconds total/per function evaluation)
+#> Computation time 8.02/0.12 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 
 I am not sure but I suspect that the CDF approximation is more precise.
 
-Small Clusters
---------------
+## Small Clusters
 
-We artificially increase the number of clusters by removing mating pairs to grasp the effect on the computation time. First, we remove the pairs.
+We artificially increase the number of clusters by removing mating pairs
+to grasp the effect on the computation time. First, we remove the pairs.
 
 ``` r
 sala <- local({
@@ -811,7 +840,6 @@ with(sala, {
 ![](fig-salamander/again_asg_cluster-1.png)
 
 ``` r
-
 # get summary stats for clusters
 local({
   sum_dat <- sapply(split(sala, sala$cl), function(x){
@@ -1048,6 +1076,7 @@ mix_prob_fit <- within(list(), {
       } else
         cat("Gradient test passed (GM)\n")
   })
+  browser()
   
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
@@ -1092,60 +1121,90 @@ mix_prob_fit <- within(list(), {
 })
 #> Gradient test passed
 #> Gradient test passed (GM)
+#> Called from: eval(substitute(expr), e)
+#> debug at <text>#209: fit_CDF_cpp_fast <- take_time(opt_use(par, ll_cpp, maxpts = 5000L, 
+#>     releps = 0.1, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1, gr = ll_cpp_grad)
 #> 
-#> initial  value 0.998363 
-#> iter  10 value 0.992292
-#> iter  20 value 0.985668
-#> iter  30 value 0.983107
-#> iter  40 value 0.982476
-#> final  value 0.982472 
+#> initial  value 0.998361 
+#> iter  10 value 0.989991
+#> iter  20 value 0.985346
+#> iter  30 value 0.982752
+#> iter  40 value 0.982460
+#> final  value 0.982451 
 #> converged
 #> 
+#> debug at <text>#214: GM_meth <- mixprobit:::aprx_binary_mix
+#> debug at <text>#215: formals(GM_meth)$is_adaptive <- TRUE
+#> debug at <text>#216: GM_meth_gr <- mixprobit:::aprx_jac_binary_mix
+#> debug at <text>#217: formals(GM_meth_gr)$is_adaptive <- TRUE
+#> debug at <text>#218: gr <- function(...) {
+#>     args <- list(...)
+#>     args$meth <- GM_meth_gr
+#>     do.call(ll_func_gr, args)
+#> }
+#> debug at <text>#224: fit_Genz_Monahan_fast <- take_time(opt_use(par, ll_func, gr, 
+#>     maxpts = 1000L, releps = 0.1, meth = GM_meth))
 #> Running:
 #>   opt_use(par, ll_func, gr, maxpts = 1000L, releps = 0.1, meth = GM_meth)
 #> 
 #> initial  value 0.998363 
-#> iter  10 value 0.992208
-#> iter  20 value 0.985610
-#> iter  30 value 0.982867
-#> iter  40 value 0.982308
-#> iter  50 value 0.982298
+#> iter  10 value 0.992215
+#> iter  20 value 0.985614
+#> iter  30 value 0.982880
+#> iter  40 value 0.982303
 #> final  value 0.982297 
 #> converged
 #> 
+#> debug at <text>#230: eps_use <- 1e-04
+#> debug at <text>#231: cdf_par <- fit_CDF_cpp_fast$par
+#> debug at <text>#232: fit_CDF_cpp <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
+#>     releps = eps_use, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use, 
 #>       gr = ll_cpp_grad)
 #> 
-#> initial  value 0.982461 
-#> final  value 0.982461 
+#> initial  value 0.982558 
+#> iter  10 value 0.982466
+#> final  value 0.982465 
 #> converged
 #> 
+#> debug at <text>#234: fit_CDF_cpp_wo_grad <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
+#>     releps = eps_use))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use)
 #> 
-#> initial  value 0.982461 
-#> final  value 0.982461 
+#> initial  value 0.982558 
+#> iter  10 value 0.982472
+#> final  value 0.982464 
 #> converged
 #> 
+#> debug at <text>#236: fit_CDF <- take_time(opt_use(cdf_par, ll_func, maxpts = 100000L, 
+#>     releps = eps_use, meth = mixprobit:::aprx_binary_mix_cdf))
 #> Running:
 #>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = eps_use, 
 #>       meth = mixprobit:::aprx_binary_mix_cdf)
 #> 
-#> initial  value 0.982469 
-#> final  value 0.982469 
+#> initial  value 0.982558 
+#> iter  10 value 0.982469
+#> iter  20 value 0.982462
+#> final  value 0.982462 
 #> converged
 #> 
+#> debug at <text>#240: gmo_start <- fit_Genz_Monahan_fast$par
+#> debug at <text>#241: fit_Genz_Monahan <- take_time(opt_use(gmo_start, ll_func, gr, 
+#>     maxpts = 100000L, releps = eps_use, meth = GM_meth))
 #> Running:
 #>   opt_use(gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use, 
 #>       meth = GM_meth)
 #> 
-#> initial  value 0.982465 
+#> initial  value 0.982466 
 #> iter  10 value 0.982463
 #> final  value 0.982463 
 #> converged
+#> 
+#> debug at <text>#246: fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- fit_CDF$q <- fit_Genz_Monahan$q <- fit_CDF_cpp_wo_grad$q <- q
 ```
 
 ``` r
@@ -1190,13 +1249,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4060     -0.1876     -1.2705      1.3915 
+#>      0.4083     -0.1858     -1.2719      1.3875 
 #> 
 #> Random effect standard deviations              
-#> 0.6206 0.4949 
+#> 0.5885 0.4733 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 7.48/0.12 (seconds total/per function evaluation)
+#> Computation time 0.53/0.01 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -1204,13 +1263,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4080     -0.1928     -1.2725      1.3996 
+#>      0.4098     -0.1935     -1.2753      1.3993 
 #> 
 #> Random effect standard deviations              
-#> 0.6246 0.5026 
+#> 0.6246 0.5035 
 #> 
 #> Log-likelihood estimate -92.01
-#> Computation time 18.84/0.02 (seconds total/per function evaluation)
+#> Computation time 13.96/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -1218,13 +1277,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4060     -0.1876     -1.2704      1.3915 
+#>      0.4057     -0.1872     -1.2695      1.3903 
 #> 
 #> Random effect standard deviations              
-#> 0.6206 0.4949 
+#> 0.6202 0.4952 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 3.60/0.26 (seconds total/per function evaluation)
+#> Computation time 79.25/0.26 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -1232,13 +1291,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4060     -0.1876     -1.2704      1.3915 
+#>      0.4061     -0.1833     -1.2684      1.3819 
 #> 
 #> Random effect standard deviations              
-#> 0.6206 0.4949 
+#> 0.6189 0.4920 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 0.46/0.23 (seconds total/per function evaluation)
+#> Computation time 6.91/0.22 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -1246,13 +1305,13 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4060     -0.1876     -1.2704      1.3915 
+#>      0.4061     -0.1832     -1.2692      1.3849 
 #> 
 #> Random effect standard deviations              
-#> 0.6206 0.4949 
+#> 0.6201 0.4968 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 2.07/0.15 (seconds total/per function evaluation)
+#> Computation time 28.51/0.13 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -1260,19 +1319,36 @@ local({
 #> 
 #> Fixed effects
 #> (Intercept)         wsm         wsf     wsm:wsf 
-#>      0.4065     -0.1887     -1.2714      1.3936 
+#>      0.4067     -0.1887     -1.2715      1.3933 
 #> 
 #> Random effect standard deviations              
-#> 0.6216 0.4958 
+#> 0.6216 0.4961 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 13.93/0.09 (seconds total/per function evaluation)
+#> Computation time 9.07/0.05 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 
-References
-----------
+## References
 
-Genz, Alan, and John Monahan. 1999. “A Stochastic Algorithm for High-Dimensional Integrals over Unbounded Regions with Gaussian Weight.” *Journal of Computational and Applied Mathematics* 112 (1): 71–81. doi:[https://doi.org/10.1016/S0377-0427(99)00214-9](https://doi.org/https://doi.org/10.1016/S0377-0427(99)00214-9).
+<div id="refs" class="references csl-bib-body hanging-indent">
 
-Pawitan, Y., M. Reilly, E. Nilsson, S. Cnattingius, and P. Lichtenstein. 2004. “Estimation of Genetic and Environmental Factors for Binary Traits Using Family Data.” *Statistics in Medicine* 23 (3): 449–65. doi:[10.1002/sim.1603](https://doi.org/10.1002/sim.1603).
+<div id="ref-Genz99" class="csl-entry">
+
+Genz, Alan, and John Monahan. 1999. “A Stochastic Algorithm for
+High-Dimensional Integrals over Unbounded Regions with Gaussian Weight.”
+*Journal of Computational and Applied Mathematics* 112 (1): 71–81.
+https://doi.org/<https://doi.org/10.1016/S0377-0427(99)00214-9>.
+
+</div>
+
+<div id="ref-Pawitan04" class="csl-entry">
+
+Pawitan, Y., M. Reilly, E. Nilsson, S. Cnattingius, and P. Lichtenstein.
+2004. “Estimation of Genetic and Environmental Factors for Binary Traits
+Using Family Data.” *Statistics in Medicine* 23 (3): 449–65.
+<https://doi.org/10.1002/sim.1603>.
+
+</div>
+
+</div>
