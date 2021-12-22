@@ -9,22 +9,10 @@ mix_binary::mix_binary(
   arma::ivec const &y, arma::vec const &eta, arma::mat const &Zin,
   arma::mat const &Sigma, arma::mat const *X):
 y(y), eta(eta), Zorg(Zin),
-Z(([](arma::mat const &Zin, arma::mat const &S) -> arma::mat {
-#ifndef NDEBUG
-  std::size_t const k = Zin.n_rows;
-#endif
-  assert(S.n_rows == k);
-  assert(S.n_cols == k);
-
-  if(Zin.n_rows <= Zin.n_cols)
-    return arma::chol(S) * Zin;
-
-  arma::mat new_vcov{Zin.t() * S * Zin};
-  return arma::chol(new_vcov);
-})(Zin, Sigma)), X(X),
-Sigma(Sigma){
+n_par(std::min<std::size_t>(Zin.n_rows, n)), X(X),
+Sigma(Sigma) {
   assert(eta.n_elem == n);
-  assert(Z.n_cols   == n);
+  assert(Zin.n_cols   == n);
   assert(n_par > 1L);
   assert(!X || X->n_cols == n);
 
@@ -37,12 +25,32 @@ Sigma(Sigma){
         std::copy(C.colptr(j), C.colptr(j) + j + 1, Sigma_chol_ij);
     }
 
+    Z = C * Zin;
+
     // store the inverse of Sigma
     arma::inv_sympd(C, Sigma);
     double * Sigma_inv_ij{Sigma_inv};
     for(arma::uword j = 0; j < C.n_cols; ++j, Sigma_inv_ij += j)
       std::copy(C.colptr(j), C.colptr(j) + j + 1, Sigma_inv_ij);
-  } // TODO: handle the else!
+
+  } else {
+    // the covariance matrix used in the integration
+    arma::mat new_vcov{Zin.t() * Sigma * Zin};
+
+    // compute the Cholesky decomposition
+    arma::mat C(arma::chol(new_vcov));
+    Z = C;
+    arma::inplace_trans(C);
+
+    // store the matrix we need
+    ZC_inv = arma::solve(arma::trimatl(C), Zin.t());
+    arma::mat decom = ZC_inv.t() * ZC_inv;
+    arma::inplace_trans(ZC_inv);
+
+    double * Sigma_inv_ij{Sigma_inv};
+    for(arma::uword j = 0; j < decom.n_cols; ++j, Sigma_inv_ij += j)
+      std::copy(decom.colptr(j), decom.colptr(j) + j + 1, Sigma_inv_ij);
+  }
 }
 
 double mix_binary::operator()(double const *par, bool const ret_log) const {
@@ -99,20 +107,15 @@ arma::mat mix_binary::Hessian(double const *par) const {
 }
 
 void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
-  if(is_dim_reduced())
-    // TODO: have to implement this
-    throw std::runtime_error("mix_binary::Jacobian not implemented");
-
   using arma::uword;
   std::copy(par, par + n_par, par_vec.begin());
   assert(X);
   uword const vcov_dim = (n_par * (n_par + 1L)) / 2L;
-  assert(d_Sigma_chol.n_rows == vcov_dim);
-  assert(d_Sigma_chol.n_cols == vcov_dim);
   assert(jac.n_elem == get_n_jac());
 
   jac.zeros();
   double &integrand = jac[0];
+
   arma::vec fix_part(jac.memptr() + 1L, X->n_rows, false);
   arma::vec vcov_part(jac.memptr() + 1L + X->n_rows, vcov_dim, false);
 
@@ -131,29 +134,42 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
   integrand = std::exp(integrand);
   fix_part *= integrand;
 
-  /* if C^TC = Sigma then we need to compute
-   *
-   *   [weight] * 1/2 C^(-1)(x.x^T - I)C^(-1).
-   *
-   */
+  if(is_dim_reduced()){
+    /* we need to change the derivatives w.r.t. the covariance matrix as these
+     * are currently for Psi = Z.Sigma.Z^T. To this, we need to compute
+     *
+     *   [weight] * 1/2 *  Z^T.C^(-1).(x.x^T - I).C^(-T).Z
+     *
+     * and then only the upper part
+     */
+    wk_mem = ZC_inv * par_vec;
 
-  int n_parse = n_par;
-  constexpr int incx{1};
-  F77_CALL(dtpsv)("U", "N", "N", &n_parse, Sigma_chol, par_vec.memptr(),
-                  &incx, 1, 1, 1);
+    double * vc_part_i{vcov_part.begin()};
+    double const * sigma_inv_i{Sigma_inv};
+    for(uword j = 0; j < full_dim; ++j){
+      for(uword i = 0; i < j; ++i)
+        *vc_part_i++ = integrand * (wk_mem[i] * wk_mem[j] - *sigma_inv_i++);
+      *vc_part_i++ = .5 * integrand * (wk_mem[j] * wk_mem[j] - *sigma_inv_i++);
+    }
 
-  double * vc_part_i{vcov_part.begin()};
-  double const * sigma_inv_i{Sigma_inv};
-  for(uword j = 0; j < n_par; ++j){
-    for(uword i = 0; i < j; ++i)
-      *vc_part_i++ = integrand * (par_vec[i] * par_vec[j] - *sigma_inv_i++);
-    *vc_part_i++ = .5 * integrand * (par_vec[j] * par_vec[j] - *sigma_inv_i++);
+  } else {
+    /* if C^TC = Sigma then we need to compute
+     *
+     *   [weight] * 1/2 C^(-1)(x.x^T - I)C^(-T).
+     *
+     */
+    int n_parse = n_par;
+    constexpr int incx{1};
+    F77_CALL(dtpsv)("U", "N", "N", &n_parse, Sigma_chol, par_vec.memptr(),
+                    &incx, 1, 1, 1);
+
+    double * vc_part_i{vcov_part.begin()};
+    double const * sigma_inv_i{Sigma_inv};
+    for(uword j = 0; j < n_par; ++j){
+      for(uword i = 0; i < j; ++i)
+        *vc_part_i++ = integrand * (par_vec[i] * par_vec[j] - *sigma_inv_i++);
+      *vc_part_i++ = .5 * integrand * (par_vec[j] * par_vec[j] - *sigma_inv_i++);
+    }
   }
-}
-
-void mix_binary::Jacobian_post_process(arma::vec &jac) const {
-  if(is_dim_reduced())
-    // TODO: have to implement this
-    throw std::runtime_error("mix_binary::Jacobian not implemented");
 }
 }

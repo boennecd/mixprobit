@@ -35,21 +35,49 @@ class mix_binary final : public base_integrand {
   arma::ivec const &y;
   arma::vec  const &eta;
   arma::mat  const &Zorg;
-  arma::mat Z;
-  std::size_t const n = y.n_elem, n_par = Z.n_rows;
+  std::size_t const n = y.n_elem,
+                n_par,
+                full_dim{std::max<std::size_t>(n_par, Zorg.n_rows)};;
   arma::mat const * const X;
   arma::mat const &Sigma;
-  // TODO: would be nice to avoid working memory here?
-  mutable arma::vec par_vec = arma::vec(n_par);
 
-  std::unique_ptr<double[]> obj_mem{new double[n_par * (n_par + 1)]};
-  /// the non-zero elements of the Cholesky decomposition of Sigma
+  /// memory to store other objects
+  std::unique_ptr<double[]> obj_mem
+    {new double[
+    is_dim_reduced()
+      ? (full_dim * (full_dim + 1)) / 2 + n_par + n_par * n + full_dim
+      : n_par * (n_par + 1) + n_par + n_par * n]};
+  /**
+   * the non-zero elements of the Cholesky decomposition of Sigma.
+   * Not used if is_dim_reduced().
+   */
   double * const Sigma_chol{obj_mem.get()};
-  /// the upper triangular part of the inverse of sigma
-  double * const Sigma_inv{Sigma_chol + (n_par * (n_par + 1)) / 2};
+  /**
+   * the upper triangular part of the inverse of sigma.
+   * If is_dim_reduced(), then it is the for
+   *
+   *    Z^T(Z.Sigma.Z^T)^(-1)Z
+   */
+  double * const Sigma_inv
+    {is_dim_reduced() ? Sigma_chol : Sigma_chol + (n_par * (n_par + 1)) / 2};
+  // TODO: would be nice to avoid working memory here?
+  mutable arma::vec par_vec
+  {is_dim_reduced() ? Sigma_inv + (full_dim * (full_dim + 1)) / 2
+                    : Sigma_inv + (n_par    * (n_par    + 1)) / 2,
+   static_cast<arma::uword>(n_par), false};
+  arma::mat Z
+    {par_vec.end(), static_cast<arma::uword>(n_par),
+     static_cast<arma::uword>(n), false};
+  // TODO: would be nice to avoid working memory here?
+  mutable arma::vec wk_mem{Z.end(), static_cast<arma::uword>(full_dim), false};
+
+  /**
+   * stores ZC^(-1) where C^TC = Z.Sigma.Z^T if is_dim_reduced()
+   */
+  arma::mat ZC_inv;
 
   bool is_dim_reduced() const {
-    return Z.n_rows < Zorg.n_rows;
+    return n_par < Zorg.n_rows;
   }
 
 public:
@@ -69,13 +97,13 @@ public:
 
   /* returns the integrand and the derivatives w.r.t. a fixed effect
    * coefficient vector and the upper triangular part of the covariance
-   * matrix. You need to call Jacobian_post_process to get final result. */
+   * matrix.
+   */
   void Jacobian(double const *par, arma::vec &jac) const;
-  void Jacobian_post_process(arma::vec &jac) const;
 
   std::size_t get_n_jac() const {
-    arma::uword const dim_d_sigma = (n_par * (n_par + 1L)) / 2L;
     assert(X);
+    arma::uword const dim_d_sigma = (full_dim * (full_dim + 1L)) / 2L;
     return 1L + X->n_rows + dim_d_sigma;
   }
 };

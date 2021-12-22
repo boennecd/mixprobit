@@ -150,7 +150,6 @@ Rcpp::NumericVector aprx_jac_binary_mix(
           new mix_binary(y, eta, Z, Sigma, &X)));
 
     auto res = jac_arpx(maxpts, key, abseps, releps);
-    bin.Jacobian_post_process(res.value);
     return res;
   })();
 
