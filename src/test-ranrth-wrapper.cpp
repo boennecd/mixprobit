@@ -180,11 +180,64 @@ context("ranrth-wrapper unit tests") {
           << 0.021541576093451 << -0.0021754945059288
           << -0.0211698036190797 << 0.0193386723207052
           << 0.00618822615335066 << -0.00709493339802656;
-    arma::uword const ex_dim = 1L + q + (p * (p + 1L)) / 2L;
+    {
+      arma::uword const ex_dim = 1L + q + (p * (p + 1L)) / 2L;
+
+      set_integrand(std::unique_ptr<base_integrand>(
+          new mix_binary(y, eta, Z, S, &X)));
+      mix_binary bin(y, eta, Z, S, &X);
+      auto run_test = [&](int const key){
+        auto res = jac_arpx(100000000L, key, -1, rel_eps);
+        expect_true(res.value.n_elem == ex_dim);
+        expect_true(res.err.n_elem == ex_dim);
+
+        expect_true(res.inform == 0L);
+        for(unsigned i = 0; i < res.err.n_elem; ++i){
+          expect_true(res.err[i] < 2 * rel_eps * std::abs(res.value[i]));
+          expect_true
+            (std::abs(res.value[i] - expec[i]) <
+              2 * rel_eps * std::abs(expec[i]));
+        }
+      };
+      run_test(2);
+
+      /* test w/ adaptive method */
+      mvn<mix_binary> m(bin);
+
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<mix_binary > > (m, true)));
+      run_test(1);
+      run_test(2);
+      run_test(3);
+      run_test(4);
+    }
+
+    /*
+# function for the derivative w.r.t. the offset
+      f2 <- \(par){
+      eta <- head(par, n)
+      s <- tail(par, -n)
+      S <- matrix(nr = p, nc = p)
+      S[upper.tri(S, TRUE)] <- s
+      S[lower.tri(S)] <- t(S)[lower.tri(S)]
+      sum(exp(ws_log + vapply(
+      xs, f, numeric(1L), eta = eta, S_chol = chol(S)))) /
+      pi^(p / 2)
+      }
+
+      xx <- c(eta, S[upper.tri(S, TRUE)])
+      dput(f2(xx))
+      dput(jacobian(f2, xx))
+      */
+
+    expec = arma::vec
+      {0.223175338758645, -0.0307327929409755, -0.0147947171684584, -0.0384440750249272, -0.046402178704353, 0.021541576093451, -0.0021754945059288, -0.0211698036190797, 0.0193386723207052, 0.00618822615335066, -0.00709493339802656};
+
+    constexpr arma::uword ex_dim{1L + n + (p * (p + 1L)) / 2L};
 
     set_integrand(std::unique_ptr<base_integrand>(
-        new mix_binary(y, eta, Z, S, &X)));
-    mix_binary bin(y, eta, Z, S, &X);
+        new mix_binary(y, eta, Z, S)));
+    mix_binary bin(y, eta, Z, S);
     auto run_test = [&](int const key){
       auto res = jac_arpx(100000000L, key, -1, rel_eps);
       expect_true(res.value.n_elem == ex_dim);
@@ -295,12 +348,63 @@ context("ranrth-wrapper unit tests") {
     arma::ivec y{0, 0};
 
     constexpr double const rel_eps{5e-1};
-    arma::vec expec{0.368125090148117, 0.0231547051105411, 0.000973349562432535, 0.00622070279491852, -0.00824456594424145, 0.00271816571363873, 0.0108131821534993, -0.00678049379010119, 0.00196371803414583, 0.0106758132172105, -0.00648455781045827, 0.000897181658087495, -0.00184020017999673};
-    arma::uword const ex_dim = 1L + q + (p * (p + 1L)) / 2L;
+    {
+      arma::vec expec{0.368125090148117, 0.0231547051105411, 0.000973349562432535, 0.00622070279491852, -0.00824456594424145, 0.00271816571363873, 0.0108131821534993, -0.00678049379010119, 0.00196371803414583, 0.0106758132172105, -0.00648455781045827, 0.000897181658087495, -0.00184020017999673};
+      arma::uword const ex_dim{1L + q + (p * (p + 1L)) / 2L};
 
-    mix_binary bin(y, eta, Z, S, &X);
+      mix_binary bin(y, eta, Z, S, &X);
+      set_integrand(std::unique_ptr<base_integrand>(
+          new mix_binary(y, eta, Z, S, &X)));
+      auto run_test = [&](int const key){
+        auto res = jac_arpx(100000000L, key, -1, rel_eps);
+        expect_true(res.value.n_elem == ex_dim);
+        expect_true(res.err.n_elem == ex_dim);
+
+        expect_true(res.inform == 0L);
+        for(unsigned i = 0; i < res.err.n_elem; ++i){
+          expect_true(res.err[i] < 2 * rel_eps * std::abs(res.value[i]));
+          expect_true
+            (std::abs(res.value[i] - expec[i]) <
+              2 * rel_eps * std::abs(expec[i]));
+        }
+      };
+      run_test(2);
+
+      /* test w/ adaptive method */
+      mvn<mix_binary> m(bin);
+
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<mix_binary > > (m, true)));
+      run_test(1);
+      run_test(2);
+      run_test(3);
+      run_test(4);
+    }
+
+    /*
+# function with the dervative w.r.t. the offset
+     f2 <- function(par){
+     eta <- head(par, n)
+     s <- tail(par, -n)
+     S <- matrix(nr = p, nc = p)
+     S[upper.tri(S, TRUE)] <- s
+     S[lower.tri(S)] <- t(S)[lower.tri(S)]
+     sum(exp(ws_log + vapply(
+     xs, f, numeric(1L), eta = eta, S_chol = chol(S)))) /
+     pi^(p / 2)
+     }
+
+     xx <- c(eta, S[upper.tri(S, TRUE)])
+     dput(f2(xx))
+
+     dput(jacobian(f2, xx))
+     */
+    arma::vec expec{0.368125090148117, -0.0972709187968055, -0.0388955601299048, 0.00622070279491852, -0.00824456594424145, 0.00271816571363873, 0.0108131821534993, -0.00678049379010119, 0.00196371803414583, 0.0106758132172105, -0.00648455781045827, 0.000897181658087495, -0.00184020017999673};
+    arma::uword const ex_dim{1L + n + (p * (p + 1L)) / 2L};
+
+    mix_binary bin(y, eta, Z, S);
     set_integrand(std::unique_ptr<base_integrand>(
-        new mix_binary(y, eta, Z, S, &X)));
+        new mix_binary(y, eta, Z, S)));
     auto run_test = [&](int const key){
       auto res = jac_arpx(100000000L, key, -1, rel_eps);
       expect_true(res.value.n_elem == ex_dim);

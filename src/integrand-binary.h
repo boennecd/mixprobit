@@ -40,11 +40,12 @@ class mix_binary final : public base_integrand {
                 full_dim{std::max<std::size_t>(n_par, Zorg.n_rows)};;
   arma::mat const * const X;
   arma::mat const &Sigma;
+  bool is_dim_reduced{n_par < Zorg.n_rows};
 
   /// memory to store other objects
   std::unique_ptr<double[]> obj_mem
     {new double[
-    is_dim_reduced()
+    is_dim_reduced
       ? (full_dim * (full_dim + 1)) / 2 + n_par + n_par * n + full_dim
       : n_par * (n_par + 1) + n_par + n_par * n]};
   /**
@@ -59,11 +60,11 @@ class mix_binary final : public base_integrand {
    *    Z^T(Z.Sigma.Z^T)^(-1)Z
    */
   double * const Sigma_inv
-    {is_dim_reduced() ? Sigma_chol : Sigma_chol + (n_par * (n_par + 1)) / 2};
+    {is_dim_reduced ? Sigma_chol : Sigma_chol + (n_par * (n_par + 1)) / 2};
   // TODO: would be nice to avoid working memory here?
   mutable arma::vec par_vec
-  {is_dim_reduced() ? Sigma_inv + (full_dim * (full_dim + 1)) / 2
-                    : Sigma_inv + (n_par    * (n_par    + 1)) / 2,
+  {is_dim_reduced ? Sigma_inv + (full_dim * (full_dim + 1)) / 2
+                  : Sigma_inv + (n_par    * (n_par    + 1)) / 2,
    static_cast<arma::uword>(n_par), false};
   arma::mat Z
     {par_vec.end(), static_cast<arma::uword>(n_par),
@@ -72,15 +73,16 @@ class mix_binary final : public base_integrand {
   mutable arma::vec wk_mem{Z.end(), static_cast<arma::uword>(full_dim), false};
 
   /**
-   * stores ZC^(-1) where C^TC = Z.Sigma.Z^T if is_dim_reduced()
+   * stores ZC^(-1) where C^TC = Z.Sigma.Z^T if is_dim_reduced
    */
   arma::mat ZC_inv;
 
-  bool is_dim_reduced() const {
-    return n_par < Zorg.n_rows;
+  bool has_fixef() const {
+    return X;
   }
 
 public:
+  /// if X is a nullptr, the the derivatives w.r.t. eta is computed
   mix_binary(arma::ivec const &y, arma::vec const &eta,
              arma::mat const &Zin, arma::mat const &Sigma,
              arma::mat const *X = nullptr);
@@ -97,14 +99,15 @@ public:
 
   /* returns the integrand and the derivatives w.r.t. a fixed effect
    * coefficient vector and the upper triangular part of the covariance
-   * matrix.
+   * matrix. The derivatives are w.r.t. eta if the fixed effect design matrix
+   * is not passed.
    */
   void Jacobian(double const *par, arma::vec &jac) const;
 
   std::size_t get_n_jac() const {
-    assert(X);
     arma::uword const dim_d_sigma = (full_dim * (full_dim + 1L)) / 2L;
-    return 1L + X->n_rows + dim_d_sigma;
+    return has_fixef() ? 1 + X->n_rows + dim_d_sigma
+                       : 1 + n         + dim_d_sigma;
   }
 };
 } // namespace integrand

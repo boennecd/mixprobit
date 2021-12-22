@@ -16,7 +16,7 @@ Sigma(Sigma) {
   assert(n_par > 1L);
   assert(!X || X->n_cols == n);
 
-  if(!is_dim_reduced()){
+  if(!is_dim_reduced){
     // compute the Cholesky decomposition
     arma::mat C{arma::chol(Sigma)};
     {
@@ -109,15 +109,13 @@ arma::mat mix_binary::Hessian(double const *par) const {
 void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
   using arma::uword;
   std::copy(par, par + n_par, par_vec.begin());
-  assert(X);
-  uword const vcov_dim = (n_par * (n_par + 1L)) / 2L;
   assert(jac.n_elem == get_n_jac());
 
   jac.zeros();
   double &integrand = jac[0];
-
-  arma::vec fix_part(jac.memptr() + 1L, X->n_rows, false);
-  arma::vec vcov_part(jac.memptr() + 1L + X->n_rows, vcov_dim, false);
+  uword const n_fixef = has_fixef() ? X->n_rows : n;
+  arma::vec fix_part(jac.memptr() + 1L, n_fixef, false);
+  double * const vcov_part{jac.memptr() + 1L + n_fixef};
 
   for(unsigned i = 0; i < n; ++i){
     double const lp = eta[i] + colvecdot(Z, i, par_vec),
@@ -128,13 +126,16 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
                                : -std::exp(dnrm - pnrm);
 
     integrand += pnrm;
-    fix_part  += fac * X->col(i);
+    if(has_fixef())
+      fix_part += fac * X->col(i);
+    else
+      fix_part[i] = fac;
   }
 
   integrand = std::exp(integrand);
   fix_part *= integrand;
 
-  if(is_dim_reduced()){
+  if(is_dim_reduced){
     /* we need to change the derivatives w.r.t. the covariance matrix as these
      * are currently for Psi = Z.Sigma.Z^T. To this, we need to compute
      *
@@ -144,7 +145,7 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
      */
     wk_mem = ZC_inv * par_vec;
 
-    double * vc_part_i{vcov_part.begin()};
+    double * vc_part_i{vcov_part};
     double const * sigma_inv_i{Sigma_inv};
     for(uword j = 0; j < full_dim; ++j){
       for(uword i = 0; i < j; ++i)
@@ -163,7 +164,7 @@ void mix_binary::Jacobian(double const *par, arma::vec &jac) const {
     F77_CALL(dtpsv)("U", "N", "N", &n_parse, Sigma_chol, par_vec.memptr(),
                     &incx, 1, 1, 1);
 
-    double * vc_part_i{vcov_part.begin()};
+    double * vc_part_i{vcov_part};
     double const * sigma_inv_i{Sigma_inv};
     for(uword j = 0; j < n_par; ++j){
       for(uword i = 0; i < j; ++i)
