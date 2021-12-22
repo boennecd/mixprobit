@@ -3,6 +3,15 @@
 #include "arma-wrap.h"
 #include <memory.h>
 
+#include <R_ext/RS.h> // F77_NAME F77_CALL
+
+extern "C" {
+  void F77_NAME(dtpsv)
+  (const char * /* uplo */, const char * /* trans */, const char * /* diag */,
+   const int * /* n */, const double * /* ap */, double * /* x */,
+   const int* /* incx */, size_t, size_t, size_t);
+}
+
 /* C++ version of the dtrmv BLAS function */
 inline void inplace_tri_mat_mult(arma::vec &x, arma::mat const &trimat){
   arma::uword const n = trimat.n_cols;

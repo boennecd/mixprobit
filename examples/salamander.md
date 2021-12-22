@@ -218,7 +218,7 @@ stan_fit <- within(list(), {
 #> sigma[1]  0.72       0 0.16  0.42  0.60  0.71  0.82  1.06  5041    1
 #> sigma[2]  0.77       0 0.17  0.47  0.65  0.76  0.87  1.13  5605    1
 #> 
-#> Samples were drawn using NUTS(diag_e) at Tue Dec 21 17:06:40 2021.
+#> Samples were drawn using NUTS(diag_e) at Wed Dec 22 07:40:37 2021.
 #> For each parameter, n_eff is a crude measure of effective sample size,
 #> and Rhat is the potential scale reduction factor on split chains (at 
 #> convergence, Rhat=1).
@@ -486,7 +486,6 @@ mix_prob_fit <- within(list(), {
       } else
         cat("Gradient test passed (GM)\n")
   })
-  browser()
   
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
@@ -531,9 +530,6 @@ mix_prob_fit <- within(list(), {
 })
 #> Gradient test passed
 #> Gradient test passed (GM)
-#> Called from: eval(substitute(expr), e)
-#> debug at <text>#209: fit_CDF_cpp_fast <- take_time(opt_use(par, ll_cpp, maxpts = 5000L, 
-#>     releps = 0.1, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1, gr = ll_cpp_grad)
 #> 
@@ -544,17 +540,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.928767 
 #> converged
 #> 
-#> debug at <text>#214: GM_meth <- mixprobit:::aprx_binary_mix
-#> debug at <text>#215: formals(GM_meth)$is_adaptive <- TRUE
-#> debug at <text>#216: GM_meth_gr <- mixprobit:::aprx_jac_binary_mix
-#> debug at <text>#217: formals(GM_meth_gr)$is_adaptive <- TRUE
-#> debug at <text>#218: gr <- function(...) {
-#>     args <- list(...)
-#>     args$meth <- GM_meth_gr
-#>     do.call(ll_func_gr, args)
-#> }
-#> debug at <text>#224: fit_Genz_Monahan_fast <- take_time(opt_use(par, ll_func, gr, 
-#>     maxpts = 1000L, releps = 0.1, meth = GM_meth))
 #> Running:
 #>   opt_use(par, ll_func, gr, maxpts = 1000L, releps = 0.1, meth = GM_meth)
 #> 
@@ -566,10 +551,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.928219 
 #> converged
 #> 
-#> debug at <text>#230: eps_use <- 1e-04
-#> debug at <text>#231: cdf_par <- fit_CDF_cpp_fast$par
-#> debug at <text>#232: fit_CDF_cpp <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
-#>     releps = eps_use, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use, 
 #>       gr = ll_cpp_grad)
@@ -579,8 +560,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.928564 
 #> converged
 #> 
-#> debug at <text>#234: fit_CDF_cpp_wo_grad <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
-#>     releps = eps_use))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use)
 #> 
@@ -589,8 +568,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.928577 
 #> converged
 #> 
-#> debug at <text>#236: fit_CDF <- take_time(opt_use(cdf_par, ll_func, maxpts = 100000L, 
-#>     releps = eps_use, meth = mixprobit:::aprx_binary_mix_cdf))
 #> Running:
 #>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = eps_use, 
 #>       meth = mixprobit:::aprx_binary_mix_cdf)
@@ -599,9 +576,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.928757 
 #> converged
 #> 
-#> debug at <text>#240: gmo_start <- fit_Genz_Monahan_fast$par
-#> debug at <text>#241: fit_Genz_Monahan <- take_time(opt_use(gmo_start, ll_func, gr, 
-#>     maxpts = 100000L, releps = eps_use, meth = GM_meth))
 #> Running:
 #>   opt_use(gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use, 
 #>       meth = GM_meth)
@@ -609,8 +583,6 @@ mix_prob_fit <- within(list(), {
 #> initial  value 0.928557 
 #> final  value 0.928557 
 #> converged
-#> 
-#> debug at <text>#246: fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- fit_CDF$q <- fit_Genz_Monahan$q <- fit_CDF_cpp_wo_grad$q <- q
 ```
 
 Show the estimates of the methods. The `_cpp` function differs by using
@@ -665,7 +637,7 @@ local({
 #> 0.6790 0.6494 
 #> 
 #> Log-likelihood estimate -206.92
-#> Computation time 2.63/0.02 (seconds total/per function evaluation)
+#> Computation time 2.65/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan_fast
@@ -679,7 +651,7 @@ local({
 #> 0.7077 0.6781 
 #> 
 #> Log-likelihood estimate -206.80
-#> Computation time 11.02/0.02 (seconds total/per function evaluation)
+#> Computation time 11.71/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -693,7 +665,7 @@ local({
 #> 0.6794 0.6492 
 #> 
 #> Log-likelihood estimate -206.92
-#> Computation time 42.51/0.64 (seconds total/per function evaluation)
+#> Computation time 41.17/0.65 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -707,7 +679,7 @@ local({
 #> 0.7041 0.6759 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 28.50/0.84 (seconds total/per function evaluation)
+#> Computation time 28.67/0.82 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -721,7 +693,7 @@ local({
 #> 0.7076 0.6820 
 #> 
 #> Log-likelihood estimate -206.88
-#> Computation time 137.84/0.53 (seconds total/per function evaluation)
+#> Computation time 140.86/0.54 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -735,7 +707,7 @@ local({
 #> 0.7086 0.6799 
 #> 
 #> Log-likelihood estimate -206.87
-#> Computation time 8.02/0.12 (seconds total/per function evaluation)
+#> Computation time 8.97/0.13 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 
@@ -1076,7 +1048,6 @@ mix_prob_fit <- within(list(), {
       } else
         cat("Gradient test passed (GM)\n")
   })
-  browser()
   
   # first make a few quick fits with a low error or number of samples
   fit_CDF_cpp_fast <- take_time(opt_use(
@@ -1121,9 +1092,6 @@ mix_prob_fit <- within(list(), {
 })
 #> Gradient test passed
 #> Gradient test passed (GM)
-#> Called from: eval(substitute(expr), e)
-#> debug at <text>#209: fit_CDF_cpp_fast <- take_time(opt_use(par, ll_cpp, maxpts = 5000L, 
-#>     releps = 0.1, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(par, ll_cpp, maxpts = 5000L, releps = 0.1, gr = ll_cpp_grad)
 #> 
@@ -1135,17 +1103,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.982451 
 #> converged
 #> 
-#> debug at <text>#214: GM_meth <- mixprobit:::aprx_binary_mix
-#> debug at <text>#215: formals(GM_meth)$is_adaptive <- TRUE
-#> debug at <text>#216: GM_meth_gr <- mixprobit:::aprx_jac_binary_mix
-#> debug at <text>#217: formals(GM_meth_gr)$is_adaptive <- TRUE
-#> debug at <text>#218: gr <- function(...) {
-#>     args <- list(...)
-#>     args$meth <- GM_meth_gr
-#>     do.call(ll_func_gr, args)
-#> }
-#> debug at <text>#224: fit_Genz_Monahan_fast <- take_time(opt_use(par, ll_func, gr, 
-#>     maxpts = 1000L, releps = 0.1, meth = GM_meth))
 #> Running:
 #>   opt_use(par, ll_func, gr, maxpts = 1000L, releps = 0.1, meth = GM_meth)
 #> 
@@ -1157,10 +1114,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.982297 
 #> converged
 #> 
-#> debug at <text>#230: eps_use <- 1e-04
-#> debug at <text>#231: cdf_par <- fit_CDF_cpp_fast$par
-#> debug at <text>#232: fit_CDF_cpp <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
-#>     releps = eps_use, gr = ll_cpp_grad))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use, 
 #>       gr = ll_cpp_grad)
@@ -1170,8 +1123,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.982465 
 #> converged
 #> 
-#> debug at <text>#234: fit_CDF_cpp_wo_grad <- take_time(opt_use(cdf_par, ll_cpp, maxpts = 100000L, 
-#>     releps = eps_use))
 #> Running:
 #>   opt_use(cdf_par, ll_cpp, maxpts = 100000L, releps = eps_use)
 #> 
@@ -1180,8 +1131,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.982464 
 #> converged
 #> 
-#> debug at <text>#236: fit_CDF <- take_time(opt_use(cdf_par, ll_func, maxpts = 100000L, 
-#>     releps = eps_use, meth = mixprobit:::aprx_binary_mix_cdf))
 #> Running:
 #>   opt_use(cdf_par, ll_func, maxpts = 100000L, releps = eps_use, 
 #>       meth = mixprobit:::aprx_binary_mix_cdf)
@@ -1192,9 +1141,6 @@ mix_prob_fit <- within(list(), {
 #> final  value 0.982462 
 #> converged
 #> 
-#> debug at <text>#240: gmo_start <- fit_Genz_Monahan_fast$par
-#> debug at <text>#241: fit_Genz_Monahan <- take_time(opt_use(gmo_start, ll_func, gr, 
-#>     maxpts = 100000L, releps = eps_use, meth = GM_meth))
 #> Running:
 #>   opt_use(gmo_start, ll_func, gr, maxpts = 100000L, releps = eps_use, 
 #>       meth = GM_meth)
@@ -1203,8 +1149,6 @@ mix_prob_fit <- within(list(), {
 #> iter  10 value 0.982463
 #> final  value 0.982463 
 #> converged
-#> 
-#> debug at <text>#246: fit_CDF_cpp_fast$q <- fit_Genz_Monahan_fast$q <- fit_CDF_cpp$q <- fit_CDF$q <- fit_Genz_Monahan$q <- fit_CDF_cpp_wo_grad$q <- q
 ```
 
 ``` r
@@ -1269,7 +1213,7 @@ local({
 #> 0.6246 0.5035 
 #> 
 #> Log-likelihood estimate -92.01
-#> Computation time 13.96/0.02 (seconds total/per function evaluation)
+#> Computation time 13.05/0.02 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF
@@ -1283,7 +1227,7 @@ local({
 #> 0.6202 0.4952 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 79.25/0.26 (seconds total/per function evaluation)
+#> Computation time 78.68/0.26 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp
@@ -1297,7 +1241,7 @@ local({
 #> 0.6189 0.4920 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 6.91/0.22 (seconds total/per function evaluation)
+#> Computation time 7.03/0.22 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_CDF_cpp_wo_grad
@@ -1311,7 +1255,7 @@ local({
 #> 0.6201 0.4968 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 28.51/0.13 (seconds total/per function evaluation)
+#> Computation time 29.50/0.14 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 #> 
 #> fit_Genz_Monahan
@@ -1325,7 +1269,7 @@ local({
 #> 0.6216 0.4961 
 #> 
 #> Log-likelihood estimate -92.03
-#> Computation time 9.07/0.05 (seconds total/per function evaluation)
+#> Computation time 9.84/0.05 (seconds total/per function evaluation)
 #> The latter time is not comparable for methods that do not use numerical derivatives
 ```
 
