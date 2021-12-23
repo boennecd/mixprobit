@@ -13,7 +13,7 @@ n_par(std::min<std::size_t>(Zin.n_rows, n)), X(X),
 Sigma(Sigma) {
   assert(eta.n_elem == n);
   assert(Zin.n_cols   == n);
-  assert(n_par > 1L);
+  assert(n_par > 0L);
   assert(!X || X->n_cols == n);
 
   if(!is_dim_reduced){

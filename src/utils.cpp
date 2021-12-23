@@ -98,6 +98,7 @@ arma::mat dcond_vcov
         throw std::runtime_error("dcond_vcov: solve failed");
     };
 
+  // TODO: would be better to form decomposition of H and Sigma
   perform_solve(dum, H, res);
   perform_solve(res, Sigma, dum);
   arma::inplace_trans(res);
