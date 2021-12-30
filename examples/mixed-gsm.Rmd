@@ -1,0 +1,139 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+    pandoc_args: --webtex=https://latex.codecogs.com/svg.latex?
+bibliography: ../README.bib
+---
+
+# Mixed Generalized Survival Models
+
+```{r setup, echo = FALSE, cache=FALSE}
+local({
+  if(!grepl("examples$", getwd()))
+    setwd("examples")
+})
+
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>", fig.path = "fig-mgsm/", dpi = 124, 
+  error = FALSE, cache.path = "cache-mgsm/")
+options(digits = 4)
+```
+
+We simulate at estimate models from 
+
+$$
+\begin{align*}
+-\Phi^{-1}(S(t\mid \vec x_{ij}, \vec z_{ij}, \vec u_i)) 
+  &= \vec x_{ij}(t)^\top\vec\beta + \vec z_{ij}^\top\vec u_i \\
+\vec U_i &\sim N(\vec 0, \Sigma) 
+\end{align*}
+$$
+
+subject to independent censoring. The conditional hazard of the model is 
+
+
+
+$$
+h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) = 
+  \vec x_{ij}'(t)^\top\vec\beta
+  \frac{\phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
+       {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
+$$
+
+```{r assing_sim_dat}
+# computes the time-varying fixed effects
+x <- \(v) { v <- log(v); cbind(1, v, v^3) }
+xp <- \(v) { v_org <- v; v <- log(v); cbind(0, 1, 3 * v^2) / v_org }
+
+# generates the time-invariant covariate
+gen_cov <- \(n) cbind(rnorm(n), runif(n) > .5)
+
+# the fixed effects coefficients (beta)
+beta <- c(-1, .25, .4, .5, 1)
+
+admin_cens <- 5 # the administrative censoring time
+
+# plot of the hazard
+par(mar = c(5, 5, 1, 1))
+plot(\(v){
+    beta_use <- head(beta, -2)
+    eta <- x(v) %*% beta_use
+    eta_p <- xp(v) %*% beta_use
+    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+  }, xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+  xaxs = "i", yaxs = "i")
+grid()
+
+# generates the random effect covariates
+gen_rng_cov <- \(n) cbind(1, rnorm(n))
+
+# the random effect covariance matrix
+Sigma <- structure(c(0.96725, -0.1505, -0.1505, 0.27875), .Dim = c(2L, 2L))
+
+# simulates a given number of clusters
+sim_dat <- \(n_clusters)
+  lapply(seq_len(n_clusters), \(id) {
+    n_members <- sample.int(9L, 1L) + 2L
+    U <- drop(mvtnorm::rmvnorm(1, sigma = Sigma))
+    X <- gen_cov(n_members)
+    Z <- gen_rng_cov(n_members)
+    
+    # find the event time
+    offset <- X %*% tail(beta, NCOL(X)) + Z %*% U
+    
+    beta_use <- head(beta, -NCOL(X))
+    y <- sapply(offset, \(o){
+      rng <- runif(1)
+      res <- uniroot(\(ti) rng - pnorm(-o - x(ti) %*% beta_use), 
+                     c(1e-32, 10000), 
+                     tol = 1e-10)
+      res$root
+    })
+    
+    cens <- pmin(admin_cens, runif(n_members, 0, 2 * admin_cens))
+    
+    colnames(X) <- paste0("X", 1:NCOL(X))
+    colnames(Z) <- paste0("Z", 1:NCOL(Z))
+    
+    out <- list(event = y < cens, y = pmin(y, cens), X = X, Z = Z, 
+                id = rep(id, n_members))
+    
+    c(out, list(df = do.call(cbind, out)))
+  })
+```
+
+```{r fit_ex, cache = 1}
+# simulate the data
+set.seed(8401830)
+dat <- sim_dat(500L)
+dat_full <- do.call(rbind, lapply(dat, `[[`, "df")) |> data.frame()
+
+mean(dat_full$event) # fraction of observed events
+NROW(dat_full) # number of observations
+# quantiles of the observed event times
+subset(dat_full, event > 0)$y |> 
+  quantile(probs = seq(0, 1, length.out = 11))
+
+# fit the model 
+library(mixprobit)
+system.time(
+  res <- fit_mgsm(
+    formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L, 50000L)))
+```
+
+```{r show_fit_ex}
+# the estimates are shown below
+rbind(Estimate = res$beta_fixef, 
+      Truth = tail(beta, 2))
+
+res$Sigma # estimated covariance matrix
+Sigma # the true covariance matrix
+
+# the maximum likelihood
+res$logLik
+
+# can be compared with say a Weibull model
+survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
+```

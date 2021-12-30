@@ -85,3 +85,15 @@ multinomial_inner_integral <- function(Z, eta, Sigma, n_nodes, is_adaptive, n_ti
     .Call('_mixprobit_multinomial_inner_integral', PACKAGE = 'mixprobit', Z, eta, Sigma, n_nodes, is_adaptive, n_times, u, order)
 }
 
+get_gsm_ptr <- function(data) {
+    .Call('_mixprobit_get_gsm_ptr', PACKAGE = 'mixprobit', data)
+}
+
+gsm_eval <- function(ptr, beta, sig, maxpts, key, abseps, releps) {
+    .Call('_mixprobit_gsm_eval', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps)
+}
+
+gsm_gr <- function(ptr, beta, sig, maxpts, key, abseps, releps) {
+    .Call('_mixprobit_gsm_gr', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps)
+}
+

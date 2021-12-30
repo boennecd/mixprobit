@@ -1,6 +1,7 @@
 #ifndef H_MIXED_GSM
 #define H_MIXED_GSM
 #include "arma-wrap.h"
+#include <memory.h>
 
 /**
  * The class is used to compute
@@ -33,10 +34,7 @@ class gsm_cens_term {
   arma::vec const &beta;
   arma::mat const &Sigma;
 
-  arma::uword n_obs{Xo.n_cols},
-              n_cen{Xc.n_cols},
-              n_rng{Zc.n_rows},
-            n_fixef{beta.n_elem};
+  arma::uword const n_obs, n_cen, n_rng, n_fixef;
 
   arma::ivec const y_pass = arma::ivec(n_cen, arma::fill::ones);
 
@@ -48,7 +46,7 @@ public:
 
   gsm_cens_term
   (arma::mat const &Zo, arma::mat const &Zc, arma::mat const &Xo,
-   arma::mat const &Xc, arma::vec const &beta, arma::mat const&Sigma);
+   arma::mat const &Xc, arma::vec const &beta, arma::mat const &Sigma);
 
   /// evaluates the log of the integral
   gsm_cens_output func
@@ -61,6 +59,50 @@ public:
      double const releps) const;
 };
 
+/**
+ * The class the normal density
+ *
+ *   - d / 2 * log(2 * pi) - 2^-1 * log|K| - 2^-1 * v^T.K^(-1).v
+ *
+ * where
+ *
+ *   v = -X.beta
+ *   K = Z.Sigma.Z^T + I
+ *
+ * The Jacobian w.r.t. beta and Sigma are given
+ *
+ *   v.K^(-1).X
+ *   (-vec(Z^T.K^(-1).Z) + v^T.K^-1.Z (x) v^T.K^-1.Z) / 2
+ *
+ * The design matrices are stored as their transpose to be consistent with the
+ * rest of the package.
+ */
+class gsm_normal_term {
+  arma::mat const &X, &Z, &Sigma;
+  arma::vec const &beta;
+
+  arma::uword const n_obs, n_rng, n_fixef;
+
+  /// working memory
+  std::unique_ptr<double[]> wk_mem{new double[(n_obs * (n_obs + 1)) / 2]};
+  /// the upper triangular matrix for the Cholesky decomposition of Sigma
+  double * const K_chol{wk_mem.get()};
+
+  /// the determinant of K
+  double log_K_deter;
+
+public:
+  gsm_normal_term
+  (arma::mat const &X, arma::mat const &Z, arma::mat const &Sigma,
+   arma::vec const &beta);
+
+  /// computes the log density
+  double func() const;
+
+  /// computes the log density and the gradient
+  double gr(arma::vec &gr) const;
+};
+
 /// approximates the log marginal likelihood term for a mixed GSM cluster
 class mixed_gsm_cluster {
   /**
@@ -68,17 +110,13 @@ class mixed_gsm_cluster {
    * censored.
    */
   arma::mat Zo, Zc;
-  arma::mat Zo_inner{Zo * Zo.t()};
   /**
    * the design matrix for the fixed effects. Both for the observed and the
    * censored.
    */
   arma::mat Xo, Xc;
-  /**
-   * the design matrix for the time-varying fixed effects. Both for the observed
-   * and the censored.
-   */
-  arma::mat Xo_prime, Xc_prime;
+  /// the design matrix for the derivative of the fixed effects.
+  arma::mat Xo_prime;
   /// the observed times for the censored and uncensored individuals
   arma::vec yo, yc;
 
@@ -89,11 +127,19 @@ class mixed_gsm_cluster {
   }
   /// the number of observed observations
   arma::uword n_obs() const {
-    return Xc.n_cols;
+    return Xo.n_cols;
   }
   /// the total number of observations
   arma::uword n_total() const {
     return n_cens() + n_obs();
+  }
+  /// the number of random effects
+  arma::uword n_rng() const {
+    return Zo.n_rows;
+  }
+  /// the number of fixed effects
+  arma::uword n_fixef() const {
+    return Xo.n_rows;
   }
 
 public:
@@ -101,19 +147,24 @@ public:
   (arma::mat const &X, arma::mat const &X_prime, arma::mat const &Z,
    arma::vec const &y, arma::vec const &event);
 
+  struct mixed_gsm_cluster_res {
+    double log_like;
+    int inform;
+  };
+
   /// computes the log marginal likelihood.
-  /// TODO: need more arguments for other methods?
-  double operator()
-    (arma::vec const &beta, arma::mat const &Sigma,
-     bool const is_adaptive = false) const;
+  mixed_gsm_cluster_res operator()
+    (arma::vec const &beta, arma::mat const &Sigma, int const maxpts,
+     int const key, double const abseps, double const releps) const;
 
   /**
-   * computes the gradient, adds it to gr, and returns the log marginal
+   * computes the gradient, setting the result gr, and returns the log marginal
    * likelihood.
    */
-  double grad
+  mixed_gsm_cluster_res grad
     (arma::vec &gr, arma::vec const &beta, arma::mat const &Sigma,
-     bool const is_adaptive = false);
+     int const maxpts, int const key, double const abseps,
+     double const releps) const ;
 };
 
 #endif

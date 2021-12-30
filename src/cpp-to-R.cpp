@@ -9,6 +9,7 @@
 #include "qmc.h"
 #include "integrand-multinomial.h"
 #include <vector>
+#include "gsm.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -665,7 +666,7 @@ arma::mat eval_sobol(unsigned const n, SEXP ptr){
 }
 
 /**
- Evalutes the inner integral needed for multinomial outcomes. I.e. the
+ Evaluates the inner integral needed for multinomial outcomes. I.e. the
  conditional density given the random effects. The `n_times` argument is
  added to compare the run times.
  */
@@ -702,4 +703,103 @@ arma::mat multinomial_inner_integral
     out = obj.Hessian(u.memptr());
 
   return out;
+}
+
+using gsm_vec_ptr = Rcpp::XPtr<std::vector<mixed_gsm_cluster> >;
+
+/**
+ * returns a pointer to compute the log marginal likelihood and the gradient for
+ * a mixed GSM model.
+ */
+// [[Rcpp::export(rng = false)]]
+SEXP get_gsm_ptr(Rcpp::List data){
+  gsm_vec_ptr out(new std::vector<mixed_gsm_cluster>());
+  out->reserve(data.size());
+
+  for(SEXP dat : data){
+    Rcpp::List dat_list = dat;
+    out->emplace_back(
+      Rcpp::as<arma::mat>(dat_list["X"]),
+      Rcpp::as<arma::mat>(dat_list["X_prime"]),
+      Rcpp::as<arma::mat>(dat_list["Z"]),
+      Rcpp::as<arma::vec>(dat_list["y"]),
+      Rcpp::as<arma::vec>(dat_list["event"]));
+  }
+
+  return out;
+}
+
+// [[Rcpp::export()]]
+Rcpp::NumericVector gsm_eval
+  (SEXP ptr, arma::vec const &beta, arma::vec const &sig, int const maxpts,
+   int const key, double const abseps, double const releps){
+  gsm_vec_ptr comp_obj(ptr);
+  double out{};
+  unsigned n_fails{};
+
+  arma::uword const n_rng =
+    std::lround((std::sqrt(8 * sig.n_elem + 1.) - 1.) / 2);
+  arma::mat L(n_rng, n_rng), Sigma;
+  get_pd_mat(sig.memptr(), L, Sigma);
+
+  parallelrng::set_rng_seeds(1);
+  for(mixed_gsm_cluster &dat : *comp_obj){
+    auto res = dat(beta, Sigma, maxpts, key, abseps, releps);
+    out += res.log_like;
+    n_fails += res.inform != 0;
+  }
+
+  Rcpp::NumericVector out_vec{out};
+  out_vec.attr("n_fails") = n_fails;
+
+  return out_vec;
+}
+
+// [[Rcpp::export()]]
+Rcpp::NumericVector gsm_gr
+  (SEXP ptr, arma::vec const &beta, arma::vec const &sig, int const maxpts,
+   int const key, double const abseps, double const releps){
+  gsm_vec_ptr comp_obj(ptr);
+  double ll{};
+  unsigned n_fails{};
+  arma::vec out, tmp;
+
+  arma::uword const n_rng =
+    std::lround((std::sqrt(8 * sig.n_elem + 1.) - 1.) / 2);
+  arma::mat L(n_rng, n_rng), Sigma;
+  get_pd_mat(sig.memptr(), L, Sigma);
+
+  parallelrng::set_rng_seeds(1);
+  for(mixed_gsm_cluster &dat : *comp_obj){
+    auto res = dat.grad(tmp, beta, Sigma, maxpts, key, abseps, releps);
+    ll += res.log_like;
+    n_fails += res.inform != 0;
+    if(tmp.size() != out.size())
+      out = tmp;
+    else
+      out += tmp;
+  }
+
+  arma::mat d_Sigma(n_rng, n_rng);
+  {
+    double const * d_sig_ij{out.memptr() + beta.n_elem};
+    for(arma::uword j = 0; j < n_rng; ++j, ++d_sig_ij){
+      for(arma::uword i = 0; i < j; ++i, ++d_sig_ij){
+        d_Sigma(i, j) = *d_sig_ij / 2;
+        d_Sigma(j, i) = *d_sig_ij / 2;
+      }
+      d_Sigma(j, j) = *d_sig_ij;
+    }
+  }
+
+  std::unique_ptr<double[]> wk_mem{new double[dpd_mat::n_wmem(n_rng)]};
+  std::fill(out.begin() + beta.n_elem, out.end(), 0);
+  dpd_mat::get(L, out.memptr() + beta.n_elem, d_Sigma.memptr(), wk_mem.get());
+
+  Rcpp::NumericVector out_vec(out.n_elem);
+  std::copy(out.begin(), out.end(), &out_vec[0]);
+  out_vec.attr("n_fails") = n_fails;
+  out_vec.attr("logLik") = ll;
+
+  return out_vec;
 }

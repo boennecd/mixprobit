@@ -41,6 +41,50 @@ inline double log_exp_add(double const t1, double const t2){
   return largest + log(exp(t1 - largest) + exp(t2 - largest));
 }
 
+/** Computes LL^T where L is a lower triangular matrix. The argument is a
+ a vector with the non-zero elements in column major order. The diagonal
+ entries are on the log scale. The method computes both L and LL^T.  */
+inline void get_pd_mat(double const *theta, arma::mat &L, arma::mat &res){
+  unsigned const dim{L.n_rows};
+  L.zeros();
+  for(unsigned j = 0; j < dim; ++j){
+    L.at(j, j) = std::exp(*theta++);
+    for(unsigned i = j + 1; i < dim; ++i)
+      L.at(i, j) = *theta++;
+  }
+
+  res = L * L.t();
+}
+
+struct dpd_mat {
+  /**
+   * return the required memory to get the derivative as part of the chain
+   * rule  */
+  static size_t n_wmem(unsigned const dim){
+    return dim * dim;
+  }
+
+  /**
+   * computes the derivative w.r.t. theta as part of the chain rule. That is,
+   * the derivatives of f(LL^T) where d/dX f(X) evaluated at X = LL^T
+   * is supplied.
+   */
+  static void get(arma::mat const &L, double * __restrict__ res,
+                  double const * derivs, double * __restrict__ wk_mem){
+    unsigned const dim{L.n_rows};
+    arma::mat D(const_cast<double*>(derivs), dim, dim, false);
+    arma::mat jac(wk_mem, dim, dim, false);
+    jac = D * L;
+
+    double * __restrict__ r = res;
+    for(unsigned j = 0; j < dim; ++j){
+      *r++ = 2 * L.at(j, j) * jac.at(j, j);
+      for(unsigned i = j + 1; i < dim; ++i)
+        *r++ = 2 * jac.at(i, j);
+    }
+  }
+};
+
 /* d vech(chol(X)) / d vech(X). See mathoverflow.net/a/232129/134083
  *
  * Args:

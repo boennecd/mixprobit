@@ -108,7 +108,11 @@ public:
 
 /* yields a new integrand of the form
  * pvnorm(x, mode, -Hessian^-1) * f(x) / pvnorm(x, mode, -Hessian^-1) =
-     pvnorm(x) * f(mode + (-Hessian)^-1/2 * x) / pvnorm(x) */
+     pvnorm(x) * f(mode + (-Hessian)^-1/2 * x) / pvnorm(x)
+
+   The class is not thread safe as it uses R's BFGS implementation to fine the
+   mode.
+ */
 template <typename other_integrand>
 class adaptive final : public base_integrand {
   bool const use_chol; /* either we use a Cholesky or a SV-decomposition */

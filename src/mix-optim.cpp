@@ -1,9 +1,6 @@
 /* call vmmin for BFGS */
 
 #include "mix-optim.h"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 /* from R_ext/Applic.h */
 typedef double optimfn(int, double *, void *);
@@ -35,9 +32,6 @@ optim_res bfgs(arma::vec const &start_val, objective obj,
   for(int i = 0; i < npar; ++i)
     mask[i] = 1;
 
-#ifdef _OPENMP
-#pragma omp critical
-#endif
   vmmin(npar, par.memptr(), &val, obj, gr, max_it, trace, mask.memptr(),
         abstol, reltol, n_report, data, &fncount, &grcount, &fail);
 
