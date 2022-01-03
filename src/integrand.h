@@ -163,12 +163,21 @@ public:
 
       {
         double const integrand_start_val =
-          optim_obj((int)n_par, start.begin(), (void*)this);
-        if(std::isnan(integrand_start_val)){
+          optim_obj(n_par, start.begin(), (void*)this);
+        if(!std::isfinite(integrand_start_val)){
           Rcpp::warning("adaptive: invalid starting value");
           success = false;
           return;
         }
+
+        arma::vec gr_test(n_par);
+        optim_gr(n_par, start.begin(), gr_test.begin(), (void*)this);
+        for(double gr_i : gr_test)
+          if(!std::isfinite(gr_i)){
+            Rcpp::warning("adaptive: invalid starting value (gr)");
+            success = false;
+            return;
+          }
       }
 
       auto const opt_res = optimizers::bfgs(

@@ -55,9 +55,7 @@ context("testing gsm_cens_term") {
      S <- round(S, 3)
      Z <- round(Z, 3)
 
-     S_chol <- chol(S)
-     u <- drop(rnorm(p) %*% S_chol)       # random effects
-
+     u <- drop(rnorm(p) %*% chol(S))      # random effects
 
 # get the outcomes
      rngs <- runif(n)
@@ -111,11 +109,12 @@ context("testing gsm_cens_term") {
      dput(t(Xc))
      dput(Zc)
      dput(beta)
+     S <- S + drop(rWishart(1, p, diag(1e-1, p)))
      dput(S)
      xx <- c(beta, S[upper.tri(S, TRUE)])
      dput(log(f1(xx)))
 
-     dput(jacobian(\(x) log(f1(x)), xx))
+     dput(numDeriv::jacobian(\(x) log(f1(x)), xx))
      */
     constexpr uword n_fixef{2},
                     n_cens{4},
@@ -129,7 +128,7 @@ context("testing gsm_cens_term") {
               Zc{1, -0.63, 0.405, 1, 0.147, -0.664, 1, 0.888, 0.887, 1, -0.742, 0.667},
               Xo(n_fixef, n_obs),
               Zo(n_rng, n_obs),
-           Sigma{1.939, -0.213, -0.123, -0.213, 0.94, 0.269, -0.123, 0.269, 4.092};
+           Sigma{2.39285683640521, 0.232426366938143, 0.21565518669603, 0.232426366938143, 1.54762667750445, 0.856575189367694, 0.21565518669603, 0.856575189367694, 4.73047421966608};
     Xc.reshape(n_fixef, n_cens);
     Zc.reshape(n_rng, n_cens);
     Sigma.reshape(n_rng, n_rng);
@@ -139,7 +138,7 @@ context("testing gsm_cens_term") {
     gsm_cens_term comp_obj(Zo, Zc, Xo, Xc, beta, Sigma);
 
     constexpr double true_func{-0.968031924910162},
-                       rel_eps{5e-1};
+                       rel_eps{1e-1};
     {
       auto const res = comp_obj.func(100000, 3L, -1, rel_eps);
       expect_true(res.inform == 0);
@@ -150,7 +149,7 @@ context("testing gsm_cens_term") {
     // check the gradient
     constexpr uword dim_gr{n_fixef + (n_rng * (n_rng + 1)) / 2};
     constexpr double true_gr[dim_gr]
-      {-0.572042610291542, -0.22093307695183, 0.042503945328741, -0.000902905965226302, -0.0762413721340899, 0.0114883138032356, 0.0125929452207209, -0.0545246015073341};
+      {-0.537893597021461, -0.208299165140343, 0.0401056616115828, 0.0163544243417218, -0.0629916831813027, 0.0169226034005708, 0.023017755737681, -0.0484885478113118};
 
     arma::vec gr;
     auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps);
@@ -183,8 +182,7 @@ context("testing gsm_cens_term") {
      S <- round(S, 3)
      Z <- round(Z, 3)
 
-     S_chol <- chol(S)
-     u <- drop(rnorm(p) %*% S_chol)       # random effects
+     u <- drop(rnorm(p) %*% chol(S))       # random effects
 
 
 # get the outcomes
@@ -246,6 +244,7 @@ context("testing gsm_cens_term") {
      dput(Zc)
      dput(Zo)
      dput(beta)
+     S <- S + drop(rWishart(1, p, diag(1e-1, p)))
      dput(S)
      xx <- c(beta, S[upper.tri(S, TRUE)])
 
@@ -264,7 +263,7 @@ context("testing gsm_cens_term") {
               Zc{1, -0.861, 0.636},
               Xo{1, -0.242, 1, -0.309, 1, -0.051},
               Zo{1, 0.885, -0.461, 1, -0.661, -0.932, 1, -0.642, 0.283},
-           Sigma{4.853, -0.15, -1.095, -0.15, 1.306, -0.909, -1.095, -0.909, 2.621};
+           Sigma{4.9986403657076, -0.252584938139645, -1.29848636512648, -0.252584938139645, 1.4893648315846, -0.686142763137388, -1.29848636512648, -0.686142763137388, 2.9647627980052};
     Xc.reshape(n_fixef, n_cens);
     Xo.reshape(n_fixef, n_obs);
     Zc.reshape(n_rng, n_cens);
@@ -275,8 +274,8 @@ context("testing gsm_cens_term") {
 
     gsm_cens_term comp_obj(Zo, Zc, Xo, Xc, beta, Sigma);
 
-    constexpr double true_func{-0.73433709985276},
-                       rel_eps{5e-1};
+    constexpr double true_func{-0.724841472478689},
+                       rel_eps{1e-1};
     {
       auto const res = comp_obj.func(100000, 3L, -1, rel_eps);
       expect_true(res.inform == 0);
@@ -287,7 +286,7 @@ context("testing gsm_cens_term") {
     // check the gradient
     constexpr uword dim_gr{n_fixef + (n_rng * (n_rng + 1)) / 2};
     constexpr double true_gr[dim_gr]
-      {-0.0969333728004924, -0.142173776625063, -0.0488113206428778, 0.00972943379091768, 0.000342446867236928, -0.0903543460452184, -0.00366361757944606, 0.00668709162478186};
+      {-0.0977871634401116, -0.138326698985437, -0.0483815801559132, 0.0137908163229746, 0.00183664252486275, -0.0852235200494886, -0.00871301648842614, 0.00105158099600017};
 
     arma::vec gr;
     auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps);
@@ -297,11 +296,11 @@ context("testing gsm_cens_term") {
 
     expect_true(gr.size() == dim_gr);
     for(uword i = 0; i < gr.size(); ++i)
-      expect_true(std::abs(gr[i] - true_gr[i]) <
+      expect_true(std::abs(gr[i] - true_gr[i])  <
         2 * rel_eps * std::abs(true_gr[i]));
   }
 
-  test_that("gsm_cens_term gives the right result"){
+  test_that("gsm_normal_term gives the right result"){
     /*
      set.seed(1)
      n <- 7L

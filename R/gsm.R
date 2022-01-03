@@ -10,12 +10,14 @@
 #' when fitting the model.
 #' @param key,abseps,releps parameters for the Monte Carlo method.
 #' @param seed the fixed seed to use.
+#' @param verbose \code{TRUE} if messages should be shown during estimation.
 #'
 #' @importFrom stats  model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
 #' @export
 fit_mgsm <- function(
-  formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L), key = 3L, abseps = 0, releps = 1e-3, seed = 1L){
+  formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
+  key = 3L, abseps = 0, releps = 1e-3, seed = 1L, verbose = FALSE){
   mf_X <- model.frame(formula, data)
   y <- model.response(mf_X)
   X_fixef <- model.matrix(terms(mf_X), mf_X)
@@ -104,6 +106,8 @@ fit_mgsm <- function(
   par <- c(theta_start, sig[lower.tri(sig, TRUE)])
 
   fn <- function(theta, maxpts){
+    if(verbose)
+      message(".", appendLF = FALSE)
     set.seed(seed)
     par <- get_beta(theta)
     beta <- head(par, length(beta_start))
@@ -114,6 +118,8 @@ fit_mgsm <- function(
     if(inherits(res, "try-error")) NA else -res
   }
   gr <- function(theta, maxpts){
+    if(verbose)
+      message("-", appendLF = FALSE)
     set.seed(seed)
     par <- get_beta(theta)
     beta <- head(par, length(beta_start))
@@ -130,9 +136,18 @@ fit_mgsm <- function(
   # fit the model
   maxpts <- sort(maxpts)
   fits <- vector("list", length(maxpts))
-  opt_func <- function(par, maxpts)
-    optim(par, fn, gr, method = "BFGS", control = list(maxit = 10000L),
+  opt_func <- function(par, maxpts){
+    if(verbose){
+      message(sprintf("Estimating the model with maxpts = %d", maxpts))
+      on.exit(message("\nDone"))
+    }
+
+    # TODO: use the gradient again
+    # optim(par, fn, gr, method = "BFGS", control = list(maxit = 10000L),
+    #       maxpts = maxpts)
+    optim(par, fn, control = list(maxit = 10000L),
           maxpts = maxpts)
+  }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
   for(i in seq_len(length(maxpts) - 1L))

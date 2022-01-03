@@ -716,6 +716,7 @@ SEXP get_gsm_ptr(Rcpp::List data){
   gsm_vec_ptr out(new std::vector<mixed_gsm_cluster>());
   out->reserve(data.size());
 
+  arma::uword n_rng{}, n_fixef{};
   for(SEXP dat : data){
     Rcpp::List dat_list = dat;
     out->emplace_back(
@@ -724,6 +725,14 @@ SEXP get_gsm_ptr(Rcpp::List data){
       Rcpp::as<arma::mat>(dat_list["Z"]),
       Rcpp::as<arma::vec>(dat_list["y"]),
       Rcpp::as<arma::vec>(dat_list["event"]));
+
+    if(n_fixef && out->back().n_fixef() != n_fixef)
+      throw std::invalid_argument("number of fixed effects differ");
+    n_fixef = out->back().n_fixef();
+
+    if(n_rng && out->back().n_rng() != n_rng)
+      throw std::invalid_argument("number of random effects differ");
+    n_rng = out->back().n_rng();
   }
 
   return out;
@@ -734,11 +743,19 @@ Rcpp::NumericVector gsm_eval
   (SEXP ptr, arma::vec const &beta, arma::vec const &sig, int const maxpts,
    int const key, double const abseps, double const releps){
   gsm_vec_ptr comp_obj(ptr);
+  if(comp_obj->size() < 1)
+    return {0};
+
   double out{};
   unsigned n_fails{};
 
-  arma::uword const n_rng =
-    std::lround((std::sqrt(8 * sig.n_elem + 1.) - 1.) / 2);
+  arma::uword const n_rng{comp_obj->back().n_rng()},
+                  n_fixef{comp_obj->back().n_fixef()};
+  if(sig.n_elem != (n_rng * (n_rng + 1)) / 2)
+    throw std::invalid_argument("sig does not have the correct length");
+  if(beta.n_elem != n_fixef)
+    throw std::invalid_argument("beta does not have the correct length");
+
   arma::mat L(n_rng, n_rng), Sigma;
   get_pd_mat(sig.memptr(), L, Sigma);
 
@@ -760,24 +777,31 @@ Rcpp::NumericVector gsm_gr
   (SEXP ptr, arma::vec const &beta, arma::vec const &sig, int const maxpts,
    int const key, double const abseps, double const releps){
   gsm_vec_ptr comp_obj(ptr);
+  if(comp_obj->size() < 1)
+    return {};
+
   double ll{};
   unsigned n_fails{};
-  arma::vec out, tmp;
 
-  arma::uword const n_rng =
-    std::lround((std::sqrt(8 * sig.n_elem + 1.) - 1.) / 2);
+  arma::uword const n_rng{comp_obj->back().n_rng()},
+                n_fixef{comp_obj->back().n_fixef()};
+  if(sig.n_elem != (n_rng * (n_rng + 1)) / 2)
+    throw std::invalid_argument("sig does not have the correct length");
+  if(beta.n_elem != n_fixef)
+    throw std::invalid_argument("beta does not have the correct length");
+
   arma::mat L(n_rng, n_rng), Sigma;
   get_pd_mat(sig.memptr(), L, Sigma);
+
+  arma::vec out(n_fixef + (n_rng * (n_rng + 1)) / 2, arma::fill::zeros),
+            tmp;
 
   parallelrng::set_rng_seeds(1);
   for(mixed_gsm_cluster &dat : *comp_obj){
     auto res = dat.grad(tmp, beta, Sigma, maxpts, key, abseps, releps);
     ll += res.log_like;
     n_fails += res.inform != 0;
-    if(tmp.size() != out.size())
-      out = tmp;
-    else
-      out += tmp;
+    out += tmp;
   }
 
   arma::mat d_Sigma(n_rng, n_rng);

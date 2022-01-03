@@ -23,7 +23,7 @@
  *
  *   omega = -X^c.beta - Z^c.h
  *
- * and H from which we can compute the rest of the derivatives.
+ * and H we can compute the rest of the derivatives.
  *
  * The design matrices are stored as their transpose to be consistent with the
  * rest of the package.
@@ -120,7 +120,7 @@ class mixed_gsm_cluster {
   /// the observed times for the censored and uncensored individuals
   arma::vec yo, yc;
 
-
+public:
   /// the number of censored observations
   arma::uword n_cens() const {
     return Xc.n_cols;
@@ -142,7 +142,6 @@ class mixed_gsm_cluster {
     return Xo.n_rows;
   }
 
-public:
   mixed_gsm_cluster
   (arma::mat const &X, arma::mat const &X_prime, arma::mat const &Z,
    arma::vec const &y, arma::vec const &event);
