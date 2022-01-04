@@ -1,6 +1,6 @@
 # Mixed Generalized Survival Models
 
-We simulate at estimate models from
+We simulate from
 
 ![
 \\begin{align\*}
@@ -16,7 +16,8 @@ We simulate at estimate models from
 \end{align*}
 ")
 
-subject to independent censoring. The conditional hazard of the model is
+subject to independent censoring and estimate the model. The conditional
+hazard of the model is
 
 ![
 h(t\\mid  \\vec x\_{ij}, \\vec z\_{ij}, \\vec u_i) = 
@@ -30,12 +31,15 @@ h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) =
        {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
 ")
 
+The code to do the stimulation and to assign the model parameters is
+given below.
+
 ``` r
 # computes the time-varying fixed effects
 x <- \(v) { v <- log(v); cbind(1, v, v^3) }
 xp <- \(v) { v_org <- v; v <- log(v); cbind(0, 1, 3 * v^2) / v_org }
 
-# generates the time-invariant covariate
+# generates the time-invariant covariates
 gen_cov <- \(n) cbind(rnorm(n), runif(n) > .5)
 
 # the fixed effects coefficients (beta)
@@ -43,7 +47,7 @@ beta <- c(-1, .25, .4, .5, 1)
 
 admin_cens <- 5 # the administrative censoring time
 
-# plot of the hazard
+# plot of the hazard when the other fixed effects are zero
 par(mar = c(5, 5, 1, 1))
 seq(1e-2, admin_cens, length.out = 1000) |>
   (\(vs)
@@ -78,7 +82,7 @@ sim_dat <- \(n_clusters)
     X <- gen_cov(n_members)
     Z <- gen_rng_cov(n_members)
     
-    # find the event time
+    # find the event times
     offset <- X %*% tail(beta, NCOL(X)) + Z %*% U
     
     beta_use <- head(beta, -NCOL(X))
@@ -102,11 +106,13 @@ sim_dat <- \(n_clusters)
   })
 ```
 
+Next, we simulate from the model and estimate the model.
+
 ``` r
 # simulate the data
 set.seed(8401834)
 dat <- sim_dat(2000L)
-dat_full <- do.call(rbind, lapply(dat, `[[`, "df")) |> data.frame()
+dat_full <- lapply(dat, `[[`, "df") |> do.call(what = rbind) |> data.frame()
 
 mean(dat_full$event) # fraction of observed events
 #> [1] 0.6672
@@ -120,56 +126,74 @@ subset(dat_full, event > 0)$y |>
 #>    100% 
 #> 4.99897
 
-# fit the model 
+# fit the model with the stochastic spherical-radial rules
 library(mixprobit)
-#> Loading required package: survival
 system.time(
-  res <- fit_mgsm(
+  res_sr <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
-    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L))
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
+    method_use = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 215.898   0.023 215.932
+#> 219.240   0.067 219.491
+
+# fit the model with the CDF approach
+system.time(
+  res_cdf <- fit_mgsm(
+    formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
+    method_use = "cdf_approach"))
+#>    user  system elapsed 
+#>   122.9     0.0   122.9
 ```
+
+The results are shown below.
 
 ``` r
 # the estimates are shown below
-rbind(Estimate = res$beta_fixef, 
+rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
+      `Estimate CDF` = res_cdf$beta_fixef,
       Truth = tail(beta, 2))
-#>            [,1]   [,2]
-#> Estimate 0.4882 0.9919
-#> Truth    0.5000 1.0000
+#>                             [,1]   [,2]
+#> Estimate spherical radial 0.4882 0.9919
+#> Estimate CDF              0.4883 0.9919
+#> Truth                     0.5000 1.0000
 
-res$Sigma # estimated covariance matrix
+res_sr$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
 #> [1,]  0.9799 -0.1634
 #> [2,] -0.1634  0.2835
+res_cdf$Sigma # estimated covariance matrix
+#>         [,1]    [,2]
+#> [1,]  0.9805 -0.1636
+#> [2,] -0.1636  0.2838
 Sigma # the true covariance matrix
 #>         [,1]    [,2]
 #> [1,]  0.9673 -0.1505
 #> [2,] -0.1505  0.2787
 
-# plot of the estimated hazard
+# plot of the estimated hazard and the true hazard when the other fixed effects
+# are zero
 library(splines)
-Xt_spline <- \(v) splineDesign(res$A_knots, log(v), outer.ok = TRUE)
+Xt_spline <- \(v) splineDesign(res_sr$A_knots, log(v), outer.ok = TRUE)
 Xt_spline_prime <- \(v) splineDesign(
-  res$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
+  res_sr$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
 
 vs <- seq(1e-2, admin_cens, length.out = 1000)
-haz_truth <- sapply(vs, \(v){
-  beta_use <- head(beta, -2)
+# computes the hazard
+cmp_haz <- \(x, xp, beta_use)
+  sapply(vs, \(v){
     eta <- x(v) %*% beta_use
     eta_p <- xp(v) %*% beta_use
     eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
-})
-haz_est <- sapply(vs, \(v){
-  eta <- Xt_spline(v) %*% res$beta_spline
-  eta_p <- Xt_spline_prime(v) %*% res$beta_spline
-  eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
-})
+  })
 
 par(mar = c(5, 5, 1, 1))
 matplot(
-  vs, cbind(haz_truth, haz_est), type = "l", bty = "l", lty = 1:2, 
+  vs, cbind(
+    cmp_haz(x, xp, head(beta, -2)),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline)),
+  type = "l", bty = "l", lty = 1:3, 
   col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
 grid()
 ```
@@ -178,8 +202,25 @@ grid()
 
 ``` r
 # the maximum likelihood
-res$logLik
-#> [1] -12537
+print(res_sr$logLik, digits = 8)
+#> [1] -12536.994
+print(res_cdf$logLik, digits = 8)
+#> [1] -12537.08
+
+# compare the variance on the log marginal likelihood of the two methods 
+# while tracking the computation time
+system.time(
+  funcn_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
+#>    user  system elapsed 
+#>   9.673   0.000   9.674
+sd(funcn_ests)
+#> [1] 0.01431
+system.time(
+  funcn_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
+#>    user  system elapsed 
+#>   9.716   0.000   9.718
+sd(funcn_ests)
+#> [1] 0.008273
 
 # can be compared with say a Weibull model
 survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()

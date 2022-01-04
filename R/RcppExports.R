@@ -89,11 +89,11 @@ get_gsm_ptr <- function(data) {
     .Call('_mixprobit_get_gsm_ptr', PACKAGE = 'mixprobit', data)
 }
 
-gsm_eval <- function(ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive) {
-    .Call('_mixprobit_gsm_eval', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive)
+gsm_eval <- function(ptr, beta, sig, maxpts, key, abseps, releps, method_use) {
+    .Call('_mixprobit_gsm_eval', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps, method_use)
 }
 
-gsm_gr <- function(ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive) {
-    .Call('_mixprobit_gsm_gr', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive)
+gsm_gr <- function(ptr, beta, sig, maxpts, key, abseps, releps, method_use) {
+    .Call('_mixprobit_gsm_gr', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps, method_use)
 }
 

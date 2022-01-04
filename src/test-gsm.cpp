@@ -18,15 +18,16 @@ context("testing gsm_cens_term") {
     arma::vec beta(n_fix);
 
     {
-      auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-        .func(10000L, 1, 1e-3, 1e-3, true);
+      auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma).func
+        (10000L, 1, 1e-3, 1e-3, gsm_approx_method::adaptive_spherical_radial);
       expect_true(res.inform == 0);
       expect_true(res.log_like == 0);
     }
 
     arma::vec gr;
     auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-      .gr(gr, 10000L, 1, 1e-3, 1e-3, true);
+      .gr(gr, 10000L, 1, 1e-3, 1e-3,
+          gsm_approx_method::adaptive_spherical_radial);
     expect_true(res.inform == 0);
     expect_true(res.log_like == 0);
 
@@ -140,13 +141,23 @@ context("testing gsm_cens_term") {
     constexpr double true_func{-0.968031924910162},
                        rel_eps{1e-1};
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, true);
+      auto const res =
+        comp_obj.func(100000, 3L, -1, rel_eps,
+                      gsm_approx_method::adaptive_spherical_radial);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
     }
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, false);
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps,
+                                     gsm_approx_method::spherical_radial);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+    }
+    {
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps,
+                                     gsm_approx_method::cdf_approach);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
@@ -158,7 +169,21 @@ context("testing gsm_cens_term") {
       {-0.537893597021461, -0.208299165140343, 0.0401056616115828, 0.0163544243417218, -0.0629916831813027, 0.0169226034005708, 0.023017755737681, -0.0484885478113118};
 
     arma::vec gr;
-    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps, true);
+    {
+      auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps,
+                                   gsm_approx_method::adaptive_spherical_radial);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+
+      expect_true(gr.size() == dim_gr);
+      for(uword i = 0; i < gr.size(); ++i)
+        expect_true(std::abs(gr[i] - true_gr[i]) <
+          2 * rel_eps * std::abs(true_gr[i]));
+    }
+
+    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps,
+                                 gsm_approx_method::cdf_approach);
     expect_true(res.inform == 0);
     expect_true(std::abs(res.log_like - true_func) <
       2 * rel_eps * std::abs(true_func));
@@ -285,13 +310,23 @@ context("testing gsm_cens_term") {
     constexpr double true_func{-0.724841472478689},
                        rel_eps{1e-1};
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, true);
+      auto const res =
+        comp_obj.func(100000, 3L, -1, rel_eps,
+                      gsm_approx_method::adaptive_spherical_radial);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
     }
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, false);
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps,
+                                     gsm_approx_method::spherical_radial);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+    }
+    {
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps,
+                                     gsm_approx_method::cdf_approach);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
@@ -303,7 +338,21 @@ context("testing gsm_cens_term") {
       {-0.0977871634383885, -0.138326698988711, -0.0483815801503183, 0.0137908164075206, 0.00183664253847172, -0.0852235200667964, -0.00871301650391389, 0.00105158098124027};
 
     arma::vec gr;
-    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps, true);
+    {
+      auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps,
+                                   gsm_approx_method::adaptive_spherical_radial);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+
+      expect_true(gr.size() == dim_gr);
+      for(uword i = 0; i < gr.size(); ++i)
+        expect_true(std::abs(gr[i] - true_gr[i])  <
+          2 * rel_eps * std::abs(true_gr[i]));
+    }
+
+    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps,
+                                 gsm_approx_method::cdf_approach);
     expect_true(res.inform == 0);
     expect_true(std::abs(res.log_like - true_func) <
       2 * rel_eps * std::abs(true_func));
@@ -430,13 +479,16 @@ context("testing gsm_cens_term") {
     constexpr double true_func{-1.502700530338},
                        rel_eps{1e-1};
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, true);
+      auto const res =
+        comp_obj.func(100000, 3L, -1, rel_eps,
+                      gsm_approx_method::adaptive_spherical_radial);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
     }
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, false);
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps,
+                                     gsm_approx_method::spherical_radial);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
@@ -448,7 +500,8 @@ context("testing gsm_cens_term") {
     {-0.0730728351317208, -0.116149544771193, -0.00285788922175744, -0.0200031469366203, 0.0328085194439066, -0.0357818568455293, -0.0442357970784554, -0.096957277588603};
 
     arma::vec gr;
-    auto const res = comp_obj.gr(gr, 100000000, 1L, -1, rel_eps, true);
+    auto const res = comp_obj.gr(gr, 100000000, 1L, -1, rel_eps,
+                                 gsm_approx_method::adaptive_spherical_radial);
     // expect_true(res.inform == 0);
     expect_true(std::abs(res.log_like - true_func) <
       2 * rel_eps * std::abs(true_func));

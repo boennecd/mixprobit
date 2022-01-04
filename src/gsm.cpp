@@ -2,10 +2,24 @@
 #include "ranrth-wrapper.h"
 #include "integrand-binary.h"
 #include "utils.h"
+#include "restrict-cdf.h"
 #include <stdexcept>
 
 using namespace integrand;
 using namespace ranrth_aprx;
+
+/**
+ * fills the derivative of a symmetric matrix given the derivatives of the full
+ * matrix
+ */
+inline void fill_vcov_derivs(double *derivs, arma::mat const &ders_pass){
+  arma::uword const n_rng{ders_pass.n_rows};
+  for(arma::uword j = 0; j < n_rng; ++j, ++derivs){
+    for(arma::uword i = 0; i < j; ++i, ++derivs)
+      *derivs = ders_pass(i, j) + ders_pass(j, i);
+    *derivs = ders_pass(j, j);
+  }
+}
 
 gsm_cens_term::gsm_cens_term
   (arma::mat const &Zo, arma::mat const &Zc, arma::mat const &Xo,
@@ -25,10 +39,54 @@ gsm_cens_term::gsm_cens_term
 
 gsm_cens_term::gsm_cens_output gsm_cens_term::func
   (int const maxpts, int const key, double const abseps,
-   double const releps, bool const use_adaptive) const {
+   double const releps, gsm_approx_method const method_use) const {
   if(n_cen < 1)
     return {0, 0, 0};
 
+  if(method_use == gsm_approx_method::spherical_radial ||
+     method_use == gsm_approx_method::adaptive_spherical_radial)
+    return func_spherical_radial
+      (maxpts, key, abseps, releps,
+       method_use == gsm_approx_method::adaptive_spherical_radial);
+  else if(method_use != gsm_approx_method::cdf_approach)
+    throw std::invalid_argument("method is not implemented");
+
+  // the CDF approach
+  arma::vec eta = n_fixef > 0 ? Xc.t() * beta
+                              : arma::vec(n_cen, arma::fill::zeros);
+  if(n_obs < 1){
+    arma::mat const K = ([&]{
+      arma::mat out = Zc.t() * Sigma * Zc;
+      out.diag() += 1;
+      return out;
+    })();
+
+    restrictcdf::cdf<restrictcdf::likelihood>::set_working_memory(K.n_rows, 1L);
+    auto res = restrictcdf::cdf<restrictcdf::likelihood>
+      (eta, K, true).approximate(maxpts, abseps, releps);
+
+    return { std::log(res.finest[0]), res.inform, res.minvls };
+  }
+
+  arma::mat const H = Zo * Zo.t() + arma::inv_sympd(Sigma);
+  arma::vec const eta_rhs = Zo * (Xo.t() * beta);
+  arma::mat const K =  ([&]{
+    arma::mat out = Zc.t() * arma::solve(H, Zc, arma::solve_opts::likely_sympd);
+    out.diag() += 1;
+    return out;
+  })();
+  eta -= Zc.t() * arma::solve(H, eta_rhs);
+
+  restrictcdf::cdf<restrictcdf::likelihood>::set_working_memory(K.n_rows, 1L);
+  auto res = restrictcdf::cdf<restrictcdf::likelihood>
+    (eta, K, true).approximate(maxpts, abseps, releps);
+
+  return { std::log(res.finest[0]), res.inform, res.minvls };
+}
+
+gsm_cens_term::gsm_cens_output gsm_cens_term::func_spherical_radial
+  (int const maxpts, int const key, double const abseps,
+   double const releps, bool const use_adaptive) const {
   arma::vec eta = n_fixef > 0 ? -(Xc.t() * beta)
                               : arma::vec(n_cen, arma::fill::zeros);
 
@@ -77,12 +135,115 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::func
 }
 
 gsm_cens_term::gsm_cens_output gsm_cens_term::gr
-  (arma::vec &gr, int const maxpts, int const key, double const abseps,
-   double const releps, bool const use_adaptive) const {
+  (arma::vec &gr,int const maxpts, int const key, double const abseps,
+   double const releps, gsm_approx_method const method_use) const {
   arma::uword const vcov_dim{(Sigma.n_cols * (Sigma.n_cols + 1)) / 2};
   gr.zeros(beta.size() + vcov_dim);
   if(n_cen < 1)
     return {0, 0, 0};
+
+  if(method_use == gsm_approx_method::spherical_radial ||
+     method_use == gsm_approx_method::adaptive_spherical_radial)
+    return gr_spherical_radial
+    (gr, maxpts, key, abseps, releps,
+     method_use == gsm_approx_method::adaptive_spherical_radial);
+  else if(method_use != gsm_approx_method::cdf_approach)
+    throw std::invalid_argument("method is not implemented");
+
+  // the cdf approach
+  arma::vec eta = n_fixef > 0 ? Xc.t() * beta
+                              : arma::vec(n_cen, arma::fill::zeros);
+
+  arma::vec d_beta(gr.begin(), n_fixef, false),
+             d_Sig(d_beta.end(), vcov_dim, false);
+
+  auto get_d_vcov_full = [&](double const *d_vcov_ij){
+    arma::uword const n_full{Zc.n_cols};
+    arma::mat d_vcov_full(n_full, n_full);
+
+    for(arma::uword j = 0; j < n_full; ++j)
+      for(arma::uword i = 0; i <= j; ++i, ++d_vcov_ij){
+        // restrictcdf scales down the off diagonal entries by two
+        d_vcov_full(i, j) = *d_vcov_ij;
+        d_vcov_full(j, i) = *d_vcov_ij;
+      }
+
+    return d_vcov_full;
+  };
+
+  if(n_obs < 1){
+    arma::mat const K = ([&]{
+      arma::mat out = Zc.t() * Sigma * Zc;
+      out.diag() += 1;
+      return out;
+    })();
+
+    restrictcdf::cdf<restrictcdf::deriv>::set_working_memory(K.n_rows, 1L);
+    auto res = restrictcdf::cdf<restrictcdf::deriv>
+      (eta, K, true).approximate(maxpts, abseps, releps);
+
+    double const int_val{res.finest[0]};
+
+    res.finest /= int_val; // account for the log(f)
+    arma::vec d_eta(res.finest.begin() + 1, n_cen, false);
+    double const * const d_vcov{d_eta.end()};
+
+    d_beta += Xc * d_eta;
+
+    arma::mat const d_vcov_full = get_d_vcov_full(d_vcov);
+    arma::mat const d_Sigma = Zc * d_vcov_full * Zc.t();
+    fill_vcov_derivs(d_Sig.memptr(), d_Sigma);
+
+    return { std::log(int_val), res.inform, res.minvls };
+  }
+
+  arma::mat const H = Zo * Zo.t() + arma::inv_sympd(Sigma);
+  arma::vec const eta_rhs = Zo * (Xo.t() * beta);
+  arma::mat const K =  ([&]{
+    arma::mat out = Zc.t() * arma::solve(H, Zc, arma::solve_opts::likely_sympd);
+    out.diag() += 1;
+    return out;
+  })();
+  eta -= Zc.t() * arma::solve(H, eta_rhs);
+
+  restrictcdf::cdf<restrictcdf::deriv>::set_working_memory(K.n_rows, 1L);
+  auto res = restrictcdf::cdf<restrictcdf::deriv>
+    (eta, K, true).approximate(maxpts, abseps, releps);
+
+  double const int_val{res.finest[0]};
+
+  res.finest /= int_val; // account for the log(f)
+  arma::vec d_eta(res.finest.begin() + 1, n_cen, false);
+  double const * const d_vcov{d_eta.end()};
+
+  // handle the derivatives w.r.t. the fixed effects
+  arma::vec const Zc_d_eta = n_fixef > 0 ? Zc * d_eta : arma::vec();
+  if(n_fixef > 0)
+    d_beta += Xc * d_eta -
+      Xo * Zo.t() * arma::solve(H, Zc_d_eta, arma::solve_opts::likely_sympd);
+
+  // handle the derivatives w.r.t the covariance matrix
+  arma::mat d_H_inv = Zc * get_d_vcov_full(d_vcov) * Zc.t();
+
+  if(n_fixef > 0)
+    for(arma::uword j = 0; j < d_H_inv.n_cols; ++j){
+      for(arma::uword i = 0; i < j; ++i){
+        d_H_inv(i, j) -= Zc_d_eta[i] * eta_rhs[j];
+        d_H_inv(j, i) -= Zc_d_eta[j] * eta_rhs[i];
+      }
+      d_H_inv(j, j) -= Zc_d_eta[j] * eta_rhs[j];
+    }
+
+  arma::mat const d_Sigma = dcond_vcov(H, d_H_inv, Sigma);
+  fill_vcov_derivs(d_Sig.memptr(), d_Sigma);
+
+  return { std::log(int_val), res.inform, res.minvls };
+}
+
+gsm_cens_term::gsm_cens_output gsm_cens_term::gr_spherical_radial
+  (arma::vec &gr, int const maxpts, int const key, double const abseps,
+   double const releps, bool const use_adaptive) const {
+  arma::uword const vcov_dim{(Sigma.n_cols * (Sigma.n_cols + 1)) / 2};
 
   arma::vec eta = n_fixef > 0 ? -(Xc.t() * beta)
                               : arma::vec(n_cen, arma::fill::zeros);
@@ -144,8 +305,8 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
   double const int_val{res.value[0]};
 
   res.value /= int_val; // account for the log(f)
-  arma::vec d_eta(res.value.begin() + 1, n_cen, false),
-  d_vcov(d_eta.end(), vcov_dim, false);
+  arma::vec d_eta(res.value.begin() + 1, n_cen, false);
+  double const * const d_vcov{d_eta.end()};
 
   // handle the fixed effects and then the covariance matrix parameters
   arma::vec const Zc_d_eta = n_fixef > 0 ? Zc * d_eta : arma::vec();
@@ -159,7 +320,7 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
    */
   arma::mat dH_inv(n_rng, n_rng);
   {
-    double const * d_vcov_ij{d_vcov.begin()};
+    double const * d_vcov_ij{d_vcov};
     if(n_fixef > 0)
       for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
         for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
@@ -177,16 +338,8 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
           dH_inv(j, j) = *d_vcov_ij;
         }
   }
-  arma::mat dSigma_one = dcond_vcov(H, dH_inv, Sigma);
-
-  {
-    double * d_Sig_ij{d_Sig.begin()};
-    for(arma::uword j = 0; j < n_rng; ++j, ++d_Sig_ij){
-      for(arma::uword i = 0; i < j; ++i, ++d_Sig_ij)
-        *d_Sig_ij = dSigma_one(i, j) + dSigma_one(j, i);
-      *d_Sig_ij = dSigma_one(j, j);
-    }
-  }
+  arma::mat d_Sigma = dcond_vcov(H, dH_inv, Sigma);
+  fill_vcov_derivs(d_Sig.memptr(), d_Sigma);
 
   return { std::log(int_val), res.inform, res.inivls };
 }
@@ -316,7 +469,7 @@ mixed_gsm_cluster::mixed_gsm_cluster
 mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::operator()
   (arma::vec const &beta, arma::mat const &Sigma, int const maxpts,
    int const key, double const abseps, double const releps,
-   bool const use_adaptive) const {
+   gsm_approx_method const method_use) const {
   assert(beta.n_elem == n_fixef());
   assert(Sigma.n_rows == n_rng());
   assert(Sigma.n_cols == n_rng());
@@ -332,7 +485,7 @@ mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::operator()
 
   } if(n_cens() > 0){
     auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-      .func(maxpts, key, abseps, releps, use_adaptive);
+      .func(maxpts, key, abseps, releps, method_use);
     out.log_like += res.log_like;
     out.inform = res.inform;
 
@@ -344,7 +497,7 @@ mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::operator()
 mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::grad
   (arma::vec &gr, arma::vec const &beta, arma::mat const &Sigma,
    int const maxpts, int const key, double const abseps,
-   double const releps, bool const use_adaptive) const {
+   double const releps, gsm_approx_method const method_use) const {
   assert(beta.n_elem == n_fixef());
   assert(Sigma.n_rows == n_rng());
   assert(Sigma.n_cols == n_rng());
@@ -368,7 +521,7 @@ mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::grad
 
   } if(n_cens() > 0){
     auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-      .gr(tmp, maxpts, key, abseps, releps, use_adaptive);
+      .gr(tmp, maxpts, key, abseps, releps, method_use);
     out.log_like += res.log_like;
     out.inform = res.inform;
     gr += tmp;

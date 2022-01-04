@@ -742,7 +742,7 @@ SEXP get_gsm_ptr(Rcpp::List data){
 Rcpp::NumericVector gsm_eval
   (SEXP ptr, arma::vec const &beta, arma::vec const &sig, int const maxpts,
    int const key, double const abseps, double const releps,
-   bool const use_adaptive){
+   std::string const method_use){
   gsm_vec_ptr comp_obj(ptr);
   if(comp_obj->size() < 1)
     return {0};
@@ -762,7 +762,9 @@ Rcpp::NumericVector gsm_eval
 
   parallelrng::set_rng_seeds(1);
   for(mixed_gsm_cluster &dat : *comp_obj){
-    auto res = dat(beta, Sigma, maxpts, key, abseps, releps, use_adaptive);
+    auto res = dat
+      (beta, Sigma, maxpts, key, abseps, releps,
+       string_to_gsm_approx_method(method_use));
     out += res.log_like;
     n_fails += res.inform != 0;
   }
@@ -777,7 +779,7 @@ Rcpp::NumericVector gsm_eval
 Rcpp::NumericVector gsm_gr
   (SEXP ptr, arma::vec const &beta, arma::vec const &sig, int const maxpts,
    int const key, double const abseps, double const releps,
-   bool const use_adaptive){
+   std::string const method_use){
   gsm_vec_ptr comp_obj(ptr);
   if(comp_obj->size() < 1)
     return {};
@@ -800,8 +802,9 @@ Rcpp::NumericVector gsm_gr
 
   parallelrng::set_rng_seeds(1);
   for(mixed_gsm_cluster &dat : *comp_obj){
-    auto res = dat.grad(tmp, beta, Sigma, maxpts, key, abseps, releps,
-                        use_adaptive);
+    auto res = dat.grad
+      (tmp, beta, Sigma, maxpts, key, abseps, releps,
+       string_to_gsm_approx_method(method_use));
     ll += res.log_like;
     n_fails += res.inform != 0;
     out += tmp;

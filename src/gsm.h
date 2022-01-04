@@ -2,6 +2,26 @@
 #define H_MIXED_GSM
 #include "arma-wrap.h"
 #include <memory.h>
+#include <string.h>
+
+enum class gsm_approx_method {
+  spherical_radial,
+  adaptive_spherical_radial,
+  cdf_approach
+};
+
+inline gsm_approx_method string_to_gsm_approx_method
+  (std::string const &which){
+  if(which == "spherical_radial")
+    return gsm_approx_method::spherical_radial;
+  else if(which == "adaptive_spherical_radial")
+    return gsm_approx_method::adaptive_spherical_radial;
+  else if(which == "cdf_approach")
+    return gsm_approx_method::cdf_approach;
+
+  throw std::invalid_argument("not matching method");
+  return gsm_approx_method::spherical_radial;
+}
 
 /**
  * The class is used to compute
@@ -50,11 +70,20 @@ public:
   /// evaluates the log of the integral
   gsm_cens_output func
     (int const maxpts, int const key, double const abseps,
-     double const releps, bool const use_adaptive) const;
+     double const releps, gsm_approx_method const method_use) const;
 
   /// evaluates the log of the integral and the gradient of it
   gsm_cens_output gr
-    (arma::vec &gr,  int const maxpts, int const key, double const abseps,
+    (arma::vec &gr, int const maxpts, int const key, double const abseps,
+     double const releps, gsm_approx_method const method_use) const;
+
+private:
+  gsm_cens_output func_spherical_radial
+    (int const maxpts, int const key, double const abseps,
+     double const releps, bool const use_adaptive) const;
+
+  gsm_cens_output gr_spherical_radial
+    (arma::vec &gr, int const maxpts, int const key, double const abseps,
      double const releps, bool const use_adaptive) const;
 };
 
@@ -154,7 +183,7 @@ public:
   mixed_gsm_cluster_res operator()
     (arma::vec const &beta, arma::mat const &Sigma, int const maxpts,
      int const key, double const abseps, double const releps,
-     bool const use_adaptive) const;
+     gsm_approx_method const method_use) const;
 
   /**
    * computes the gradient, setting the result gr, and returns the log marginal
@@ -163,7 +192,7 @@ public:
   mixed_gsm_cluster_res grad
     (arma::vec &gr, arma::vec const &beta, arma::mat const &Sigma,
      int const maxpts, int const key, double const abseps,
-     double const releps, bool const use_adaptive) const ;
+     double const releps, gsm_approx_method const method_use) const ;
 };
 
 #endif

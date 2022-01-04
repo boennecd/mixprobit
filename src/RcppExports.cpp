@@ -356,8 +356,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // gsm_eval
-Rcpp::NumericVector gsm_eval(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps, bool const use_adaptive);
-RcppExport SEXP _mixprobit_gsm_eval(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP use_adaptiveSEXP) {
+Rcpp::NumericVector gsm_eval(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps, std::string const method_use);
+RcppExport SEXP _mixprobit_gsm_eval(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP method_useSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -368,14 +368,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type key(keySEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    Rcpp::traits::input_parameter< bool const >::type use_adaptive(use_adaptiveSEXP);
-    rcpp_result_gen = Rcpp::wrap(gsm_eval(ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive));
+    Rcpp::traits::input_parameter< std::string const >::type method_use(method_useSEXP);
+    rcpp_result_gen = Rcpp::wrap(gsm_eval(ptr, beta, sig, maxpts, key, abseps, releps, method_use));
     return rcpp_result_gen;
 END_RCPP
 }
 // gsm_gr
-Rcpp::NumericVector gsm_gr(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps, bool const use_adaptive);
-RcppExport SEXP _mixprobit_gsm_gr(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP use_adaptiveSEXP) {
+Rcpp::NumericVector gsm_gr(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps, std::string const method_use);
+RcppExport SEXP _mixprobit_gsm_gr(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP method_useSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -386,8 +386,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type key(keySEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    Rcpp::traits::input_parameter< bool const >::type use_adaptive(use_adaptiveSEXP);
-    rcpp_result_gen = Rcpp::wrap(gsm_gr(ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive));
+    Rcpp::traits::input_parameter< std::string const >::type method_use(method_useSEXP);
+    rcpp_result_gen = Rcpp::wrap(gsm_gr(ptr, beta, sig, maxpts, key, abseps, releps, method_use));
     return rcpp_result_gen;
 END_RCPP
 }

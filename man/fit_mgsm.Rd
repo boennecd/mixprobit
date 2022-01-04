@@ -14,7 +14,8 @@ fit_mgsm(
   key = 3L,
   abseps = 0,
   releps = 0.001,
-  seed = 1L
+  seed = 1L,
+  method_use = c("adaptive_spherical_radial", "cdf_approach", "spherical_radial")
 )
 }
 \arguments{
@@ -35,6 +36,11 @@ when fitting the model.}
 \item{key, abseps, releps}{parameters for the Monte Carlo method.}
 
 \item{seed}{the fixed seed to use.}
+
+\item{method_use}{character with the method to use to approximate the
+intractble part of the marginal likelihood. \code{"spherical_radial"} and
+\code{"adaptive_spherical_radial"} yields (adaptive) stochastic
+spherical-radial rules and \code{"spherical_radial"} yields the CDF approach.}
 }
 \description{
 Fits a mixed generalized survival model with the probit link

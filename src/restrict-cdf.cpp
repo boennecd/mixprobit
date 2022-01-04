@@ -152,10 +152,9 @@ void deriv::integrand
   size_t const n_elem = 1L + p + (p * (p + 1L)) / 2L;
   double * const out_end = out + n_elem;
 
-  for(double * o = out + 1L; o != out_end; ++o)
-    *o = 0.;
-
   *out = 1.;
+  std::fill(out + 1, out_end, 0);
+
   double * const mean_part_begin = out + 1L;
   /* Multiplying by the inverse matrix is fast but not smart numerically.
    * TODO: much of this computation can be done later */

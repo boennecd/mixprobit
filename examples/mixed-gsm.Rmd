@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 options(digits = 4)
 ```
 
-We simulate at estimate models from 
+We simulate from
 
 $$
 \begin{align*}
@@ -29,10 +29,8 @@ $$
 \vec U_i &\sim N(\vec 0, \Sigma) 
 \end{align*}
 $$
-
-subject to independent censoring. The conditional hazard of the model is 
-
-
+subject to independent censoring and estimate the model. 
+The conditional hazard of the model is 
 
 $$
 h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) = 
@@ -41,12 +39,15 @@ h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) =
        {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
 $$
 
+The code to do the stimulation and to assign the model parameters is given 
+below.
+
 ```{r assing_sim_dat}
 # computes the time-varying fixed effects
 x <- \(v) { v <- log(v); cbind(1, v, v^3) }
 xp <- \(v) { v_org <- v; v <- log(v); cbind(0, 1, 3 * v^2) / v_org }
 
-# generates the time-invariant covariate
+# generates the time-invariant covariates
 gen_cov <- \(n) cbind(rnorm(n), runif(n) > .5)
 
 # the fixed effects coefficients (beta)
@@ -54,7 +55,7 @@ beta <- c(-1, .25, .4, .5, 1)
 
 admin_cens <- 5 # the administrative censoring time
 
-# plot of the hazard
+# plot of the hazard when the other fixed effects are zero
 par(mar = c(5, 5, 1, 1))
 seq(1e-2, admin_cens, length.out = 1000) |>
   (\(vs)
@@ -85,7 +86,7 @@ sim_dat <- \(n_clusters)
     X <- gen_cov(n_members)
     Z <- gen_rng_cov(n_members)
     
-    # find the event time
+    # find the event times
     offset <- X %*% tail(beta, NCOL(X)) + Z %*% U
     
     beta_use <- head(beta, -NCOL(X))
@@ -109,11 +110,13 @@ sim_dat <- \(n_clusters)
   })
 ```
 
+Next, we simulate from the model and estimate the model.
+
 ```{r fit_ex, cache = 1}
 # simulate the data
 set.seed(8401834)
 dat <- sim_dat(2000L)
-dat_full <- do.call(rbind, lapply(dat, `[[`, "df")) |> data.frame()
+dat_full <- lapply(dat, `[[`, "df") |> do.call(what = rbind) |> data.frame()
 
 mean(dat_full$event) # fraction of observed events
 NROW(dat_full) # number of observations
@@ -121,49 +124,72 @@ NROW(dat_full) # number of observations
 subset(dat_full, event > 0)$y |> 
   quantile(probs = seq(0, 1, length.out = 11))
 
-# fit the model 
+# fit the model with the stochastic spherical-radial rules
 library(mixprobit)
 system.time(
-  res <- fit_mgsm(
+  res_sr <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
-    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L))
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
+    method_use = "adaptive_spherical_radial"))
+
+# fit the model with the CDF approach
+system.time(
+  res_cdf <- fit_mgsm(
+    formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
+    method_use = "cdf_approach"))
 ```
+
+The results are shown below.
 
 ```{r show_fit_ex}
 # the estimates are shown below
-rbind(Estimate = res$beta_fixef, 
+rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
+      `Estimate CDF` = res_cdf$beta_fixef,
       Truth = tail(beta, 2))
 
-res$Sigma # estimated covariance matrix
+res_sr$Sigma # estimated covariance matrix
+res_cdf$Sigma # estimated covariance matrix
 Sigma # the true covariance matrix
 
-# plot of the estimated hazard
+# plot of the estimated hazard and the true hazard when the other fixed effects
+# are zero
 library(splines)
-Xt_spline <- \(v) splineDesign(res$A_knots, log(v), outer.ok = TRUE)
+Xt_spline <- \(v) splineDesign(res_sr$A_knots, log(v), outer.ok = TRUE)
 Xt_spline_prime <- \(v) splineDesign(
-  res$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
+  res_sr$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
 
 vs <- seq(1e-2, admin_cens, length.out = 1000)
-haz_truth <- sapply(vs, \(v){
-  beta_use <- head(beta, -2)
+# computes the hazard
+cmp_haz <- \(x, xp, beta_use)
+  sapply(vs, \(v){
     eta <- x(v) %*% beta_use
     eta_p <- xp(v) %*% beta_use
     eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
-})
-haz_est <- sapply(vs, \(v){
-  eta <- Xt_spline(v) %*% res$beta_spline
-  eta_p <- Xt_spline_prime(v) %*% res$beta_spline
-  eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
-})
+  })
 
 par(mar = c(5, 5, 1, 1))
 matplot(
-  vs, cbind(haz_truth, haz_est), type = "l", bty = "l", lty = 1:2, 
+  vs, cbind(
+    cmp_haz(x, xp, head(beta, -2)),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline)),
+  type = "l", bty = "l", lty = 1:3, 
   col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
 grid()
 
 # the maximum likelihood
-res$logLik
+print(res_sr$logLik, digits = 8)
+print(res_cdf$logLik, digits = 8)
+
+# compare the variance on the log marginal likelihood of the two methods 
+# while tracking the computation time
+system.time(
+  funcn_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
+sd(funcn_ests)
+system.time(
+  funcn_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
+sd(funcn_ests)
 
 # can be compared with say a Weibull model
 survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()

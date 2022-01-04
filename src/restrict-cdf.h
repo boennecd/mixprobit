@@ -156,17 +156,15 @@ void set_mvkbrv_ptr(mvkbrv_ptr);
 inline void copy_upper_tri
   (arma::mat const &X, double * __restrict__ x) noexcept {
   size_t const p = X.n_cols;
-  for(unsigned c = 0; c < p; c++)
-    for(unsigned r = 0; r <= c; r++, x++)
-      *x = X.at(r, c);
+  for(unsigned c = 0; c < p; c++, x += c)
+    std::copy(X.colptr(c), X.colptr(c) + c + 1, x);
 }
 
 inline void copy_lower_tri
   (arma::mat const &X, double * __restrict__ x) noexcept {
   size_t const p = X.n_cols;
-  for(unsigned c = 0; c < p; c++)
-    for(unsigned r = c; r < p; r++, x++)
-      *x = X.at(r, c);
+  for(unsigned c = 0; c < p; x+= p - c, c++)
+    std::copy(X.colptr(c) + c, X.colptr(c + 1), x);
 }
 
 /**

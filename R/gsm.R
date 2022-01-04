@@ -10,14 +10,23 @@
 #' when fitting the model.
 #' @param key,abseps,releps parameters for the Monte Carlo method.
 #' @param seed the fixed seed to use.
-#' @param use_adaptive logical for whether importance sampling should be used.
+#' @param method_use character with the method to use to approximate the
+#' intractble part of the marginal likelihood. \code{"spherical_radial"} and
+#' \code{"adaptive_spherical_radial"} yields (adaptive) stochastic
+#' spherical-radial rules and \code{"spherical_radial"} yields the CDF approach.
 #'
 #' @importFrom stats  model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
 #' @export
 fit_mgsm <- function(
   formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
-  key = 3L, abseps = 0, releps = 1e-3, seed = 1L, use_adaptive = TRUE){
+  key = 3L, abseps = 0, releps = 1e-3, seed = 1L,
+  method_use = c("adaptive_spherical_radial",  "cdf_approach",
+                 "spherical_radial")){
+  method_use <- method_use[1]
+  stopifnot(method_use %in% c("adaptive_spherical_radial",  "cdf_approach",
+                              "spherical_radial"))
+
   mf_X <- model.frame(formula, data)
   y <- model.response(mf_X)
   X_fixef <- model.matrix(terms(mf_X), mf_X)
@@ -105,7 +114,7 @@ fit_mgsm <- function(
   sig <- numeric((n_rng * (n_rng + 1L)) %/% 2L)
   par <- c(theta_start, sig[lower.tri(sig, TRUE)])
 
-  fn <- function(theta, maxpts, key, abseps, releps, use_adaptive, seed,
+  fn <- function(theta, maxpts, key, abseps, releps, method_use, seed,
                  silent = TRUE){
     set.seed(seed)
     par <- get_beta(theta)
@@ -113,11 +122,12 @@ fit_mgsm <- function(
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_eval(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, use_adaptive), silent = silent)
+      abseps = abseps, releps = releps, method_use = method_use),
+      silent = silent)
     if(inherits(res, "try-error")) NA else -res
   }
 
-  gr <- function(theta, maxpts, key, abseps, releps, use_adaptive, seed,
+  gr <- function(theta, maxpts, key, abseps, releps, method_use, seed,
                  silent = TRUE){
     set.seed(seed)
     par <- get_beta(theta)
@@ -125,7 +135,7 @@ fit_mgsm <- function(
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_gr(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, use_adaptive = use_adaptive),
+      abseps = abseps, releps = releps, method_use = method_use),
       silent = silent)
     if(inherits(res, "try-error"))
       return(rep(NA, length(par)))
@@ -133,9 +143,9 @@ fit_mgsm <- function(
     d_theta(-res, theta)
   }
 
-  to_set <- c("maxpts", "key", "abseps", "releps", "use_adaptive", "seed")
+  to_set <- c("maxpts", "key", "abseps", "releps", "method_use", "seed")
   formals(fn)[to_set] <- formals(gr)[to_set] <-
-    list(max(maxpts), key, abseps, releps, use_adaptive, seed)
+    list(max(maxpts), key, abseps, releps, method_use, seed)
 
   # fit the model
   maxpts <- sort(maxpts)
