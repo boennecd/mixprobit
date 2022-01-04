@@ -44,7 +44,7 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::func
       mix_binary bin(y_pass, eta, Zc, Sigma);
       mvn<mix_binary> m(bin);
       set_integrand(std::unique_ptr<base_integrand>(
-          new adaptive<mvn<mix_binary > > (m, false)));
+          new adaptive<mvn<mix_binary > > (m, true)));
 
       return integral_arpx(maxpts, key, abseps, releps);
     })();
@@ -52,28 +52,23 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::func
     return { std::log(res.value), res.inform, res.inivls };
   }
 
-  arma::mat H = Zo * Zo.t() + arma::inv_sympd(Sigma);
-
-  arma::mat K = Zo.t() * Sigma * Zo;
-  K.diag() += 1;
-  eta += Zc.t() * Sigma * Zo *
-    arma::solve(K, Xo.t() * beta, arma::solve_opts::likely_sympd);
-
+  arma::mat const H = Zo * Zo.t() + arma::inv_sympd(Sigma);
+  arma::vec const eta_rhs = Zo * (Xo.t() * beta);
   arma::mat const H_inv = arma::inv_sympd(H);
-  arma::mat const Z_pass = -Zc; // TODO: this should not make a difference?
+  eta += Zc.t() * arma::solve(H, eta_rhs);
 
   auto res = ([&]{
     if(!use_adaptive){
       set_integrand(std::unique_ptr<base_integrand>(
-          new mix_binary(y_pass, eta, Z_pass, H_inv)));
+          new mix_binary(y_pass, eta, Zc, H_inv)));
       return integral_arpx(maxpts, key, abseps, releps);
 
     }
 
-    mix_binary bin(y_pass, eta, Z_pass, H_inv);
+    mix_binary bin(y_pass, eta, Zc, H_inv);
     mvn<mix_binary> m(bin);
     set_integrand(std::unique_ptr<base_integrand>(
-        new adaptive<mvn<mix_binary > > (m, false)));
+        new adaptive<mvn<mix_binary > > (m, true)));
 
     return integral_arpx(maxpts, key, abseps, releps);
   })();
@@ -107,7 +102,7 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
       mix_binary bin(y_pass, eta, Zc, Sigma);
       mvn<mix_binary> m(bin);
       set_integrand(std::unique_ptr<base_integrand>(
-          new adaptive<mvn<mix_binary > > (m, false)));
+          new adaptive<mvn<mix_binary > > (m, true)));
 
       return jac_arpx(maxpts, key, abseps, releps);
     })();
@@ -126,32 +121,22 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
   }
 
   arma::mat const H = Zo * Zo.t() + arma::inv_sympd(Sigma);
-  arma::mat const K = ([&]{
-    arma::mat out = Zo.t() * Sigma * Zo;
-    out.diag() += 1;
-    return out;
-  })();
-  arma::vec const Xo_beta = Xo.t() * beta;
-  arma::mat const eta_left = Zc.t() * Sigma;
-  arma::vec const eta_right =
-    Zo * arma::solve(K, Xo_beta, arma::solve_opts::likely_sympd);
-  eta += eta_left * eta_right;
-
+  arma::vec const eta_rhs = Zo * (Xo.t() * beta);
   arma::mat const H_inv = arma::inv_sympd(H);
-  arma::mat const Z_pass = -Zc; // TODO: this should not make a difference?
+  eta += Zc.t() * arma::solve(H, eta_rhs);
 
   auto res = ([&]{
     if(!use_adaptive){
       set_integrand(std::unique_ptr<base_integrand>(
-          new mix_binary(y_pass, eta, Z_pass, H_inv)));
+          new mix_binary(y_pass, eta, Zc, H_inv)));
       return jac_arpx(maxpts, key, abseps, releps);
 
     }
 
-    mix_binary bin(y_pass, eta, Z_pass, H_inv);
+    mix_binary bin(y_pass, eta, Zc, H_inv);
     mvn<mix_binary> m(bin);
     set_integrand(std::unique_ptr<base_integrand>(
-        new adaptive<mvn<mix_binary > > (m, false)));
+        new adaptive<mvn<mix_binary > > (m, true)));
 
     return jac_arpx(maxpts, key, abseps, releps);
   })();
@@ -160,47 +145,47 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
 
   res.value /= int_val; // account for the log(f)
   arma::vec d_eta(res.value.begin() + 1, n_cen, false),
-           d_vcov(d_eta.end(), vcov_dim, false);
+  d_vcov(d_eta.end(), vcov_dim, false);
 
   // handle the fixed effects and then the covariance matrix parameters
   arma::vec const Zc_d_eta = n_fixef > 0 ? Zc * d_eta : arma::vec();
-  if(n_fixef > 0) {
-    arma::vec t1 =
-      solve(K, Zo.t() * Sigma * Zc_d_eta, arma::solve_opts::likely_sympd);
-    d_beta += Xo * t1 - Xc * d_eta;
-  }
+  if(n_fixef > 0)
+    d_beta = Xo * Zo.t() * solve(H, Zc_d_eta) - Xc * d_eta;
 
   /* application of the chain rule in the reverse direction. First we fill in
-   * the whole derivative w.r.t. H^(-1)
+   * the whole derivative w.r.t. H^(-1). Here, we have to account for the terms
+   * from nabla_eta as eta is given by VH^(-1)v. Thus, the terms we need to add
+   * is V^T.nabla_eta^T.v^T.
    */
   arma::mat dH_inv(n_rng, n_rng);
   {
     double const * d_vcov_ij{d_vcov.begin()};
-    for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
-      for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
-        dH_inv(i, j) = *d_vcov_ij / 2;
-        dH_inv(j, i) = *d_vcov_ij / 2;
+    if(n_fixef > 0)
+      for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
+        for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
+          dH_inv(i, j) = *d_vcov_ij / 2 + Zc_d_eta[i] * eta_rhs[j];
+          dH_inv(j, i) = *d_vcov_ij / 2 + Zc_d_eta[j] * eta_rhs[i];
+        }
+        dH_inv(j, j) = *d_vcov_ij + Zc_d_eta[j] * eta_rhs[j];
       }
-      dH_inv(j, j) = *d_vcov_ij;
+      else
+        for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
+          for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
+            dH_inv(i, j) = *d_vcov_ij / 2;
+            dH_inv(j, i) = *d_vcov_ij / 2;
+          }
+          dH_inv(j, j) = *d_vcov_ij;
+        }
+  }
+  arma::mat dSigma_one = dcond_vcov(H, dH_inv, Sigma);
+
+  {
+    double * d_Sig_ij{d_Sig.begin()};
+    for(arma::uword j = 0; j < n_rng; ++j, ++d_Sig_ij){
+      for(arma::uword i = 0; i < j; ++i, ++d_Sig_ij)
+        *d_Sig_ij = dSigma_one(i, j) + dSigma_one(j, i);
+      *d_Sig_ij = dSigma_one(j, j);
     }
-  }
-  arma::mat d_Sigma = dcond_vcov(H, dH_inv, Sigma);
-
-  // amount for the other terms
-  if(n_fixef > 0) {
-    arma::mat const L = eta_left * Zo; // Zc.t() * Sigma * Zo
-    d_Sigma += dcond_vcov_rev(K, Zo, L, Xo_beta, d_eta);
-
-    for(arma::uword j = 0; j < n_rng; ++j)
-      for(arma::uword i = 0; i < n_rng; ++i)
-        d_Sigma(i, j) += Zc_d_eta[i] * eta_right[j];
-  }
-
-  double * d_Sig_ij{d_Sig.begin()};
-  for(arma::uword j = 0; j < n_rng; ++j, ++d_Sig_ij){
-    for(arma::uword i = 0; i < j; ++i, ++d_Sig_ij)
-      *d_Sig_ij = d_Sigma(i, j) + d_Sigma(j, i);
-    *d_Sig_ij = d_Sigma(j, j);
   }
 
   return { std::log(int_val), res.inform, res.inivls };

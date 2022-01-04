@@ -11,15 +11,14 @@
  * with
  *
  *   H = Z^(oT).Z^o + Sigma^(-1)
- *   h = Sigma.Z^(oT).(I + Z^o.Sigma.Z^(oT))^(-1).(-X^o.beta)
+ *   h = H^(-1)Z^(oT)(-X^o.beta)
  *
  * with given design matrices and model parameters Sigma and beta. One approach
  * that is used to re-write the integral as
  *
- * log int phi^(K)(u)Phi^(n)(-X^c.beta - Z^c.h - Z^c.C^T.u) d u
+ * log int phi^(K)(u; 0, H^(-1))Phi^(n)(-X^c.beta - Z^c.h - Z^c.u) d u
  *
- * with C^TC = H^-1 is the Cholesky decomposition. Thus, given the derivatives
- * w.r.t.
+ * Thus, given the derivatives w.r.t.
  *
  *   omega = -X^c.beta - Z^c.h
  *

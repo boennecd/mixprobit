@@ -165,7 +165,7 @@ public:
         double const integrand_start_val =
           optim_obj(n_par, start.begin(), (void*)this);
         if(!std::isfinite(integrand_start_val)){
-          Rcpp::warning("adaptive: invalid starting value");
+          // Rcpp::warning("adaptive: invalid starting value");
           success = false;
           return;
         }
@@ -174,7 +174,7 @@ public:
         optim_gr(n_par, start.begin(), gr_test.begin(), (void*)this);
         for(double gr_i : gr_test)
           if(!std::isfinite(gr_i)){
-            Rcpp::warning("adaptive: invalid starting value (gr)");
+            // Rcpp::warning("adaptive: invalid starting value (gr)");
             success = false;
             return;
           }
@@ -191,7 +191,7 @@ public:
         mode = opt_res.par;
         Hes *= -1.;
         if(!arma::chol(neg_hes_inv_half, arma::inv(Hes))){
-          Rcpp::warning("adaptive: Cholesky decomposition failed");
+          // Rcpp::warning("adaptive: Cholesky decomposition failed");
           success = false;
           return;
 
@@ -204,7 +204,7 @@ public:
         arma::vec eig_val;
         Hes *= -1.;
         if(!arma::eig_sym(eig_val, neg_hes_inv_half, Hes)){
-          Rcpp::warning("adaptive: Eigenvalue decomposition failed");
+          // Rcpp::warning("adaptive: Eigenvalue decomposition failed");
           success = false;
           return;
         }
@@ -216,8 +216,7 @@ public:
         constant = 0.;
         for(auto e : eig_val){
           if(e <= 0.){
-            Rcpp::warning(
-              "adaptive: Non-positive definite negative Hessian");
+            // Rcpp::warning("adaptive: Non-positive definite Hessian");
             success = false;
             return;
           }

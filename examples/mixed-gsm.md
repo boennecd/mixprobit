@@ -45,13 +45,19 @@ admin_cens <- 5 # the administrative censoring time
 
 # plot of the hazard
 par(mar = c(5, 5, 1, 1))
-plot(\(v){
-    beta_use <- head(beta, -2)
-    eta <- x(v) %*% beta_use
-    eta_p <- xp(v) %*% beta_use
-    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
-  }, xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
-  xaxs = "i", yaxs = "i")
+seq(1e-2, admin_cens, length.out = 1000) |>
+  (\(vs)
+   plot(vs, 
+        {
+          beta_use <- head(beta, -2)
+          eta <- x(vs) %*% beta_use
+          eta_p <- xp(vs) %*% beta_use
+          eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+        }, 
+        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+        xaxs = "i", yaxs = "i", type = "l")
+  )()
+
 grid()
 ```
 
@@ -98,21 +104,21 @@ sim_dat <- \(n_clusters)
 
 ``` r
 # simulate the data
-set.seed(8401830)
-dat <- sim_dat(500L)
+set.seed(8401834)
+dat <- sim_dat(2000L)
 dat_full <- do.call(rbind, lapply(dat, `[[`, "df")) |> data.frame()
 
 mean(dat_full$event) # fraction of observed events
-#> [1] 0.6649
+#> [1] 0.6672
 NROW(dat_full) # number of observations
-#> [1] 3497
+#> [1] 13923
 # quantiles of the observed event times
 subset(dat_full, event > 0)$y |> 
   quantile(probs = seq(0, 1, length.out = 11))
 #>      0%     10%     20%     30%     40%     50%     60%     70%     80%     90% 
-#> 0.09962 0.21185 0.26820 0.32622 0.41425 0.57900 1.49589 2.45548 3.07655 3.91475 
+#> 0.07917 0.20883 0.26261 0.32910 0.42824 0.69067 1.74864 2.55597 3.24702 4.01113 
 #>    100% 
-#> 4.99581
+#> 4.99897
 
 # fit the model 
 library(mixprobit)
@@ -120,9 +126,9 @@ library(mixprobit)
 system.time(
   res <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
-    rng_formula = ~ Z2, maxpts = c(1000L, 10000L, 50000L)))
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L))
 #>    user  system elapsed 
-#>  17.496   0.027  17.588
+#> 215.898   0.023 215.932
 ```
 
 ``` r
@@ -130,23 +136,52 @@ system.time(
 rbind(Estimate = res$beta_fixef, 
       Truth = tail(beta, 2))
 #>            [,1]   [,2]
-#> Estimate 0.5354 0.9757
+#> Estimate 0.4882 0.9919
 #> Truth    0.5000 1.0000
 
 res$Sigma # estimated covariance matrix
-#>          [,1]     [,2]
-#> [1,]  0.66831 -0.09195
-#> [2,] -0.09195  0.24471
+#>         [,1]    [,2]
+#> [1,]  0.9799 -0.1634
+#> [2,] -0.1634  0.2835
 Sigma # the true covariance matrix
 #>         [,1]    [,2]
 #> [1,]  0.9673 -0.1505
 #> [2,] -0.1505  0.2787
 
+# plot of the estimated hazard
+library(splines)
+Xt_spline <- \(v) splineDesign(res$A_knots, log(v), outer.ok = TRUE)
+Xt_spline_prime <- \(v) splineDesign(
+  res$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
+
+vs <- seq(1e-2, admin_cens, length.out = 1000)
+haz_truth <- sapply(vs, \(v){
+  beta_use <- head(beta, -2)
+    eta <- x(v) %*% beta_use
+    eta_p <- xp(v) %*% beta_use
+    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+})
+haz_est <- sapply(vs, \(v){
+  eta <- Xt_spline(v) %*% res$beta_spline
+  eta_p <- Xt_spline_prime(v) %*% res$beta_spline
+  eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+})
+
+par(mar = c(5, 5, 1, 1))
+matplot(
+  vs, cbind(haz_truth, haz_est), type = "l", bty = "l", lty = 1:2, 
+  col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
+grid()
+```
+
+![](fig-mgsm/show_fit_ex-1.png)
+
+``` r
 # the maximum likelihood
 res$logLik
-#> [1] -3446
+#> [1] -12537
 
 # can be compared with say a Weibull model
 survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
-#> 'log Lik.' -4420 (df=4)
+#> 'log Lik.' -18255 (df=4)
 ```

@@ -10,13 +10,14 @@
 #' when fitting the model.
 #' @param key,abseps,releps parameters for the Monte Carlo method.
 #' @param seed the fixed seed to use.
+#' @param use_adaptive logical for whether importance sampling should be used.
 #'
 #' @importFrom stats  model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
 #' @export
 fit_mgsm <- function(
   formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
-  key = 3L, abseps = 0, releps = 1e-3, seed = 1L){
+  key = 3L, abseps = 0, releps = 1e-3, seed = 1L, use_adaptive = TRUE){
   mf_X <- model.frame(formula, data)
   y <- model.response(mf_X)
   X_fixef <- model.matrix(terms(mf_X), mf_X)
@@ -104,29 +105,37 @@ fit_mgsm <- function(
   sig <- numeric((n_rng * (n_rng + 1L)) %/% 2L)
   par <- c(theta_start, sig[lower.tri(sig, TRUE)])
 
-  fn <- function(theta, maxpts){
+  fn <- function(theta, maxpts, key, abseps, releps, use_adaptive, seed,
+                 silent = TRUE){
     set.seed(seed)
     par <- get_beta(theta)
     beta <- head(par, length(beta_start))
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_eval(
-      ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key, abseps = abseps,
-      releps = releps), silent = TRUE)
+      ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
+      abseps = abseps, releps = releps, use_adaptive), silent = silent)
     if(inherits(res, "try-error")) NA else -res
   }
-  gr <- function(theta, maxpts){
+
+  gr <- function(theta, maxpts, key, abseps, releps, use_adaptive, seed,
+                 silent = TRUE){
     set.seed(seed)
     par <- get_beta(theta)
     beta <- head(par, length(beta_start))
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_gr(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps), silent = TRUE)
+      abseps = abseps, releps = releps, use_adaptive = use_adaptive),
+      silent = silent)
     if(inherits(res, "try-error"))
       return(rep(NA, length(par)))
 
     d_theta(-res, theta)
   }
+
+  to_set <- c("maxpts", "key", "abseps", "releps", "use_adaptive", "seed")
+  formals(fn)[to_set] <- formals(gr)[to_set] <-
+    list(max(maxpts), key, abseps, releps, use_adaptive, seed)
 
   # fit the model
   maxpts <- sort(maxpts)

@@ -56,13 +56,19 @@ admin_cens <- 5 # the administrative censoring time
 
 # plot of the hazard
 par(mar = c(5, 5, 1, 1))
-plot(\(v){
-    beta_use <- head(beta, -2)
-    eta <- x(v) %*% beta_use
-    eta_p <- xp(v) %*% beta_use
-    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
-  }, xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
-  xaxs = "i", yaxs = "i")
+seq(1e-2, admin_cens, length.out = 1000) |>
+  (\(vs)
+   plot(vs, 
+        {
+          beta_use <- head(beta, -2)
+          eta <- x(vs) %*% beta_use
+          eta_p <- xp(vs) %*% beta_use
+          eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+        }, 
+        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+        xaxs = "i", yaxs = "i", type = "l")
+  )()
+
 grid()
 
 # generates the random effect covariates
@@ -105,8 +111,8 @@ sim_dat <- \(n_clusters)
 
 ```{r fit_ex, cache = 1}
 # simulate the data
-set.seed(8401832)
-dat <- sim_dat(200L)
+set.seed(8401834)
+dat <- sim_dat(2000L)
 dat_full <- do.call(rbind, lapply(dat, `[[`, "df")) |> data.frame()
 
 mean(dat_full$event) # fraction of observed events
@@ -120,8 +126,7 @@ library(mixprobit)
 system.time(
   res <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
-    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
-    verbose = TRUE))
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L))
 ```
 
 ```{r show_fit_ex}
@@ -151,6 +156,7 @@ haz_est <- sapply(vs, \(v){
   eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
 })
 
+par(mar = c(5, 5, 1, 1))
 matplot(
   vs, cbind(haz_truth, haz_est), type = "l", bty = "l", lty = 1:2, 
   col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
@@ -158,9 +164,6 @@ grid()
 
 # the maximum likelihood
 res$logLik
-
-rbind(res$gr(res$optim$par, 100000L),
-      numDeriv::grad(res$fn, res$optim$par, maxpts = 10000L))
 
 # can be compared with say a Weibull model
 survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
