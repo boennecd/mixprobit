@@ -25,59 +25,93 @@ gsm_cens_term::gsm_cens_term
 
 gsm_cens_term::gsm_cens_output gsm_cens_term::func
   (int const maxpts, int const key, double const abseps,
-   double const releps) const {
+   double const releps, bool const use_adaptive) const {
   if(n_cen < 1)
-    return {0, 0};
+    return {0, 0, 0};
 
   arma::vec eta = n_fixef > 0 ? -(Xc.t() * beta)
                               : arma::vec(n_cen, arma::fill::zeros);
 
   if(n_obs < 1){
-    mix_binary bin(y_pass, eta, Zc, Sigma);
+    auto res = ([&]{
+      if(!use_adaptive){
+        set_integrand(std::unique_ptr<base_integrand>(
+            new mix_binary(y_pass, eta, Zc, Sigma)));
+        return integral_arpx(maxpts, key, abseps, releps);
+
+      }
+
+      mix_binary bin(y_pass, eta, Zc, Sigma);
+      mvn<mix_binary> m(bin);
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<mix_binary > > (m, false)));
+
+      return integral_arpx(maxpts, key, abseps, releps);
+    })();
+
+    return { std::log(res.value), res.inform, res.inivls };
+  }
+
+  arma::mat H = Zo * Zo.t() + arma::inv_sympd(Sigma);
+
+  arma::mat K = Zo.t() * Sigma * Zo;
+  K.diag() += 1;
+  eta += Zc.t() * Sigma * Zo *
+    arma::solve(K, Xo.t() * beta, arma::solve_opts::likely_sympd);
+
+  arma::mat const H_inv = arma::inv_sympd(H);
+  arma::mat const Z_pass = -Zc; // TODO: this should not make a difference?
+
+  auto res = ([&]{
+    if(!use_adaptive){
+      set_integrand(std::unique_ptr<base_integrand>(
+          new mix_binary(y_pass, eta, Z_pass, H_inv)));
+      return integral_arpx(maxpts, key, abseps, releps);
+
+    }
+
+    mix_binary bin(y_pass, eta, Z_pass, H_inv);
     mvn<mix_binary> m(bin);
     set_integrand(std::unique_ptr<base_integrand>(
         new adaptive<mvn<mix_binary > > (m, false)));
 
-    auto res = integral_arpx(maxpts, key, abseps, releps);
-    return { std::log(res.value), res.inform };
-  }
+    return integral_arpx(maxpts, key, abseps, releps);
+  })();
 
-  arma::mat H = Zo * Zo.t() + arma::inv_sympd(Sigma);
-  arma::mat const H_inv = arma::inv_sympd(H);
-  eta += Zc.t() * arma::solve(H, Zo * (Xo.t() * beta));
-
-  arma::chol(H, H_inv, "lower");
-  arma::mat const Z_pass = -H * Zc;
-
-  mix_binary bin(y_pass, eta, Z_pass, H_inv);
-  mvn<mix_binary> m(bin);
-  set_integrand(std::unique_ptr<base_integrand>(
-      new adaptive<mvn<mix_binary > > (m, false)));
-  auto res = integral_arpx(maxpts, key, abseps, releps);
-  return { std::log(res.value), res.inform };
+  return { std::log(res.value), res.inform, res.inivls };
 }
 
 gsm_cens_term::gsm_cens_output gsm_cens_term::gr
   (arma::vec &gr, int const maxpts, int const key, double const abseps,
-   double const releps) const {
+   double const releps, bool const use_adaptive) const {
   arma::uword const vcov_dim{(Sigma.n_cols * (Sigma.n_cols + 1)) / 2};
   gr.zeros(beta.size() + vcov_dim);
   if(n_cen < 1)
-    return {0, 0};
+    return {0, 0, 0};
 
   arma::vec eta = n_fixef > 0 ? -(Xc.t() * beta)
                               : arma::vec(n_cen, arma::fill::zeros);
 
   arma::vec d_beta(gr.begin(), n_fixef, false),
-            d_Sig(d_beta.end(), vcov_dim, false);
+             d_Sig(d_beta.end(), vcov_dim, false);
 
   if(n_obs < 1){
-    mix_binary bin(y_pass, eta, Zc, Sigma);
-    mvn<mix_binary> m(bin);
-    set_integrand(std::unique_ptr<base_integrand>(
-        new adaptive<mvn<mix_binary > > (m, false)));
+    auto res = ([&]{
+      if(!use_adaptive){
+        set_integrand(std::unique_ptr<base_integrand>(
+            new mix_binary(y_pass, eta, Zc, Sigma)));
+        return jac_arpx(maxpts, key, abseps, releps);
 
-    auto res = jac_arpx(maxpts, key, abseps, releps);
+      }
+
+      mix_binary bin(y_pass, eta, Zc, Sigma);
+      mvn<mix_binary> m(bin);
+      set_integrand(std::unique_ptr<base_integrand>(
+          new adaptive<mvn<mix_binary > > (m, false)));
+
+      return jac_arpx(maxpts, key, abseps, releps);
+    })();
+
     double const int_val{res.value[0]};
 
     res.value /= int_val; // account for the log(f)
@@ -88,23 +122,39 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
       d_beta -= Xc * d_eta;
     d_Sig += d_vcov;
 
-    return { std::log(int_val), res.inform };
+    return { std::log(int_val), res.inform, res.inivls };
   }
 
   arma::mat const H = Zo * Zo.t() + arma::inv_sympd(Sigma);
-  arma::vec const eta_rhs = Zo * (Xo.t() * beta);
-  // TODO: perhaps smarter to make a decomposition of H as we do solve again
-  //       later?
+  arma::mat const K = ([&]{
+    arma::mat out = Zo.t() * Sigma * Zo;
+    out.diag() += 1;
+    return out;
+  })();
+  arma::vec const Xo_beta = Xo.t() * beta;
+  arma::mat const eta_left = Zc.t() * Sigma;
+  arma::vec const eta_right =
+    Zo * arma::solve(K, Xo_beta, arma::solve_opts::likely_sympd);
+  eta += eta_left * eta_right;
+
   arma::mat const H_inv = arma::inv_sympd(H);
-  eta += Zc.t() * arma::solve(H, eta_rhs);
+  arma::mat const Z_pass = -Zc; // TODO: this should not make a difference?
 
-  arma::mat Z_pass = -arma::chol(H_inv, "lower") * Zc;
+  auto res = ([&]{
+    if(!use_adaptive){
+      set_integrand(std::unique_ptr<base_integrand>(
+          new mix_binary(y_pass, eta, Z_pass, H_inv)));
+      return jac_arpx(maxpts, key, abseps, releps);
 
-  mix_binary bin(y_pass, eta, Z_pass, H_inv);
-  mvn<mix_binary> m(bin);
-  set_integrand(std::unique_ptr<base_integrand>(
-      new adaptive<mvn<mix_binary > > (m, false)));
-  auto res = jac_arpx(maxpts, key, abseps, releps);
+    }
+
+    mix_binary bin(y_pass, eta, Z_pass, H_inv);
+    mvn<mix_binary> m(bin);
+    set_integrand(std::unique_ptr<base_integrand>(
+        new adaptive<mvn<mix_binary > > (m, false)));
+
+    return jac_arpx(maxpts, key, abseps, releps);
+  })();
 
   double const int_val{res.value[0]};
 
@@ -114,46 +164,46 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::gr
 
   // handle the fixed effects and then the covariance matrix parameters
   arma::vec const Zc_d_eta = n_fixef > 0 ? Zc * d_eta : arma::vec();
-  if(n_fixef > 0)
-    d_beta = Xo * Zo.t() * solve(H, Zc_d_eta) - Xc * d_eta;
+  if(n_fixef > 0) {
+    arma::vec t1 =
+      solve(K, Zo.t() * Sigma * Zc_d_eta, arma::solve_opts::likely_sympd);
+    d_beta += Xo * t1 - Xc * d_eta;
+  }
 
   /* application of the chain rule in the reverse direction. First we fill in
-   * the whole derivative w.r.t. H^(-1). Here, we have to account for the terms
-   * from nabla_eta as eta is given by VH^(-1)v. Thus, the terms we need to add
-   * is V^T.nabla_eta^T.v^T.
+   * the whole derivative w.r.t. H^(-1)
    */
   arma::mat dH_inv(n_rng, n_rng);
   {
     double const * d_vcov_ij{d_vcov.begin()};
-    if(n_fixef > 0)
-      for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
-        for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
-          dH_inv(i, j) = *d_vcov_ij / 2 + Zc_d_eta[i] * eta_rhs[j];
-          dH_inv(j, i) = *d_vcov_ij / 2 + Zc_d_eta[j] * eta_rhs[i];
-        }
-        dH_inv(j, j) = *d_vcov_ij + Zc_d_eta[j] * eta_rhs[j];
+    for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
+      for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
+        dH_inv(i, j) = *d_vcov_ij / 2;
+        dH_inv(j, i) = *d_vcov_ij / 2;
       }
-    else
-      for(arma::uword j = 0; j < n_rng; ++j, ++d_vcov_ij){
-        for(arma::uword i = 0; i < j; ++i, ++d_vcov_ij){
-          dH_inv(i, j) = *d_vcov_ij / 2;
-          dH_inv(j, i) = *d_vcov_ij / 2;
-        }
-        dH_inv(j, j) = *d_vcov_ij;
-      }
-  }
-  arma::mat dSigma_one = dcond_vcov(H, dH_inv, Sigma);
-
-  {
-    double * d_Sig_ij{d_Sig.begin()};
-    for(arma::uword j = 0; j < n_rng; ++j, ++d_Sig_ij){
-      for(arma::uword i = 0; i < j; ++i, ++d_Sig_ij)
-        *d_Sig_ij = dSigma_one(i, j) + dSigma_one(j, i);
-      *d_Sig_ij = dSigma_one(j, j);
+      dH_inv(j, j) = *d_vcov_ij;
     }
   }
+  arma::mat d_Sigma = dcond_vcov(H, dH_inv, Sigma);
 
-  return { std::log(int_val), res.inform };
+  // amount for the other terms
+  if(n_fixef > 0) {
+    arma::mat const L = eta_left * Zo; // Zc.t() * Sigma * Zo
+    d_Sigma += dcond_vcov_rev(K, Zo, L, Xo_beta, d_eta);
+
+    for(arma::uword j = 0; j < n_rng; ++j)
+      for(arma::uword i = 0; i < n_rng; ++i)
+        d_Sigma(i, j) += Zc_d_eta[i] * eta_right[j];
+  }
+
+  double * d_Sig_ij{d_Sig.begin()};
+  for(arma::uword j = 0; j < n_rng; ++j, ++d_Sig_ij){
+    for(arma::uword i = 0; i < j; ++i, ++d_Sig_ij)
+      *d_Sig_ij = d_Sigma(i, j) + d_Sigma(j, i);
+    *d_Sig_ij = d_Sigma(j, j);
+  }
+
+  return { std::log(int_val), res.inform, res.inivls };
 }
 
 gsm_normal_term::gsm_normal_term
@@ -167,8 +217,7 @@ gsm_normal_term::gsm_normal_term
     assert(Sigma.n_rows == n_rng);
 
     arma::mat K = Z.t() * Sigma * Z;
-    for(arma::uword i = 0; i < K.n_cols; ++i)
-      K(i, i) += 1;
+    K.diag() += 1;
 
     arma::mat K_chol_full = arma::chol(K);
     double * K_cp_to{K_chol};
@@ -281,7 +330,8 @@ mixed_gsm_cluster::mixed_gsm_cluster
 
 mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::operator()
   (arma::vec const &beta, arma::mat const &Sigma, int const maxpts,
-   int const key, double const abseps, double const releps) const {
+   int const key, double const abseps, double const releps,
+   bool const use_adaptive) const {
   assert(beta.n_elem == n_fixef());
   assert(Sigma.n_rows == n_rng());
   assert(Sigma.n_cols == n_rng());
@@ -297,7 +347,7 @@ mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::operator()
 
   } if(n_cens() > 0){
     auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-      .func(maxpts, key, abseps, releps);
+      .func(maxpts, key, abseps, releps, use_adaptive);
     out.log_like += res.log_like;
     out.inform = res.inform;
 
@@ -309,7 +359,7 @@ mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::operator()
 mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::grad
   (arma::vec &gr, arma::vec const &beta, arma::mat const &Sigma,
    int const maxpts, int const key, double const abseps,
-   double const releps) const {
+   double const releps, bool const use_adaptive) const {
   assert(beta.n_elem == n_fixef());
   assert(Sigma.n_rows == n_rng());
   assert(Sigma.n_cols == n_rng());
@@ -333,7 +383,7 @@ mixed_gsm_cluster::mixed_gsm_cluster_res mixed_gsm_cluster::grad
 
   } if(n_cens() > 0){
     auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-      .gr(tmp, maxpts, key, abseps, releps);
+      .gr(tmp, maxpts, key, abseps, releps, use_adaptive);
     out.log_like += res.log_like;
     out.inform = res.inform;
     gr += tmp;

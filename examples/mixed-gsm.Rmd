@@ -105,8 +105,8 @@ sim_dat <- \(n_clusters)
 
 ```{r fit_ex, cache = 1}
 # simulate the data
-set.seed(8401830)
-dat <- sim_dat(500L)
+set.seed(8401832)
+dat <- sim_dat(200L)
 dat_full <- do.call(rbind, lapply(dat, `[[`, "df")) |> data.frame()
 
 mean(dat_full$event) # fraction of observed events
@@ -120,7 +120,8 @@ library(mixprobit)
 system.time(
   res <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
-    rng_formula = ~ Z2, maxpts = c(1000L, 10000L, 50000L)))
+    rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
+    verbose = TRUE))
 ```
 
 ```{r show_fit_ex}
@@ -131,8 +132,35 @@ rbind(Estimate = res$beta_fixef,
 res$Sigma # estimated covariance matrix
 Sigma # the true covariance matrix
 
+# plot of the estimated hazard
+library(splines)
+Xt_spline <- \(v) splineDesign(res$A_knots, log(v), outer.ok = TRUE)
+Xt_spline_prime <- \(v) splineDesign(
+  res$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
+
+vs <- seq(1e-2, admin_cens, length.out = 1000)
+haz_truth <- sapply(vs, \(v){
+  beta_use <- head(beta, -2)
+    eta <- x(v) %*% beta_use
+    eta_p <- xp(v) %*% beta_use
+    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+})
+haz_est <- sapply(vs, \(v){
+  eta <- Xt_spline(v) %*% res$beta_spline
+  eta_p <- Xt_spline_prime(v) %*% res$beta_spline
+  eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+})
+
+matplot(
+  vs, cbind(haz_truth, haz_est), type = "l", bty = "l", lty = 1:2, 
+  col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
+grid()
+
 # the maximum likelihood
 res$logLik
+
+rbind(res$gr(res$optim$par, 100000L),
+      numDeriv::grad(res$fn, res$optim$par, maxpts = 10000L))
 
 # can be compared with say a Weibull model
 survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()

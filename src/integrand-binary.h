@@ -20,7 +20,7 @@ namespace integrand {
  *   = 1/2 C^(-1)(u.u^T - I)C^(-T)
  *     * phi^(K)(u)Phi^(n)(eta + Z.C^T.u)
  *
- * For beta, we simply need the derivatives wr.r.t. eta from which the chain
+ * For beta, we simply need the derivatives w.r.t. eta from which the chain
  * rule can easily be applied.
  *
  * When n < K, we can instead work with

@@ -93,7 +93,7 @@ struct dpd_mat {
  */
 arma::mat dchol(arma::mat const&, bool const upper = false);
 
-/* Given Sigma symmetric positive define matrices Sigma and K, let
+/* Given a symmetric positive define matrices Sigma and K, let
  *
  *   H = K + Sigma^(-1)
  *
@@ -104,6 +104,21 @@ arma::mat dchol(arma::mat const&, bool const upper = false);
  */
 arma::mat dcond_vcov(arma::mat const &H, arma::mat const &dH_inv,
                      arma::mat const &Sigma);
+
+/* Given a symmetric positive definite matrix Sigma, vector v, matrix Z,
+ * and matrix L, this function computes the derivative w.r.t. Sigma for the
+ * expression
+ *
+ *  K = I + Z^T.Sigma.Z
+ *  x = L.K^(-1).v
+ *
+ * given the Jacobian of g(x) w.r.t. x. The result is
+ *
+ *   -vec(Z.K^(-1).L^T.vec^(-1)(<gradient>).v^TK^(-1).Z^T)
+ */
+arma::mat dcond_vcov_rev
+  (arma::mat const &K, arma::mat const &Z, arma::mat const &L,
+   arma::vec const &v, arma::vec const &d_x);
 
 /* very simple importance sampler with so-called location and scaled
  * balanced antithetic variables for multivariate normal distributed

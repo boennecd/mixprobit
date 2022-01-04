@@ -356,8 +356,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // gsm_eval
-Rcpp::NumericVector gsm_eval(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps);
-RcppExport SEXP _mixprobit_gsm_eval(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
+Rcpp::NumericVector gsm_eval(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps, bool const use_adaptive);
+RcppExport SEXP _mixprobit_gsm_eval(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP use_adaptiveSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -368,13 +368,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type key(keySEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    rcpp_result_gen = Rcpp::wrap(gsm_eval(ptr, beta, sig, maxpts, key, abseps, releps));
+    Rcpp::traits::input_parameter< bool const >::type use_adaptive(use_adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(gsm_eval(ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive));
     return rcpp_result_gen;
 END_RCPP
 }
 // gsm_gr
-Rcpp::NumericVector gsm_gr(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps);
-RcppExport SEXP _mixprobit_gsm_gr(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP) {
+Rcpp::NumericVector gsm_gr(SEXP ptr, arma::vec const& beta, arma::vec const& sig, int const maxpts, int const key, double const abseps, double const releps, bool const use_adaptive);
+RcppExport SEXP _mixprobit_gsm_gr(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP use_adaptiveSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -385,7 +386,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int const >::type key(keySEXP);
     Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
     Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
-    rcpp_result_gen = Rcpp::wrap(gsm_gr(ptr, beta, sig, maxpts, key, abseps, releps));
+    Rcpp::traits::input_parameter< bool const >::type use_adaptive(use_adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(gsm_gr(ptr, beta, sig, maxpts, key, abseps, releps, use_adaptive));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -415,8 +417,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_eval_sobol", (DL_FUNC) &_mixprobit_eval_sobol, 2},
     {"_mixprobit_multinomial_inner_integral", (DL_FUNC) &_mixprobit_multinomial_inner_integral, 8},
     {"_mixprobit_get_gsm_ptr", (DL_FUNC) &_mixprobit_get_gsm_ptr, 1},
-    {"_mixprobit_gsm_eval", (DL_FUNC) &_mixprobit_gsm_eval, 7},
-    {"_mixprobit_gsm_gr", (DL_FUNC) &_mixprobit_gsm_gr, 7},
+    {"_mixprobit_gsm_eval", (DL_FUNC) &_mixprobit_gsm_eval, 8},
+    {"_mixprobit_gsm_gr", (DL_FUNC) &_mixprobit_gsm_gr, 8},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };

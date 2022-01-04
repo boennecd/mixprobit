@@ -19,14 +19,14 @@ context("testing gsm_cens_term") {
 
     {
       auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-        .func(10000L, 1, 1e-3, 1e-3);
+        .func(10000L, 1, 1e-3, 1e-3, true);
       expect_true(res.inform == 0);
       expect_true(res.log_like == 0);
     }
 
     arma::vec gr;
     auto const res = gsm_cens_term(Zo, Zc, Xo, Xc, beta, Sigma)
-      .gr(gr, 10000L, 1, 1e-3, 1e-3);
+      .gr(gr, 10000L, 1, 1e-3, 1e-3, true);
     expect_true(res.inform == 0);
     expect_true(res.log_like == 0);
 
@@ -140,7 +140,13 @@ context("testing gsm_cens_term") {
     constexpr double true_func{-0.968031924910162},
                        rel_eps{1e-1};
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps);
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, true);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+    }
+    {
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, false);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
@@ -152,7 +158,7 @@ context("testing gsm_cens_term") {
       {-0.537893597021461, -0.208299165140343, 0.0401056616115828, 0.0163544243417218, -0.0629916831813027, 0.0169226034005708, 0.023017755737681, -0.0484885478113118};
 
     arma::vec gr;
-    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps);
+    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps, true);
     expect_true(res.inform == 0);
     expect_true(std::abs(res.log_like - true_func) <
       2 * rel_eps * std::abs(true_func));
@@ -231,7 +237,9 @@ context("testing gsm_cens_term") {
      S[lower.tri(S)] <- t(S)[lower.tri(S)]
 
      H <- tcrossprod(Zo) + solve(S)
-     h <- solve(H, Zo %*% (- Xo %*% b))
+     n_obs <- sum(event)
+     h <- S %*% Zo %*%
+     solve(diag(n_obs) + crossprod(Zo, S %*% Zo),- Xo %*% b)
      Sigma <- solve(H)
      eta <- -drop(Xc %*% b) - drop(crossprod(Zc, h))
      sum(exp(ws_log + vapply(
@@ -277,7 +285,13 @@ context("testing gsm_cens_term") {
     constexpr double true_func{-0.724841472478689},
                        rel_eps{1e-1};
     {
-      auto const res = comp_obj.func(100000, 3L, -1, rel_eps);
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, true);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+    }
+    {
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, false);
       expect_true(res.inform == 0);
       expect_true(std::abs(res.log_like - true_func) <
         2 * rel_eps * std::abs(true_func));
@@ -286,11 +300,156 @@ context("testing gsm_cens_term") {
     // check the gradient
     constexpr uword dim_gr{n_fixef + (n_rng * (n_rng + 1)) / 2};
     constexpr double true_gr[dim_gr]
-      {-0.0977871634401116, -0.138326698985437, -0.0483815801559132, 0.0137908163229746, 0.00183664252486275, -0.0852235200494886, -0.00871301648842614, 0.00105158099600017};
+      {-0.0977871634383885, -0.138326698988711, -0.0483815801503183, 0.0137908164075206, 0.00183664253847172, -0.0852235200667964, -0.00871301650391389, 0.00105158098124027};
 
     arma::vec gr;
-    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps);
+    auto const res = comp_obj.gr(gr, 10000000, 3L, -1, rel_eps, true);
     expect_true(res.inform == 0);
+    expect_true(std::abs(res.log_like - true_func) <
+      2 * rel_eps * std::abs(true_func));
+
+    expect_true(gr.size() == dim_gr);
+    for(uword i = 0; i < gr.size(); ++i)
+      expect_true(std::abs(gr[i] - true_gr[i])  <
+        2 * rel_eps * std::abs(true_gr[i]));
+  }
+
+  test_that("gsm_cens_term gives the right result with both censored and observed individuals (two)") {
+    /*
+     set.seed(15L)
+     n_fixef <- 2L
+     Xt  <- \(ti) { ti <- log(ti); cbind(1, ti) }
+     beta <- c(-.5, 2)
+
+     n <- 10L
+     p <- 3L
+     Z <- do.call(                        # random effect design matrix
+     rbind, c(list(1), list(replicate(n, runif(p - 1L, -1, 1)))))
+     n <- NCOL(Z)                         # number of individuals
+     p <- NROW(Z)                         # number of random effects
+     S <- drop(                           # covariance matrix of random effects
+     rWishart(1, 2 * p, diag(sqrt(1/ 4 / p), p)))
+
+     S <- round(S, 3)
+     Z <- round(Z, 3)
+
+     u <- drop(rnorm(p) %*% chol(S))       # random effects
+
+# get the outcomes
+     rngs <- runif(n)
+     y <- mapply(\(i, rng){
+     offset <- -sum(u %*% Z[, i])
+     f <- \(ti) pnorm(-sum(Xt(ti) * beta) - offset) - rng
+     uniroot(f, c(1e-20, 1000000), tol = 1e-8)$root
+     }, i = 1:n, rng = rngs)
+     print(y)
+     cens <- runif(n, 0, 4)
+     event <- y < cens
+     stopifnot(any(event), any(!event))
+
+     ti <- pmin(cens, y) |> round(3)
+     X <- Xt(ti) |> round(3)
+     Xc <- X[!event, , drop = FALSE]
+     Xo <- X[ event, , drop = FALSE]
+     Zc <- Z[, !event, drop = FALSE]
+     Zo <- Z[,  event, drop = FALSE]
+
+#####
+# use GH quadrature
+     library(fastGHQuad)
+     b <- 25L                             # number of nodes to use
+     rule <- fastGHQuad::gaussHermiteData(b)
+     f <- function(x, eta, S_chol)
+     sum(mapply(pnorm, q = eta + sqrt(2) * drop(x %*% S_chol %*% Zc),
+     lower.tail = TRUE, log.p = TRUE))
+     idx <- do.call(expand.grid, replicate(p, 1:b, simplify = FALSE))
+
+     xs <- local({
+     args <- list(FUN = c, SIMPLIFY = FALSE)
+     do.call(mapply, c(args, lapply(idx, function(i) rule$x[i])))
+     })
+     ws_log <- local({
+     args <- list(FUN = prod)
+     log(do.call(mapply, c(args, lapply(idx, function(i) rule$w[i]))))
+     })
+
+# function that makes the approximation
+     f1 <- function(par){
+     b <- head(par, n_fixef)
+     s <- tail(par, -n_fixef)
+     S <- matrix(nr = p, nc = p)
+     S[upper.tri(S, TRUE)] <- s
+     S[lower.tri(S)] <- t(S)[lower.tri(S)]
+
+     H <- tcrossprod(Zo) + solve(S)
+     n_obs <- sum(event)
+     h <- S %*% Zo %*%
+     solve(diag(n_obs) + crossprod(Zo, S %*% Zo),- Xo %*% b)
+     Sigma <- solve(H)
+     eta <- -drop(Xc %*% b) - drop(crossprod(Zc, h))
+     sum(exp(ws_log + vapply(
+     xs, f, numeric(1L), eta = eta, S_chol = chol(Sigma)))) /
+     pi^(p / 2)
+     }
+
+     dput(t(Xc))
+     dput(t(Xo))
+     dput(Zc)
+     dput(Zo)
+     dput(beta)
+     S <- S + drop(rWishart(1, p, diag(1e-1, p)))
+     dput(S)
+     xx <- c(beta, S[upper.tri(S, TRUE)])
+
+     dput(log(f1(xx)))
+     dput(numDeriv::jacobian(\(x) log(f1(x)), xx))
+     */
+    constexpr uword n_fixef{2},
+                     n_cens{2},
+                      n_obs{8},
+                      n_rng{3};
+
+    Rcpp::RNGScope rngScope;
+    parallelrng::set_rng_seeds(1L);
+
+    arma::mat Xc{1, -0.008, 1, 0.09},
+              Zc{1, 0.374, 0.663, 1, -0.718, 0.553},
+              Xo{1, -0.443, 1, -0.218, 1, -0.417, 1, 0.321, 1, 0.754, 1, 0.43, 1, -0.552, 1, -0.297},
+              Zo{1, 0.204, -0.61, 1, 0.933, 0.302, 1, -0.266, 0.978, 1, 0.63, -0.492, 1, -0.791, 0.292, 1, 0.018, 0.413, 1, 0.725, 0.684, 1, -0.105, 0.929},
+           Sigma{2.44716740312943, 0.511163129975597, 0.144036394679127, 0.511163129975597, 1.38613519465667, 0.273917200473281, 0.144036394679127, 0.273917200473281, 0.521801023030326};
+    Xc.reshape(n_fixef, n_cens);
+    Xo.reshape(n_fixef, n_obs);
+    Zc.reshape(n_rng, n_cens);
+    Zo.reshape(n_rng, n_obs);
+    Sigma.reshape(n_rng, n_rng);
+
+    arma::vec const beta{-0.5, 2};
+
+    gsm_cens_term comp_obj(Zo, Zc, Xo, Xc, beta, Sigma);
+
+    constexpr double true_func{-1.502700530338},
+                       rel_eps{1e-1};
+    {
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, true);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+    }
+    {
+      auto const res = comp_obj.func(100000, 3L, -1, rel_eps, false);
+      expect_true(res.inform == 0);
+      expect_true(std::abs(res.log_like - true_func) <
+        2 * rel_eps * std::abs(true_func));
+    }
+
+    // check the gradient
+    constexpr uword dim_gr{n_fixef + (n_rng * (n_rng + 1)) / 2};
+    constexpr double true_gr[dim_gr]
+    {-0.0730728351317208, -0.116149544771193, -0.00285788922175744, -0.0200031469366203, 0.0328085194439066, -0.0357818568455293, -0.0442357970784554, -0.096957277588603};
+
+    arma::vec gr;
+    auto const res = comp_obj.gr(gr, 100000000, 1L, -1, rel_eps, true);
+    // expect_true(res.inform == 0);
     expect_true(std::abs(res.log_like - true_func) <
       2 * rel_eps * std::abs(true_func));
 

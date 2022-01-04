@@ -107,3 +107,19 @@ arma::mat dcond_vcov
 
   return res;
 }
+
+arma::mat dcond_vcov_rev
+  (arma::mat const &K, arma::mat const &Z, arma::mat const &L,
+   arma::vec const &v, arma::vec const &d_x){
+  arma::vec const v1 =
+    Z * arma::solve(K, L.t() * d_x, arma::solve_opts::likely_sympd);
+  arma::vec const v2 = Z * arma::solve(K, v, arma::solve_opts::likely_sympd);
+
+  arma::uword const n{Z.n_rows};
+  arma::mat out(n, n);
+  for(arma::uword j = 0; j < n; ++j)
+    for(arma::uword i = 0; i < n; ++i)
+      out(i, j) = -v1[i] * v2[j];
+
+  return out;
+}

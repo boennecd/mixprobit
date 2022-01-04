@@ -11,7 +11,7 @@
  * with
  *
  *   H = Z^(oT).Z^o + Sigma^(-1)
- *   h = H^(-1)Z^(oT)(-X^o.beta)
+ *   h = Sigma.Z^(oT).(I + Z^o.Sigma.Z^(oT))^(-1).(-X^o.beta)
  *
  * with given design matrices and model parameters Sigma and beta. One approach
  * that is used to re-write the integral as
@@ -41,7 +41,7 @@ class gsm_cens_term {
 public:
   struct gsm_cens_output {
     double log_like;
-    int inform;
+    int inform, intvls;
   };
 
   gsm_cens_term
@@ -51,12 +51,12 @@ public:
   /// evaluates the log of the integral
   gsm_cens_output func
     (int const maxpts, int const key, double const abseps,
-     double const releps) const;
+     double const releps, bool const use_adaptive) const;
 
   /// evaluates the log of the integral and the gradient of it
   gsm_cens_output gr
     (arma::vec &gr,  int const maxpts, int const key, double const abseps,
-     double const releps) const;
+     double const releps, bool const use_adaptive) const;
 };
 
 /**
@@ -154,7 +154,8 @@ public:
   /// computes the log marginal likelihood.
   mixed_gsm_cluster_res operator()
     (arma::vec const &beta, arma::mat const &Sigma, int const maxpts,
-     int const key, double const abseps, double const releps) const;
+     int const key, double const abseps, double const releps,
+     bool const use_adaptive) const;
 
   /**
    * computes the gradient, setting the result gr, and returns the log marginal
@@ -163,7 +164,7 @@ public:
   mixed_gsm_cluster_res grad
     (arma::vec &gr, arma::vec const &beta, arma::mat const &Sigma,
      int const maxpts, int const key, double const abseps,
-     double const releps) const ;
+     double const releps, bool const use_adaptive) const ;
 };
 
 #endif
