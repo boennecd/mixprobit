@@ -45,7 +45,7 @@ where
 is standard normally distributed. A special case is
 ![\\vec x\_{ij}(t) = (\\log(t), \\vec a\_{ij}^\\top)^\\top](https://latex.codecogs.com/svg.latex?%5Cvec%20x_%7Bij%7D%28t%29%20%3D%20%28%5Clog%28t%29%2C%20%5Cvec%20a_%7Bij%7D%5E%5Ctop%29%5E%5Ctop "\vec x_{ij}(t) = (\log(t), \vec a_{ij}^\top)^\top")
 for some covariates
-![\\vec a_ij](https://latex.codecogs.com/svg.latex?%5Cvec%20a_ij "\vec a_ij").
+![\\vec a\_{ij}](https://latex.codecogs.com/svg.latex?%5Cvec%20a_%7Bij%7D "\vec a_{ij}").
 Thus is a log-normal distribution and a particular of an accelerated
 failure time.
 
@@ -249,7 +249,28 @@ sd(func_ests)
 
 ## Pedigree Data
 
-TODO: add some text on what is happening here.
+A special class of mixed models have
+
+![\\vec x\_{ij}(t)^\\top\\vec\\beta = \\epsilon\_{ij} + \\sum\_{k = 1}^K u\_{ijk}](https://latex.codecogs.com/svg.latex?%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20%3D%20%5Cepsilon_%7Bij%7D%20%2B%20%5Csum_%7Bk%20%3D%201%7D%5EK%20u_%7Bijk%7D "\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij} + \sum_{k = 1}^K u_{ijk}")
+
+where
+
+![\\begin{pmatrix} u\_{ij1} \\\\ \\vdots \\\\ u\_{ijn_i}\\end{pmatrix} \\sim N^{(n_i)}\\left(\\vec 0, \\sigma_k^2 C\_{ik}\\right)](https://latex.codecogs.com/svg.latex?%5Cbegin%7Bpmatrix%7D%20u_%7Bij1%7D%20%5C%5C%20%5Cvdots%20%5C%5C%20u_%7Bijn_i%7D%5Cend%7Bpmatrix%7D%20%5Csim%20N%5E%7B%28n_i%29%7D%5Cleft%28%5Cvec%200%2C%20%5Csigma_k%5E2%20C_%7Bik%7D%5Cright%29 "\begin{pmatrix} u_{ij1} \\ \vdots \\ u_{ijn_i}\end{pmatrix} \sim N^{(n_i)}\left(\vec 0, \sigma_k^2 C_{ik}\right)")
+
+where ![n_i](https://latex.codecogs.com/svg.latex?n_i "n_i") is the
+number of members of cluster
+![i](https://latex.codecogs.com/svg.latex?i "i") and the
+![C\_{ik}](https://latex.codecogs.com/svg.latex?C_%7Bik%7D "C_{ik}")s
+are know correlation matrices. A special example is where the
+![k](https://latex.codecogs.com/svg.latex?k "k")th effect is a genetic
+effect. The proportion of variance of each effect is
+
+![\\frac{\\sigma_k^2}{1 + \\sum\_{l = 1}^K\\sigma_l^2}](https://latex.codecogs.com/svg.latex?%5Cfrac%7B%5Csigma_k%5E2%7D%7B1%20%2B%20%5Csum_%7Bl%20%3D%201%7D%5EK%5Csigma_l%5E2%7D "\frac{\sigma_k^2}{1 + \sum_{l = 1}^K\sigma_l^2}")
+
+which for a genetic effect is called the heritability.
+
+We will simulate families with a random number of children. An example
+of such a family with four children is shown below.
 
 ``` r
 # create the family we will use
@@ -266,7 +287,9 @@ plot(ped)
 ![](fig-mgsm/set_up_n_show_family-1.png)
 
 The code to do the stimulation and to assign the model parameters is
-given below.
+given below. We simulate both a genetic effect and a childhood
+environment effect. Thus
+![K = 2](https://latex.codecogs.com/svg.latex?K%20%3D%202 "K = 2").
 
 ``` r
 # computes the time-varying fixed effects
@@ -354,6 +377,8 @@ sim_dat <- \(n_clusters)
   })
 ```
 
+A data set is sampled below and a few summary statistics are shown.
+
 ``` r
 # sample a data set
 set.seed(26218609)
@@ -375,6 +400,8 @@ lapply(dat, \(x) x$y[x$event]) |> unlist() |>
 #>    100% 
 #> 5.00000
 ```
+
+The model is fitted below.
 
 ``` r
 # fit the model with the stochastic spherical-radial rules

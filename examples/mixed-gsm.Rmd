@@ -47,7 +47,7 @@ $$
 
 where $\epsilon_{ij}$ is standard normally distributed. A special case is 
 $\vec x_{ij}(t) = (\log(t), \vec a_{ij}^\top)^\top$ for some covariates 
-$\vec a_ij$. Thus is a  log-normal distribution and a particular of an 
+$\vec a_{ij}$. Thus is a  log-normal distribution and a particular of an 
 accelerated failure time.
 
 The code to do the stimulation and to assign the model parameters is given 
@@ -210,7 +210,24 @@ sd(func_ests)
 
 ## Pedigree Data
 
-TODO: add some text on what is happening here.
+A special class of mixed models have 
+
+$$\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij} + \sum_{k = 1}^K u_{ijk}$$
+
+where 
+
+$$\begin{pmatrix} u_{ij1} \\ \vdots \\ u_{ijn_i}\end{pmatrix} \sim N^{(n_i)}\left(\vec 0, \sigma_k^2 C_{ik}\right)$$
+
+where $n_i$ is the number of members of cluster $i$ and 
+the $C_{ik}$s are know correlation matrices. A special example is where the $k$th 
+effect is a genetic effect. The proportion of variance of each effect is 
+
+$$\frac{\sigma_k^2}{1 + \sum_{l = 1}^K\sigma_l^2}$$
+
+which for a genetic effect is called the heritability. 
+
+We will simulate families with a random number of children. An example of such
+a family with four children is shown below.
 
 ```{r set_up_n_show_family}
 # create the family we will use
@@ -225,7 +242,8 @@ plot(ped)
 ```
 
 The code to do the stimulation and to assign the model parameters is given 
-below.
+below. We simulate both a genetic effect and a childhood environment effect. 
+Thus $K = 2$.
 
 ```{r pedigree_assing_sim_dat}
 # computes the time-varying fixed effects
@@ -307,6 +325,8 @@ sim_dat <- \(n_clusters)
   })
 ```
 
+A data set is sampled below and a few summary statistics are shown.
+
 ```{r pedigree_sim}
 # sample a data set
 set.seed(26218609)
@@ -322,6 +342,8 @@ sapply(dat, `[[`, "event") |> unlist() |> length()
 lapply(dat, \(x) x$y[x$event]) |> unlist() |>
   quantile(probs = seq(0, 1, length.out = 11))
 ```
+
+The model is fitted below.
 
 ```{r pedigree_fit, cache = 1}
 # fit the model with the stochastic spherical-radial rules
@@ -391,4 +413,3 @@ system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 sd(func_ests)
 ```
-
