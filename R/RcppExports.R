@@ -97,3 +97,15 @@ gsm_gr <- function(ptr, beta, sig, maxpts, key, abseps, releps, method_use) {
     .Call('_mixprobit_gsm_gr', PACKAGE = 'mixprobit', ptr, beta, sig, maxpts, key, abseps, releps, method_use)
 }
 
+get_gsm_ptr_pedigree <- function(data) {
+    .Call('_mixprobit_get_gsm_ptr_pedigree', PACKAGE = 'mixprobit', data)
+}
+
+gsm_eval_pedigree <- function(ptr, beta, sigs, maxpts, key, abseps, releps, method_use) {
+    .Call('_mixprobit_gsm_eval_pedigree', PACKAGE = 'mixprobit', ptr, beta, sigs, maxpts, key, abseps, releps, method_use)
+}
+
+gsm_gr_pedigree <- function(ptr, beta, sigs, maxpts, key, abseps, releps, method_use) {
+    .Call('_mixprobit_gsm_gr_pedigree', PACKAGE = 'mixprobit', ptr, beta, sigs, maxpts, key, abseps, releps, method_use)
+}
+

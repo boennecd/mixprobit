@@ -735,6 +735,7 @@ SEXP get_gsm_ptr(Rcpp::List data){
     n_rng = out->back().n_rng();
   }
 
+  out.attr("class") = "gsm_ptr";
   return out;
 }
 
@@ -825,6 +826,123 @@ Rcpp::NumericVector gsm_gr
   std::unique_ptr<double[]> wk_mem{new double[dpd_mat::n_wmem(n_rng)]};
   std::fill(out.begin() + beta.n_elem, out.end(), 0);
   dpd_mat::get(L, out.memptr() + beta.n_elem, d_Sigma.memptr(), wk_mem.get());
+
+  Rcpp::NumericVector out_vec(out.n_elem);
+  std::copy(out.begin(), out.end(), &out_vec[0]);
+  out_vec.attr("n_fails") = n_fails;
+  out_vec.attr("logLik") = ll;
+
+  return out_vec;
+}
+
+using gsm_vec_pedigree_ptr =
+  Rcpp::XPtr<std::vector<mixed_gsm_cluster_pedigree> >;
+
+/**
+ * returns a pointer to compute the log marginal likelihood and the gradient for
+ * a mixed GSM model.
+ */
+// [[Rcpp::export(rng = false)]]
+SEXP get_gsm_ptr_pedigree(Rcpp::List data){
+  gsm_vec_pedigree_ptr out(new std::vector<mixed_gsm_cluster_pedigree>());
+  out->reserve(data.size());
+
+  arma::uword n_fixef{}, n_scales{};
+  for(SEXP dat : data){
+    Rcpp::List dat_list = dat,
+        scale_mats_list = dat_list["scale_mats"];
+
+    std::vector<arma::mat> scale_mats;
+    scale_mats.reserve(scale_mats_list.size());
+    for(SEXP R_mat : scale_mats_list)
+      scale_mats.emplace_back(Rcpp::as<arma::mat>(R_mat));
+
+    out->emplace_back(
+        std::move(scale_mats),
+        Rcpp::as<arma::mat>(dat_list["X"]),
+        Rcpp::as<arma::mat>(dat_list["X_prime"]),
+        Rcpp::as<arma::vec>(dat_list["y"]),
+        Rcpp::as<arma::vec>(dat_list["event"]));
+
+    if(n_fixef && out->back().n_fixef() != n_fixef)
+      throw std::invalid_argument("number of fixed effects differ");
+    n_fixef = out->back().n_fixef();
+
+    if(n_scales && out->back().n_scales() != n_scales)
+      throw std::invalid_argument("number of scale matrices differ");
+    n_scales = out->back().n_scales();
+  }
+
+  out.attr("class") = "gsm_ptr_pedigree";
+
+  return out;
+}
+
+// [[Rcpp::export()]]
+Rcpp::NumericVector gsm_eval_pedigree
+  (SEXP ptr, arma::vec const &beta, arma::vec const &sigs, int const maxpts,
+   int const key, double const abseps, double const releps,
+   std::string const method_use){
+  gsm_vec_pedigree_ptr comp_obj(ptr);
+  if(comp_obj->size() < 1)
+    return {0};
+
+  double out{};
+  unsigned n_fails{};
+
+  arma::uword const n_scales = comp_obj->back().n_scales(),
+                     n_fixef{comp_obj->back().n_fixef()};
+  if(sigs.n_elem != n_scales)
+    throw std::invalid_argument("sigs does not have the correct length");
+  if(beta.n_elem != n_fixef)
+    throw std::invalid_argument("beta does not have the correct length");
+
+  parallelrng::set_rng_seeds(1);
+  for(auto &dat : *comp_obj){
+    auto res = dat
+      (beta, sigs, maxpts, key, abseps, releps,
+       string_to_gsm_approx_method(method_use));
+    out += res.log_like;
+    n_fails += res.inform != 0;
+  }
+
+  Rcpp::NumericVector out_vec{out};
+  out_vec.attr("n_fails") = n_fails;
+
+  return out_vec;
+}
+
+// [[Rcpp::export()]]
+Rcpp::NumericVector gsm_gr_pedigree
+  (SEXP ptr, arma::vec const &beta, arma::vec const &sigs, int const maxpts,
+   int const key, double const abseps, double const releps,
+   std::string const method_use){
+  gsm_vec_pedigree_ptr comp_obj(ptr);
+  if(comp_obj->size() < 1)
+    return {};
+
+  double ll{};
+  unsigned n_fails{};
+
+  arma::uword const n_scales = comp_obj->back().n_scales(),
+                     n_fixef{comp_obj->back().n_fixef()};
+  if(sigs.n_elem != n_scales)
+    throw std::invalid_argument("sigs does not have the correct length");
+  if(beta.n_elem != n_fixef)
+    throw std::invalid_argument("beta does not have the correct length");
+
+  arma::vec out(n_fixef + n_scales, arma::fill::zeros),
+            tmp;
+
+  parallelrng::set_rng_seeds(1);
+  for(auto &dat : *comp_obj){
+    auto res = dat.grad
+      (tmp, beta, sigs, maxpts, key, abseps, releps,
+       string_to_gsm_approx_method(method_use));
+    ll += res.log_like;
+    n_fails += res.inform != 0;
+    out += tmp;
+  }
 
   Rcpp::NumericVector out_vec(out.n_elem);
   std::copy(out.begin(), out.end(), &out_vec[0]);

@@ -1,3 +1,66 @@
+.check_valid_gsm_method <- function(method)
+  stopifnot(method %in% c("adaptive_spherical_radial",  "cdf_approach",
+                              "spherical_radial"))
+
+bs_spline_w_constraints <- function(event, obs_time, df, ord = 4L){
+  df <- max(df, 2L)
+  log_obs_time <- log(obs_time)
+  bd_knots <- range(log_obs_time)
+  knots <- quantile(log_obs_time[event], seq(0, 1, length.out = df - 1L))
+  ik_knots <- knots[-c(1L, length(knots))]
+
+  # create the constraint
+  ui <- matrix(0, df, df + 1L)
+  for(i in seq_len(df))
+    ui[i, i + 0:1] <- c(-1, 1)
+  ui <- ui[, -1, drop = FALSE]
+
+  # assign the functions to compute the basis
+  A_knots <- sort(c(rep(bd_knots, ord), ik_knots))
+  offset <- numeric(df)
+  basis <- function(x){
+    bas <- splineDesign(A_knots, log(x), ord)
+    bas[, -1, drop = FALSE] - rep(offset, each = length(x))
+  }
+  d_basis <- function(x){
+    bas <- splineDesign(A_knots, log(x), ord, derivs = 1L) / x
+    bas[, -1, drop = FALSE]
+  }
+
+  offset <- colMeans(basis(obs_time))
+
+  # TODO: clean up
+
+  structure(
+    list(basis = basis, d_basis = d_basis, constraints = ui),
+    bd_knots = bd_knots, ik_knots = ik_knots, offset = offset)
+}
+
+#' @importFrom stats lm lm.fit
+gsm_beta_start <- function(obs_time, event, X_fixef, X_vary){
+  # we match the mean and standard deviation of the log of time of the observed
+  # outcomes
+  obs_time <- obs_time[event]
+  X_fixef <- X_fixef[event, , drop = FALSE]
+  X_vary <- X_vary[event, , drop = FALSE]
+
+  obs_time <- log(obs_time)
+  time_sd <- sd(obs_time)
+  intercept <- mean(obs_time) / time_sd
+  slope <- 1 / time_sd
+
+  # match the intercept with the fixed effects
+  comb_inter <- lm.fit(X_fixef, rep(1, NROW(X_fixef)))$coef
+
+  # fit the spline to match the linear effect
+  comb_slope <- lm.fit(cbind(1, X_vary), obs_time)$coef
+
+  beta_start_fixef <- (-intercept + comb_slope[1] * slope) * comb_inter
+  beta_start_vary <- slope * comb_slope[-1]
+
+  c(beta_start_fixef, beta_start_vary)
+}
+
 #' Fits a mixed generalized survival model with the probit link
 #'
 #' @param formula formula for the fixed effects. Must contain the intercept.
@@ -10,94 +73,74 @@
 #' when fitting the model.
 #' @param key,abseps,releps parameters for the Monte Carlo method.
 #' @param seed the fixed seed to use.
-#' @param method_use character with the method to use to approximate the
+#' @param method character with the method to use to approximate the
 #' intractble part of the marginal likelihood. \code{"spherical_radial"} and
 #' \code{"adaptive_spherical_radial"} yields (adaptive) stochastic
 #' spherical-radial rules and \code{"spherical_radial"} yields the CDF approach.
 #'
-#' @importFrom stats  model.frame model.response terms model.matrix quantile optim
+#' @importFrom stats model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
 #' @export
 fit_mgsm <- function(
   formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
   key = 3L, abseps = 0, releps = 1e-3, seed = 1L,
-  method_use = c("adaptive_spherical_radial",  "cdf_approach",
+  method = c("adaptive_spherical_radial",  "cdf_approach",
                  "spherical_radial")){
-  method_use <- method_use[1]
-  stopifnot(method_use %in% c("adaptive_spherical_radial",  "cdf_approach",
-                              "spherical_radial"))
+  method <- method[1]
+  .check_valid_gsm_method(method)
 
   mf_X <- model.frame(formula, data)
   y <- model.response(mf_X)
   X_fixef <- model.matrix(terms(mf_X), mf_X)
-  stopifnot("(Intercept)" %in% colnames(X_fixef))
-  X_fixef <- X_fixef[, !colnames(X_fixef) == "(Intercept)", drop = FALSE]
   id <- eval(substitute(id), data, parent.frame())
 
   mf_Z <- model.frame(rng_formula, data)
   Z <- model.matrix(terms(mf_Z), mf_Z)
 
-  df <- max(df, 2L)
   event <- y[, 2] > 0
   obs_time <- y[, 1]
-  log_obs_time <- log(obs_time)
-  knots <- quantile(log_obs_time[event], seq(0, 1, length.out = df - 1L))
-  bd_knots <- range(log_obs_time)
-  ik_knots <- knots[-c(1L, length(knots))]
 
-  ord <- 4L
-  A_knots <- sort(c(rep(bd_knots, ord), ik_knots))
+  spline <-
+    bs_spline_w_constraints(event = event, obs_time = obs_time, df = df)
 
   # construct the basis for the time-varying effect
-  X_vary <- splineDesign(A_knots, log_obs_time, ord)
-  X_vary_prime <-
-    splineDesign(A_knots, log_obs_time, ord, derivs = 1L) / obs_time
+  X_vary <- spline$basis(obs_time)
+  X_vary_prime <- spline$d_basis(obs_time)
 
+  # find the starting values
+  n_fixef <- NCOL(X_fixef)
+  n_vary <- NCOL(X_vary)
   X <- cbind(X_fixef, X_vary)
   X_prime <- cbind(matrix(0, NROW(X_fixef), NCOL(X_fixef)), X_vary_prime)
 
-  # fit a log normal model on the complete data to get the starting values
-  lm_res <- lm(log_obs_time[event] ~ X_fixef[event, ])
-  lm_sum <- summary(lm_res)
-  beta_start_fixef <- -unname(coef(lm_res)[-1]) / lm_sum$sigma
+  beta_start <-
+    gsm_beta_start(
+      obs_time = obs_time, event = event, X_fixef = X_fixef, X_vary = X_vary)
 
-  # fit the spline to match the linear effect
-  lm_lin_effect <- lm((log_obs_time / lm_sum$sigma) ~ X_vary - 1)
-  beta_start_vary <- unname(coef(lm_lin_effect))
-  stopifnot(all(diff(beta_start_vary) >= 0))
-  beta_start <- c(beta_start_fixef, beta_start_vary)
+  # handle the variable transformation
+  n_rng <- NCOL(Z)
+  sig <- diag(log(1), n_rng)
+  par <- c(beta_start, sig[lower.tri(sig, TRUE)])
 
-  # fit the model for the observed data without the random effects
-  n_par <- length(beta_start)
-  n_constraints <- NCOL(X_vary) - 1L
-  idx_constrainted <- NCOL(X_fixef) + 1L + seq_len(n_constraints)
-  ui <- matrix(0, n_par, n_par)
-  for(i in 1:n_constraints)
-    ui[i + NCOL(X_fixef) + 1L , NCOL(X_fixef) + 0:1 + i] <- c(-1, 1)
-  for(i in seq_len(NCOL(X_fixef) + 1L ))
-    ui[i, i] <- 1
+  n_par <- length(par)
+  idx_varying <- n_fixef + seq_len(n_vary)
 
-  theta_start <- ui %*% beta_start
-  theta_start[idx_constrainted] <- log(theta_start[idx_constrainted])
+  trans_vars <- diag(n_par)
+  trans_vars[idx_varying, idx_varying] <- spline$constraints
+  par <- trans_vars %*% par
+  par[idx_varying] <- log(par[idx_varying])
 
   get_beta <- function(theta){
-    theta[idx_constrainted] <- exp(theta[idx_constrainted])
-    solve(ui, theta)
+    theta[idx_varying] <- exp(theta[idx_varying])
+    drop(solve(trans_vars, theta))
   }
 
   d_theta <- function(d_beta, theta){
-    out <- solve(t(ui), d_beta)
-    out[idx_constrainted] <-
-      exp(theta[idx_constrainted]) * out[idx_constrainted]
+    out <- solve(t(trans_vars), d_beta)
+    out[idx_varying] <-
+      exp(theta[idx_varying]) * out[idx_varying]
     out
   }
-
-  # extend the matrix to transform the parameters
-  n_rng <- NCOL(Z)
-  n_par <- length(beta_start) + (n_rng * (n_rng + 1L)) / 2L
-  ui_new <- diag(n_par)
-  ui_new[seq_along(beta_start), seq_along(beta_start)] <- ui
-  ui <- ui_new
 
   # create the data to pass to C++
   X <- t(X)
@@ -111,10 +154,7 @@ fit_mgsm <- function(
 
   ptr <- get_gsm_ptr(cpp_data)
 
-  sig <- numeric((n_rng * (n_rng + 1L)) %/% 2L)
-  par <- c(theta_start, sig[lower.tri(sig, TRUE)])
-
-  fn <- function(theta, maxpts, key, abseps, releps, method_use, seed,
+  fn <- function(theta, maxpts, key, abseps, releps, method, seed,
                  silent = TRUE){
     set.seed(seed)
     par <- get_beta(theta)
@@ -122,12 +162,12 @@ fit_mgsm <- function(
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_eval(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, method_use = method_use),
+      abseps = abseps, releps = releps, method = method),
       silent = silent)
     if(inherits(res, "try-error")) NA else -res
   }
 
-  gr <- function(theta, maxpts, key, abseps, releps, method_use, seed,
+  gr <- function(theta, maxpts, key, abseps, releps, method, seed,
                  silent = TRUE){
     set.seed(seed)
     par <- get_beta(theta)
@@ -135,7 +175,7 @@ fit_mgsm <- function(
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_gr(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, method_use = method_use),
+      abseps = abseps, releps = releps, method = method),
       silent = silent)
     if(inherits(res, "try-error"))
       return(rep(NA, length(par)))
@@ -143,9 +183,9 @@ fit_mgsm <- function(
     d_theta(-res, theta)
   }
 
-  to_set <- c("maxpts", "key", "abseps", "releps", "method_use", "seed")
+  to_set <- c("maxpts", "key", "abseps", "releps", "method", "seed")
   formals(fn)[to_set] <- formals(gr)[to_set] <-
-    list(max(maxpts), key, abseps, releps, method_use, seed)
+    list(max(maxpts), key, abseps, releps, method, seed)
 
   # fit the model
   maxpts <- sort(maxpts)
@@ -162,15 +202,157 @@ fit_mgsm <- function(
   fit <- fits[[length(fits)]]
   par_org <- get_beta(fit$par)
   beta_est <- head(par_org, length(beta_start))
-  beta_fixef <- head(beta_est, length(beta_start_fixef))
-  beta_spline <- tail(beta_est, -length(beta_start_fixef))
+  beta_fixef <- head(beta_est, n_fixef)
+  beta_spline <- tail(beta_est, -n_fixef)
 
   Sigma <- matrix(0, n_rng, n_rng)
-  Sigma[lower.tri(Sigma, TRUE)] <- tail(par_org, -length(theta_start))
+  Sigma[lower.tri(Sigma, TRUE)] <- tail(fit$par, -length(beta_start))
   diag(Sigma) <- exp(diag(Sigma))
   Sigma <- tcrossprod(Sigma)
 
+  # TODO: clean up
+
   list(beta_fixef = beta_fixef, beta_spline = beta_spline, Sigma = Sigma,
-       get_beta = get_beta, fn = fn, gr = gr, logLik = -fit$value,
-       optim = fit, fits = fits, knots = knots, A_knots = A_knots)
+       fn = fn, gr = gr, logLik = -fit$value, get_beta = get_beta,
+       optim = fit, fits = fits, spline = spline)
+}
+
+#' @inheritParams fit_mgsm
+#' @export
+fit_mgsm_pedigree <- function(
+  data, df = 4L, maxpts = c(1000L, 10000L), key = 3L, abseps = 0,
+  releps = 1e-3, seed = 1L,
+  method = c("adaptive_spherical_radial",  "cdf_approach",
+                 "spherical_radial")){
+  method <- method[1]
+  .check_valid_gsm_method(method)
+
+  stopifnot(is.list(data))
+
+  event <- unlist(lapply(data, `[[`, "event")) > 0
+  obs_time <- unlist(lapply(data, `[[`, "y"))
+  stopifnot(length(event) == length(obs_time))
+
+  spline <-
+    bs_spline_w_constraints(event = event, obs_time = obs_time, df = df)
+
+  # construct the basis for the time-varying effect
+  dat_pass <- lapply(dat, function(x){
+    X_vary <- spline$basis(x$y)
+    X_vary_prime <- spline$d_basis(x$y)
+
+    within(x, {
+      X_fixef <- X
+      X_vary <- X_vary
+      X <- cbind(X, X_vary)
+      X_prime <- cbind(matrix(0., NROW(X_fixef), NCOL(X_fixef)), X_vary_prime)
+      colnames(X_prime) <- colnames(X)
+    })
+  })
+
+  # find the starting values
+  X_fixef <- do.call(rbind, lapply(dat_pass, `[[`, "X_fixef"))
+  X_vary <- do.call(rbind, lapply(dat_pass, `[[`, "X_vary"))
+
+  beta_start <-
+    gsm_beta_start(
+      obs_time = obs_time, event = event, X_fixef = X_fixef,
+      X_vary = X_vary)
+
+  # handle the variable transformation
+  n_fixef <- NCOL(X_fixef)
+  n_vary <- NCOL(X_vary)
+  n_scales <- length(dat_pass[[1L]]$scale_mats)
+  par <- c(beta_start, numeric(n_scales))
+
+  n_par <- length(par)
+  idx_varying <- n_fixef + seq_len(n_vary)
+  idx_scale <- length(beta_start) + seq_len(n_scales)
+
+  trans_vars <- diag(n_par)
+  trans_vars[idx_varying, idx_varying] <- spline$constraints
+  par <- trans_vars %*% par
+  par[idx_varying] <- log(par[idx_varying])
+
+  get_beta <- function(theta){
+    theta[idx_varying] <- exp(theta[idx_varying])
+    theta <- drop(solve(trans_vars, theta))
+    theta[idx_scale] <- exp(theta[idx_scale])
+    theta
+  }
+
+  d_theta <- function(d_beta, theta){
+    out <- solve(t(trans_vars), d_beta)
+    out[idx_varying] <-
+      exp(theta[idx_varying]) * out[idx_varying]
+    out[idx_scale] <- exp(theta[idx_scale]) * out[idx_scale]
+    out
+  }
+
+  # create the data to pass to C++
+  dat_pass <- lapply(dat_pass, function(x){
+    within(x, {
+      X <- t(X)
+      X_prime <- t(X_prime)
+    })
+  })
+
+  ptr <- get_gsm_ptr_pedigree(dat_pass)
+
+  fn <- function(theta, maxpts, key, abseps, releps, method, seed,
+                 silent = TRUE){
+    set.seed(seed)
+    par <- get_beta(theta)
+    beta <- head(par, length(beta_start))
+    sigs <- tail(par, -length(beta_start))
+    res <- try(gsm_eval_pedigree(
+      ptr = ptr, beta = beta, sigs = sigs, maxpts = maxpts, key = key,
+      abseps = abseps, releps = releps, method = method),
+      silent = silent)
+    if(inherits(res, "try-error")) NA else -res
+  }
+
+  gr <- function(theta, maxpts, key, abseps, releps, method, seed,
+                 silent = TRUE){
+    set.seed(seed)
+    par <- get_beta(theta)
+    beta <- head(par, length(beta_start))
+    sigs <- tail(par, -length(beta_start))
+    res <- try(gsm_gr_pedigree(
+      ptr = ptr, beta = beta, sigs = sigs, maxpts = maxpts, key = key,
+      abseps = abseps, releps = releps, method = method),
+      silent = silent)
+    if(inherits(res, "try-error"))
+      return(rep(NA, length(par)))
+
+    d_theta(-res, theta)
+  }
+
+  to_set <- c("maxpts", "key", "abseps", "releps", "method", "seed")
+  formals(fn)[to_set] <- formals(gr)[to_set] <-
+    list(max(maxpts), key, abseps, releps, method, seed)
+
+  # fit the model
+  maxpts <- sort(maxpts)
+  fits <- vector("list", length(maxpts))
+  opt_func <- function(par, maxpts)
+    optim(par, fn, gr, method = "BFGS", control = list(maxit = 10000L),
+          maxpts = maxpts)
+
+  fits[[1L]] <- opt_func(par, maxpts[1])
+  for(i in seq_len(length(maxpts) - 1L))
+    fits[[i + 1L]] <- opt_func(fits[[i]]$par, maxpts[i + 1L])
+
+  # format the result and return
+  fit <- fits[[length(fits)]]
+  par_org <- get_beta(fit$par)
+  beta_est <- head(par_org, length(beta_start))
+  beta_fixef <- head(beta_est, n_fixef)
+  beta_spline <- tail(beta_est, -n_fixef)
+
+  sigs <- drop(exp(tail(fit$par, n_scales)))
+
+  list(beta_fixef = beta_fixef, beta_spline = beta_spline, sigs = sigs,
+       fn = fn, gr = gr, logLik = -fit$value, get_beta = get_beta,
+       optim = fit, fits = fits, spline = spline)
 }

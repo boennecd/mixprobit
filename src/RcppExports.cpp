@@ -391,6 +391,52 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// get_gsm_ptr_pedigree
+SEXP get_gsm_ptr_pedigree(Rcpp::List data);
+RcppExport SEXP _mixprobit_get_gsm_ptr_pedigree(SEXP dataSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_gsm_ptr_pedigree(data));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gsm_eval_pedigree
+Rcpp::NumericVector gsm_eval_pedigree(SEXP ptr, arma::vec const& beta, arma::vec const& sigs, int const maxpts, int const key, double const abseps, double const releps, std::string const method_use);
+RcppExport SEXP _mixprobit_gsm_eval_pedigree(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigsSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP method_useSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type sigs(sigsSEXP);
+    Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
+    Rcpp::traits::input_parameter< int const >::type key(keySEXP);
+    Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
+    Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
+    Rcpp::traits::input_parameter< std::string const >::type method_use(method_useSEXP);
+    rcpp_result_gen = Rcpp::wrap(gsm_eval_pedigree(ptr, beta, sigs, maxpts, key, abseps, releps, method_use));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gsm_gr_pedigree
+Rcpp::NumericVector gsm_gr_pedigree(SEXP ptr, arma::vec const& beta, arma::vec const& sigs, int const maxpts, int const key, double const abseps, double const releps, std::string const method_use);
+RcppExport SEXP _mixprobit_gsm_gr_pedigree(SEXP ptrSEXP, SEXP betaSEXP, SEXP sigsSEXP, SEXP maxptsSEXP, SEXP keySEXP, SEXP absepsSEXP, SEXP relepsSEXP, SEXP method_useSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< arma::vec const& >::type sigs(sigsSEXP);
+    Rcpp::traits::input_parameter< int const >::type maxpts(maxptsSEXP);
+    Rcpp::traits::input_parameter< int const >::type key(keySEXP);
+    Rcpp::traits::input_parameter< double const >::type abseps(absepsSEXP);
+    Rcpp::traits::input_parameter< double const >::type releps(relepsSEXP);
+    Rcpp::traits::input_parameter< std::string const >::type method_use(method_useSEXP);
+    rcpp_result_gen = Rcpp::wrap(gsm_gr_pedigree(ptr, beta, sigs, maxpts, key, abseps, releps, method_use));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP run_testthat_tests();
 
@@ -419,6 +465,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mixprobit_get_gsm_ptr", (DL_FUNC) &_mixprobit_get_gsm_ptr, 1},
     {"_mixprobit_gsm_eval", (DL_FUNC) &_mixprobit_gsm_eval, 8},
     {"_mixprobit_gsm_gr", (DL_FUNC) &_mixprobit_gsm_gr, 8},
+    {"_mixprobit_get_gsm_ptr_pedigree", (DL_FUNC) &_mixprobit_get_gsm_ptr_pedigree, 1},
+    {"_mixprobit_gsm_eval_pedigree", (DL_FUNC) &_mixprobit_gsm_eval_pedigree, 8},
+    {"_mixprobit_gsm_gr_pedigree", (DL_FUNC) &_mixprobit_gsm_gr_pedigree, 8},
     {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };

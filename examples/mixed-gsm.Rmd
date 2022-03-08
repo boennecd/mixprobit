@@ -39,6 +39,17 @@ h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) =
        {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
 $$
 
+The model can also be viewed as the survival time being distributed such that
+
+$$
+\vec x_{ij}(t)^\top\vec\beta = -\vec z_{ij}^\top\vec u_i + \epsilon_{ij}
+$$
+
+where $\epsilon_{ij}$ is standard normally distributed. A special case is 
+$\vec x_{ij}(t) = (\log(t), \vec a_{ij}^\top)^\top$ for some covariates 
+$\vec a_ij$. Thus is a  log-normal distribution and a particular of an 
+accelerated failure time.
+
 The code to do the stimulation and to assign the model parameters is given 
 below.
 
@@ -130,14 +141,14 @@ system.time(
   res_sr <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
-    method_use = "adaptive_spherical_radial"))
+    method = "adaptive_spherical_radial"))
 
 # fit the model with the CDF approach
 system.time(
   res_cdf <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
-    method_use = "cdf_approach"))
+    method = "cdf_approach"))
 ```
 
 The results are shown below.
@@ -146,7 +157,7 @@ The results are shown below.
 # the estimates are shown below
 rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
       `Estimate CDF` = res_cdf$beta_fixef,
-      Truth = tail(beta, 2))
+      Truth = c(beta[1], tail(beta, 2)))
 
 res_sr$Sigma # estimated covariance matrix
 res_cdf$Sigma # estimated covariance matrix
@@ -154,26 +165,26 @@ Sigma # the true covariance matrix
 
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
-library(splines)
-Xt_spline <- \(v) splineDesign(res_sr$A_knots, log(v), outer.ok = TRUE)
-Xt_spline_prime <- \(v) splineDesign(
-  res_sr$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
-
 vs <- seq(1e-2, admin_cens, length.out = 1000)
 # computes the hazard
-cmp_haz <- \(x, xp, beta_use)
+cmp_haz <- \(x, xp, beta_use, offset = 0)
   sapply(vs, \(v){
-    eta <- x(v) %*% beta_use
+    eta <- x(v) %*% beta_use + offset
     eta_p <- xp(v) %*% beta_use
     eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
   })
+  
+Xt_spline <- res_cdf$spline$basis
+Xt_spline_prime <- res_cdf$spline$d_basis
 
 par(mar = c(5, 5, 1, 1))
 matplot(
   vs, cbind(
     cmp_haz(x, xp, head(beta, -2)),
-    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline),
-    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline)),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline, 
+            res_sr$beta_fixef[1]),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline, 
+            res_cdf$beta_fixef[1])),
   type = "l", bty = "l", lty = 1:3, 
   col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
 grid()
@@ -182,15 +193,202 @@ grid()
 print(res_sr$logLik, digits = 8)
 print(res_cdf$logLik, digits = 8)
 
+# can be compared with say a Weibull model without the random effects
+survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
+```
+
+```{r ll_sd, cache = 1, dependson = "fit_ex"}
 # compare the variance on the log marginal likelihood of the two methods 
 # while tracking the computation time
 system.time(
-  funcn_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
-sd(funcn_ests)
+  func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
+sd(func_ests)
 system.time(
-  funcn_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
-sd(funcn_ests)
-
-# can be compared with say a Weibull model
-survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
+  func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
+sd(func_ests)
 ```
+
+## Pedigree Data
+
+TODO: add some text on what is happening here.
+
+```{r set_up_n_show_family}
+# create the family we will use
+fam <- data.frame(id = 1:6, sex = rep(1:2, 3L),
+                  father = c(NA, NA, rep(1L, 4L)), 
+                  mother = c(NA, NA, rep(2L, 4L)))
+
+# plot the pedigree
+library(kinship2)
+ped <- with(fam, pedigree(id = id, dadid = father, momid = mother, sex = sex))
+plot(ped)
+```
+
+The code to do the stimulation and to assign the model parameters is given 
+below.
+
+```{r pedigree_assing_sim_dat}
+# computes the time-varying fixed effects
+x <- \(v) { v <- log(v); cbind(1, v, v^3) }
+xp <- \(v) { v_org <- v; v <- log(v); cbind(0, 1, 3 * v^2) / v_org }
+
+# the fixed effects coefficients (beta)
+beta <- c(-1, .7, .1, .5, 1)
+
+admin_cens <- 5 # the administrative censoring time
+
+# plot of the hazard when the other fixed effects are zero
+par(mar = c(5, 5, 1, 1))
+seq(1e-2, admin_cens, length.out = 1000) |>
+  (\(vs)
+   plot(vs, 
+        {
+          beta_use <- head(beta, -2)
+          eta <- x(vs) %*% beta_use
+          eta_p <- xp(vs) %*% beta_use
+          eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+        }, 
+        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+        xaxs = "i", yaxs = "i", type = "l")
+  )()
+grid()
+
+# the scale parameters
+sigs <- c(Genetic = 1.5, Environment = 0.5)
+
+# the proportion of variance
+c(sigs, Individual = 1) / c(sum(sigs) + 1)
+
+# simulates a given number of clusters
+sim_dat <- \(n_clusters)
+  lapply(seq_len(n_clusters), \(id) {
+    # sample the number of children and construct the scale matrices
+    n_children <- sample.int(6L, 1L)
+    n_members <- n_children + 2L
+    sex <- c(1:2, sample.int(2L, n_children, replace = TRUE))
+    
+    fam <- data.frame(
+      id = seq_len(n_members), sex = sex,
+      father = c(NA, NA, rep(1L, n_children)), 
+      mother = c(NA, NA, rep(2L, n_children)))
+    ped <- with(fam, pedigree(
+      id = id, dadid = father, momid = mother, sex = sex))
+    
+    genentic_mat <- 2 * kinship(ped)
+    env_mat <- diag(n_children + 2L)
+    env_mat[3:n_members, 3:n_members] <- 1
+    
+    # get the covariance matrix and sample the random effects and the 
+    # covariates
+    sigma <- diag(n_members) + sigs[1] * genentic_mat + sigs[2] * env_mat
+    U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
+    X <- cbind(continous = rnorm(n_members), sex = sex == 1)
+    
+    # find the event times
+    offset <- X %*% tail(beta, NCOL(X)) + U
+    
+    beta_use <- head(beta, -NCOL(X))
+    y <- sapply(offset, \(o){
+      rng <- runif(1)
+      res <- uniroot(\(ti) rng - pnorm(-o - x(ti) %*% beta_use), 
+                     c(1e-32, 10000), 
+                     tol = 1e-10)
+      res$root
+    })
+    
+    cens <- pmin(admin_cens, runif(n_members, 0, 2 * admin_cens))
+    
+    X <- cbind(intercept = 1, X)
+    
+    out <- list(
+      event = as.numeric(y < cens), y = pmin(y, cens), X = X, 
+      id = rep(id, n_members), 
+      scale_mats = list(genetic = genentic_mat, environment = env_mat))
+  })
+```
+
+```{r pedigree_sim}
+# sample a data set
+set.seed(26218609)
+dat <- sim_dat(500L)
+
+# fraction of observed events
+sapply(dat, `[[`, "event") |> unlist() |> mean()
+
+# the number of observations
+sapply(dat, `[[`, "event") |> unlist() |> length()
+
+# quantiles of the observed event times
+lapply(dat, \(x) x$y[x$event]) |> unlist() |>
+  quantile(probs = seq(0, 1, length.out = 11))
+```
+
+```{r pedigree_fit, cache = 1}
+# fit the model with the stochastic spherical-radial rules
+library(mixprobit)
+system.time(
+  res_sr <- fit_mgsm_pedigree(
+    data = dat, maxpts = c(1000L, 10000L), df = 5L, 
+    method = "adaptive_spherical_radial"))
+
+# fit the model with the CDF approach
+system.time(
+  res_cdf <- fit_mgsm_pedigree(
+    data = dat, maxpts = c(1000L, 10000L), df = 5L,
+    method = "cdf_approach"))
+```
+
+The results are shown below.
+
+```{r pedigree_show_fit_ex}
+# the estimates are shown below
+rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
+      `Estimate CDF` = res_cdf$beta_fixef,
+      Truth = c(beta[1], tail(beta, 2)))
+
+res_sr$sigs # estimated scale parameters
+res_cdf$sigs # estimated scale parameters
+sigs
+
+# plot of the estimated hazard and the true hazard when the other fixed effects
+# are zero
+vs <- seq(1e-2, admin_cens, length.out = 1000)
+# computes the hazard
+cmp_haz <- \(x, xp, beta_use, offset = 0)
+  sapply(vs, \(v){
+    eta <- x(v) %*% beta_use + offset
+    eta_p <- xp(v) %*% beta_use
+    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+  })
+  
+Xt_spline <- res_cdf$spline$basis
+Xt_spline_prime <- res_cdf$spline$d_basis
+
+par(mar = c(5, 5, 1, 1))
+matplot(
+  vs, cbind(
+    cmp_haz(x, xp, head(beta, -2)),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline, 
+            res_sr$beta_fixef[1]),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline, 
+            res_cdf$beta_fixef[1])),
+  type = "l", bty = "l", lty = 1:3, 
+  col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
+grid()
+
+# the maximum likelihood
+print(res_sr$logLik, digits = 8)
+print(res_cdf$logLik, digits = 8)
+```
+
+```{r pedigree_ll_sd, cache = 1, dependson = "pedigree_fit"}
+# compare the variance on the log marginal likelihood of the two methods 
+# while tracking the computation time
+system.time(
+  func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
+sd(func_ests)
+system.time(
+  func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
+sd(func_ests)
+```
+

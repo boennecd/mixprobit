@@ -3,6 +3,7 @@
 #include "arma-wrap.h"
 #include <memory.h>
 #include <string.h>
+#include <vector>
 
 enum class gsm_approx_method {
   spherical_radial,
@@ -53,9 +54,12 @@ class gsm_cens_term {
   arma::vec const &beta;
   arma::mat const &Sigma;
 
-  arma::uword const n_obs, n_cen, n_rng, n_fixef;
+  arma::uword n_obs() const { return Xo.n_cols; }
+  arma::uword n_cen() const { return Xc.n_cols; }
+  arma::uword n_rng() const { return Zc.n_rows; }
+  arma::uword n_fixef() const { return beta.n_elem; }
 
-  arma::ivec const y_pass = arma::ivec(n_cen, arma::fill::ones);
+  arma::ivec const y_pass = arma::ivec(n_cen(), arma::fill::ones);
 
 public:
   struct gsm_cens_output {
@@ -109,10 +113,12 @@ class gsm_normal_term {
   arma::mat const &X, &Z, &Sigma;
   arma::vec const &beta;
 
-  arma::uword const n_obs, n_rng, n_fixef;
+  arma::uword n_obs() const { return Z.n_cols; }
+  arma::uword n_rng() const { return Sigma.n_cols; }
+  arma::uword n_fixef() const { return beta.n_elem; }
 
   /// working memory
-  std::unique_ptr<double[]> wk_mem{new double[(n_obs * (n_obs + 1)) / 2]};
+  std::unique_ptr<double[]> wk_mem{new double[(n_obs() * (n_obs() + 1)) / 2]};
   /// the upper triangular matrix for the Cholesky decomposition of Sigma
   double * const K_chol{wk_mem.get()};
 
@@ -192,7 +198,70 @@ public:
   mixed_gsm_cluster_res grad
     (arma::vec &gr, arma::vec const &beta, arma::mat const &Sigma,
      int const maxpts, int const key, double const abseps,
-     double const releps, gsm_approx_method const method_use) const ;
+     double const releps, gsm_approx_method const method_use) const;
 };
+
+/**
+ * approximates the log marginal likelihood term for a mixed GSM cluster
+ * where the covariance matrix is given by
+ *
+ *    Sigma = I + sum_(k = 1)^K sigma[k]^C[i]
+ *
+ * where C[1], ..., C[K] are known scale matrices
+ */
+class mixed_gsm_cluster_pedigree {
+  /// the scale matrices
+  std::vector<arma::mat> scale_mats;
+  /**
+   * the design matrix for the fixed effects. Both for the observed and the
+   * censored.
+   */
+  arma::mat Xo, Xc;
+  /// the design matrix for the derivative of the fixed effects.
+  arma::mat Xo_prime;
+  /// the observed times for the censored and uncensored individuals
+  arma::vec yo, yc;
+  /// indices the observed and censored observations
+  arma::uvec idx_obs, idx_cens;
+
+public:
+  /// the number of censored observations
+  arma::uword n_cens() const { return Xc.n_cols; }
+  /// the number of observed observations
+  arma::uword n_obs() const { return Xo.n_cols; }
+  /// the total number of observations
+  arma::uword n_total() const { return n_cens() + n_obs(); }
+  /// the number of random effects
+  arma::uword n_rng() const { return n_total(); }
+  /// the number of fixed effects
+  arma::uword n_fixef() const { return Xo.n_rows; }
+  /// the number of effects
+  size_t n_scales() const { return scale_mats.size(); }
+
+  mixed_gsm_cluster_pedigree
+    (std::vector<arma::mat> const &scale_mats, arma::mat const &X,
+     arma::mat const &X_prime, arma::vec const &y, arma::vec const &event);
+
+  struct mixed_gsm_cluster_pedigree_res {
+    double log_like;
+    int inform;
+  };
+
+  /// computes the log marginal likelihood.
+  mixed_gsm_cluster_pedigree_res operator()
+    (arma::vec const &beta, arma::vec const &sigs, int const maxpts,
+     int const key, double const abseps, double const releps,
+     gsm_approx_method const method_use) const;
+
+  /**
+   * computes the gradient, setting the result gr, and returns the log marginal
+   * likelihood.
+   */
+  mixed_gsm_cluster_pedigree_res grad
+    (arma::vec &gr, arma::vec const &beta, arma::vec const &sigs,
+     int const maxpts, int const key, double const abseps,
+     double const releps, gsm_approx_method const method_use) const;
+};
+
 
 #endif

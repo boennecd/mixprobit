@@ -31,6 +31,24 @@ h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) =
        {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
 ")
 
+The model can also be viewed as the survival time being distributed such
+that
+
+![
+\\vec x\_{ij}(t)^\\top\\vec\\beta = -\\vec z\_{ij}^\\top\\vec u_i + \\epsilon\_{ij}
+](https://latex.codecogs.com/svg.latex?%0A%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20%3D%20-%5Cvec%20z_%7Bij%7D%5E%5Ctop%5Cvec%20u_i%20%2B%20%5Cepsilon_%7Bij%7D%0A "
+\vec x_{ij}(t)^\top\vec\beta = -\vec z_{ij}^\top\vec u_i + \epsilon_{ij}
+")
+
+where
+![\\epsilon\_{ij}](https://latex.codecogs.com/svg.latex?%5Cepsilon_%7Bij%7D "\epsilon_{ij}")
+is standard normally distributed. A special case is
+![\\vec x\_{ij}(t) = (\\log(t), \\vec a\_{ij}^\\top)^\\top](https://latex.codecogs.com/svg.latex?%5Cvec%20x_%7Bij%7D%28t%29%20%3D%20%28%5Clog%28t%29%2C%20%5Cvec%20a_%7Bij%7D%5E%5Ctop%29%5E%5Ctop "\vec x_{ij}(t) = (\log(t), \vec a_{ij}^\top)^\top")
+for some covariates
+![\\vec a_ij](https://latex.codecogs.com/svg.latex?%5Cvec%20a_ij "\vec a_ij").
+Thus is a log-normal distribution and a particular of an accelerated
+failure time.
+
 The code to do the stimulation and to assign the model parameters is
 given below.
 
@@ -132,18 +150,18 @@ system.time(
   res_sr <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
-    method_use = "adaptive_spherical_radial"))
+    method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 219.240   0.067 219.491
+#> 124.803   0.056 125.168
 
 # fit the model with the CDF approach
 system.time(
   res_cdf <- fit_mgsm(
     formula = Surv(y, event) ~ X1 + X2, data = dat_full, id = id,
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
-    method_use = "cdf_approach"))
+    method = "cdf_approach"))
 #>    user  system elapsed 
-#>   122.9     0.0   122.9
+#>   46.70    0.00   46.71
 ```
 
 The results are shown below.
@@ -152,20 +170,20 @@ The results are shown below.
 # the estimates are shown below
 rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
       `Estimate CDF` = res_cdf$beta_fixef,
-      Truth = tail(beta, 2))
-#>                             [,1]   [,2]
-#> Estimate spherical radial 0.4882 0.9919
-#> Estimate CDF              0.4883 0.9919
-#> Truth                     0.5000 1.0000
+      Truth = c(beta[1], tail(beta, 2)))
+#>                             [,1]   [,2]   [,3]
+#> Estimate spherical radial -1.113 0.4882 0.9918
+#> Estimate CDF              -1.159 0.4880 0.9916
+#> Truth                     -1.000 0.5000 1.0000
 
 res_sr$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
-#> [1,]  0.9799 -0.1634
-#> [2,] -0.1634  0.2835
+#> [1,]  0.9797 -0.1639
+#> [2,] -0.1639  0.2841
 res_cdf$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
-#> [1,]  0.9805 -0.1636
-#> [2,] -0.1636  0.2838
+#> [1,]  0.9802 -0.1646
+#> [2,] -0.1646  0.2850
 Sigma # the true covariance matrix
 #>         [,1]    [,2]
 #> [1,]  0.9673 -0.1505
@@ -173,26 +191,26 @@ Sigma # the true covariance matrix
 
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
-library(splines)
-Xt_spline <- \(v) splineDesign(res_sr$A_knots, log(v), outer.ok = TRUE)
-Xt_spline_prime <- \(v) splineDesign(
-  res_sr$A_knots, log(v), derivs = 1, outer.ok = TRUE) / v
-
 vs <- seq(1e-2, admin_cens, length.out = 1000)
 # computes the hazard
-cmp_haz <- \(x, xp, beta_use)
+cmp_haz <- \(x, xp, beta_use, offset = 0)
   sapply(vs, \(v){
-    eta <- x(v) %*% beta_use
+    eta <- x(v) %*% beta_use + offset
     eta_p <- xp(v) %*% beta_use
     eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
   })
+  
+Xt_spline <- res_cdf$spline$basis
+Xt_spline_prime <- res_cdf$spline$d_basis
 
 par(mar = c(5, 5, 1, 1))
 matplot(
   vs, cbind(
     cmp_haz(x, xp, head(beta, -2)),
-    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline),
-    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline)),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline, 
+            res_sr$beta_fixef[1]),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline, 
+            res_cdf$beta_fixef[1])),
   type = "l", bty = "l", lty = 1:3, 
   col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
 grid()
@@ -203,26 +221,252 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -12536.994
+#> [1] -12535.365
 print(res_cdf$logLik, digits = 8)
-#> [1] -12537.08
+#> [1] -12534.595
 
+# can be compared with say a Weibull model without the random effects
+survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
+#> 'log Lik.' -18255 (df=4)
+```
+
+``` r
 # compare the variance on the log marginal likelihood of the two methods 
 # while tracking the computation time
 system.time(
-  funcn_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
+  func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.673   0.000   9.674
-sd(funcn_ests)
-#> [1] 0.01431
+#>   9.806   0.000   9.806
+sd(func_ests)
+#> [1] 0.01302
 system.time(
-  funcn_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
+  func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.716   0.000   9.718
-sd(funcn_ests)
-#> [1] 0.008273
+#>   9.835   0.000   9.835
+sd(func_ests)
+#> [1] 0.008175
+```
 
-# can be compared with say a Weibull model
-survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
-#> 'log Lik.' -18255 (df=4)
+## Pedigree Data
+
+TODO: add some text on what is happening here.
+
+``` r
+# create the family we will use
+fam <- data.frame(id = 1:6, sex = rep(1:2, 3L),
+                  father = c(NA, NA, rep(1L, 4L)), 
+                  mother = c(NA, NA, rep(2L, 4L)))
+
+# plot the pedigree
+library(kinship2)
+ped <- with(fam, pedigree(id = id, dadid = father, momid = mother, sex = sex))
+plot(ped)
+```
+
+![](fig-mgsm/set_up_n_show_family-1.png)
+
+The code to do the stimulation and to assign the model parameters is
+given below.
+
+``` r
+# computes the time-varying fixed effects
+x <- \(v) { v <- log(v); cbind(1, v, v^3) }
+xp <- \(v) { v_org <- v; v <- log(v); cbind(0, 1, 3 * v^2) / v_org }
+
+# the fixed effects coefficients (beta)
+beta <- c(-1, .7, .1, .5, 1)
+
+admin_cens <- 5 # the administrative censoring time
+
+# plot of the hazard when the other fixed effects are zero
+par(mar = c(5, 5, 1, 1))
+seq(1e-2, admin_cens, length.out = 1000) |>
+  (\(vs)
+   plot(vs, 
+        {
+          beta_use <- head(beta, -2)
+          eta <- x(vs) %*% beta_use
+          eta_p <- xp(vs) %*% beta_use
+          eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+        }, 
+        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+        xaxs = "i", yaxs = "i", type = "l")
+  )()
+grid()
+```
+
+![](fig-mgsm/pedigree_assing_sim_dat-1.png)
+
+``` r
+# the scale parameters
+sigs <- c(Genetic = 1.5, Environment = 0.5)
+
+# the proportion of variance
+c(sigs, Individual = 1) / c(sum(sigs) + 1)
+#>     Genetic Environment  Individual 
+#>      0.5000      0.1667      0.3333
+
+# simulates a given number of clusters
+sim_dat <- \(n_clusters)
+  lapply(seq_len(n_clusters), \(id) {
+    # sample the number of children and construct the scale matrices
+    n_children <- sample.int(6L, 1L)
+    n_members <- n_children + 2L
+    sex <- c(1:2, sample.int(2L, n_children, replace = TRUE))
+    
+    fam <- data.frame(
+      id = seq_len(n_members), sex = sex,
+      father = c(NA, NA, rep(1L, n_children)), 
+      mother = c(NA, NA, rep(2L, n_children)))
+    ped <- with(fam, pedigree(
+      id = id, dadid = father, momid = mother, sex = sex))
+    
+    genentic_mat <- 2 * kinship(ped)
+    env_mat <- diag(n_children + 2L)
+    env_mat[3:n_members, 3:n_members] <- 1
+    
+    # get the covariance matrix and sample the random effects and the 
+    # covariates
+    sigma <- diag(n_members) + sigs[1] * genentic_mat + sigs[2] * env_mat
+    U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
+    X <- cbind(continous = rnorm(n_members), sex = sex == 1)
+    
+    # find the event times
+    offset <- X %*% tail(beta, NCOL(X)) + U
+    
+    beta_use <- head(beta, -NCOL(X))
+    y <- sapply(offset, \(o){
+      rng <- runif(1)
+      res <- uniroot(\(ti) rng - pnorm(-o - x(ti) %*% beta_use), 
+                     c(1e-32, 10000), 
+                     tol = 1e-10)
+      res$root
+    })
+    
+    cens <- pmin(admin_cens, runif(n_members, 0, 2 * admin_cens))
+    
+    X <- cbind(intercept = 1, X)
+    
+    out <- list(
+      event = as.numeric(y < cens), y = pmin(y, cens), X = X, 
+      id = rep(id, n_members), 
+      scale_mats = list(genetic = genentic_mat, environment = env_mat))
+  })
+```
+
+``` r
+# sample a data set
+set.seed(26218609)
+dat <- sim_dat(500L)
+
+# fraction of observed events
+sapply(dat, `[[`, "event") |> unlist() |> mean()
+#> [1] 0.5993
+
+# the number of observations
+sapply(dat, `[[`, "event") |> unlist() |> length()
+#> [1] 2760
+
+# quantiles of the observed event times
+lapply(dat, \(x) x$y[x$event]) |> unlist() |>
+  quantile(probs = seq(0, 1, length.out = 11))
+#>      0%     10%     20%     30%     40%     50%     60%     70%     80%     90% 
+#> 0.03953 0.10240 0.14757 0.21593 0.32108 0.50543 0.90110 1.60993 2.71703 4.19804 
+#>    100% 
+#> 5.00000
+```
+
+``` r
+# fit the model with the stochastic spherical-radial rules
+library(mixprobit)
+system.time(
+  res_sr <- fit_mgsm_pedigree(
+    data = dat, maxpts = c(1000L, 10000L), df = 5L, 
+    method = "adaptive_spherical_radial"))
+#>    user  system elapsed 
+#> 117.661   0.003 117.667
+
+# fit the model with the CDF approach
+system.time(
+  res_cdf <- fit_mgsm_pedigree(
+    data = dat, maxpts = c(1000L, 10000L), df = 5L,
+    method = "cdf_approach"))
+#>    user  system elapsed 
+#>   6.326   0.000   6.326
+```
+
+The results are shown below.
+
+``` r
+# the estimates are shown below
+rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
+      `Estimate CDF` = res_cdf$beta_fixef,
+      Truth = c(beta[1], tail(beta, 2)))
+#>                             [,1]   [,2]  [,3]
+#> Estimate spherical radial -1.324 0.5392 1.080
+#> Estimate CDF              -1.326 0.5403 1.083
+#> Truth                     -1.000 0.5000 1.000
+
+res_sr$sigs # estimated scale parameters
+#>   [9,]  [10,] 
+#> 2.2690 0.4733
+res_cdf$sigs # estimated scale parameters
+#>   [9,]  [10,] 
+#> 2.3083 0.4816
+sigs
+#>     Genetic Environment 
+#>         1.5         0.5
+
+# plot of the estimated hazard and the true hazard when the other fixed effects
+# are zero
+vs <- seq(1e-2, admin_cens, length.out = 1000)
+# computes the hazard
+cmp_haz <- \(x, xp, beta_use, offset = 0)
+  sapply(vs, \(v){
+    eta <- x(v) %*% beta_use + offset
+    eta_p <- xp(v) %*% beta_use
+    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+  })
+  
+Xt_spline <- res_cdf$spline$basis
+Xt_spline_prime <- res_cdf$spline$d_basis
+
+par(mar = c(5, 5, 1, 1))
+matplot(
+  vs, cbind(
+    cmp_haz(x, xp, head(beta, -2)),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_sr$beta_spline, 
+            res_sr$beta_fixef[1]),
+    cmp_haz(Xt_spline, Xt_spline_prime, res_cdf$beta_spline, 
+            res_cdf$beta_fixef[1])),
+  type = "l", bty = "l", lty = 1:3, 
+  col = "Black", xlab = "Time", ylab = "Hazard", xaxs = "i", yaxs = "i")
+grid()
+```
+
+![](fig-mgsm/pedigree_show_fit_ex-1.png)
+
+``` r
+# the maximum likelihood
+print(res_sr$logLik, digits = 8)
+#> [1] -2720.6343
+print(res_cdf$logLik, digits = 8)
+#> [1] -2720.7268
+```
+
+``` r
+# compare the variance on the log marginal likelihood of the two methods 
+# while tracking the computation time
+system.time(
+  func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
+#>    user  system elapsed 
+#>   20.47    0.00   20.47
+sd(func_ests)
+#> [1] 0.1729
+system.time(
+  func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
+#>    user  system elapsed 
+#>   2.525   0.000   2.526
+sd(func_ests)
+#> [1] 0.005468
 ```
