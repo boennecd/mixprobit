@@ -330,7 +330,7 @@ A data set is sampled below and a few summary statistics are shown.
 ```{r pedigree_sim}
 # sample a data set
 set.seed(26218609)
-dat <- sim_dat(500L)
+dat <- sim_dat(2000L)
 
 # fraction of observed events
 sapply(dat, `[[`, "event") |> unlist() |> mean()
@@ -419,7 +419,7 @@ sd(func_ests)
 We run simulation study using in a simplified model without the genetic 
 effect below.
 
-```{r pedigree_sim_study, eval = FALSE}
+```{r pedigree_sim_study}
 # the simulation function we will use
 sigs <- c(Genetic = 1.5)
 
@@ -485,12 +485,8 @@ sim_res <- lapply(seeds, \(seed){
       res
     }
     
-    sink(sprintf("todo-delete-%d.txt", seed))
     res_sr <- comp_n_take_time("adaptive_spherical_radial")
-    cat("finished one\n")
     res_cdf <- comp_n_take_time("cdf_approach")
-    cat("finished two\n")
-    sink()
     res_cdf$max_ll_rev <- res_cdf$fn(res_sr$optim$par)
     res_sr$max_ll_rev <- res_sr$fn(res_cdf$optim$par)
     
@@ -499,8 +495,14 @@ sim_res <- lapply(seeds, \(seed){
   }
   
   res <- readRDS(res_file)
-  print_as_message <- \(x)
+  print_as_message <- \(x, digits = NULL){
+    if(!is.null(digits)){
+      old_digits <- options()$digits
+      on.exit(options(digits = old_digits))
+      options(digits = digits)
+    }
     message(paste0(capture.output(x), collapse = "\n"))
+  }
     
   message("\n\nComputation time")
   sapply(res, \(x) unname(x$time["elapsed"])) |> print_as_message()
@@ -514,10 +516,45 @@ sim_res <- lapply(seeds, \(seed){
      print_as_message()
   
   message("\nMaximum log-likelihood")
-  sapply(res, \(x) -x$optim$value) |> print_as_message()
-  -sapply(res, `[[`, "max_ll_rev") |> print_as_message()
+  sapply(res, \(x) -x$optim$value) |> print_as_message(digits = 10)
+  -sapply(res, `[[`, "max_ll_rev") |> print_as_message(digits = 10)
   
   res
 })
 ```
 
+Results from the simulation study is summarized below
+
+```{r show_sim_res}
+# compute the bias
+ests <- sapply(
+  sim_res, simplify = "array",
+  \(x) sapply(x, \(z) c(z$beta_fixef[2:3], z$sigs)))
+
+dimnames(ests)[[1]] <- c("fixef_1", "fixef_2", "Genetic")
+error <- ests - c(tail(beta, 2), sigs)
+
+apply(error, 1:2, mean) # the bias estimates
+apply(error, 1:2, sd) / sqrt(dim(error)[3]) # the standard errors
+
+# compute the root mean square error
+apply(error, 1:2, \(x) sqrt(mean(x^2)))
+
+# box plot of the errors
+error <- aperm(error, c(3, 2, 1))
+dimnames(error)[[2]][dimnames(error)[[2]] == "Adaptive Spherical Radial"] <- 
+  "ASR"
+
+error_flat <- matrix(
+  error, dim(error)[1], 
+  dimnames = list(NULL, outer(dimnames(error)[[2]], dimnames(error)[[3]], 
+                              paste)))
+par(mar = c(5, 5, 1, 1))
+boxplot(error_flat, ylab = "Error")
+abline(h = 0, lty = 2)
+
+# statistics for the computation time
+comp_time <- sapply(sim_res, \(x) sapply(x, `[[`, "time")["elapsed", ])
+rowMeans(comp_time)
+apply(comp_time, 1, sd)
+```

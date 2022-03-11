@@ -382,23 +382,23 @@ A data set is sampled below and a few summary statistics are shown.
 ``` r
 # sample a data set
 set.seed(26218609)
-dat <- sim_dat(500L)
+dat <- sim_dat(2000L)
 
 # fraction of observed events
 sapply(dat, `[[`, "event") |> unlist() |> mean()
-#> [1] 0.5993
+#> [1] 0.6008
 
 # the number of observations
 sapply(dat, `[[`, "event") |> unlist() |> length()
-#> [1] 2760
+#> [1] 11011
 
 # quantiles of the observed event times
 lapply(dat, \(x) x$y[x$event]) |> unlist() |>
   quantile(probs = seq(0, 1, length.out = 11))
-#>      0%     10%     20%     30%     40%     50%     60%     70%     80%     90% 
-#> 0.03953 0.10240 0.14757 0.21593 0.32108 0.50543 0.90110 1.60993 2.71703 4.19804 
-#>    100% 
-#> 5.00000
+#>        0%       10%       20%       30%       40%       50%       60%       70% 
+#> 0.0004151 0.0976126 0.1480287 0.2199829 0.3237706 0.5365080 0.9711412 1.7312081 
+#>       80%       90%      100% 
+#> 2.7580866 4.4679331 5.0000000
 ```
 
 The model is fitted below.
@@ -410,8 +410,8 @@ system.time(
   res_sr <- fit_mgsm_pedigree(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
-#>    user  system elapsed 
-#>   105.1     0.0   105.1
+#>     user   system  elapsed 
+#> 1124.925    0.039 1125.091
 
 # fit the model with the CDF approach
 system.time(
@@ -419,7 +419,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   6.044   0.000   6.044
+#>  28.626   0.012  28.638
 ```
 
 The results are shown below.
@@ -429,15 +429,15 @@ The results are shown below.
 rbind(`Estimate spherical radial` = res_sr$beta_fixef, 
       `Estimate CDF` = res_cdf$beta_fixef,
       Truth = c(beta[1], tail(beta, 2)))
-#>                             [,1]   [,2]  [,3]
-#> Estimate spherical radial -1.324 0.5392 1.080
-#> Estimate CDF              -1.326 0.5403 1.083
-#> Truth                     -1.000 0.5000 1.000
+#>                             [,1]   [,2]   [,3]
+#> Estimate spherical radial -1.208 0.5189 0.9827
+#> Estimate CDF              -1.210 0.5188 0.9860
+#> Truth                     -1.000 0.5000 1.0000
 
 res_sr$sigs # estimated scale parameters
-#> [1] 2.2700 0.4734
+#> [1] 1.5417 0.5079
 res_cdf$sigs # estimated scale parameters
-#> [1] 2.3083 0.4816
+#> [1] 1.5621 0.5127
 sigs
 #>     Genetic Environment 
 #>         1.5         0.5
@@ -474,9 +474,9 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -2720.6256
+#> [1] -11038.167
 print(res_cdf$logLik, digits = 8)
-#> [1] -2720.7268
+#> [1] -11038.756
 ```
 
 ``` r
@@ -485,15 +485,15 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   19.42    0.00   19.42
+#>   76.87    0.00   76.88
 sd(func_ests)
-#> [1] 0.1548
+#> [1] 0.2297
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   2.426   0.000   2.425
+#>   8.073   0.000   8.072
 sd(func_ests)
-#> [1] 0.005469
+#> [1] 0.009564
 ```
 
 ## Simulation Study
@@ -567,12 +567,8 @@ sim_res <- lapply(seeds, \(seed){
       res
     }
     
-    sink(sprintf("todo-delete-%d.txt", seed))
     res_sr <- comp_n_take_time("adaptive_spherical_radial")
-    cat("finished one\n")
     res_cdf <- comp_n_take_time("cdf_approach")
-    cat("finished two\n")
-    sink()
     res_cdf$max_ll_rev <- res_cdf$fn(res_sr$optim$par)
     res_sr$max_ll_rev <- res_sr$fn(res_cdf$optim$par)
     
@@ -581,8 +577,14 @@ sim_res <- lapply(seeds, \(seed){
   }
   
   res <- readRDS(res_file)
-  print_as_message <- \(x)
+  print_as_message <- \(x, digits = NULL){
+    if(!is.null(digits)){
+      old_digits <- options()$digits
+      on.exit(options(digits = old_digits))
+      options(digits = digits)
+    }
     message(paste0(capture.output(x), collapse = "\n"))
+  }
     
   message("\n\nComputation time")
   sapply(res, \(x) unname(x$time["elapsed"])) |> print_as_message()
@@ -596,9 +598,65 @@ sim_res <- lapply(seeds, \(seed){
      print_as_message()
   
   message("\nMaximum log-likelihood")
-  sapply(res, \(x) -x$optim$value) |> print_as_message()
-  -sapply(res, `[[`, "max_ll_rev") |> print_as_message()
+  sapply(res, \(x) -x$optim$value) |> print_as_message(digits = 10)
+  -sapply(res, `[[`, "max_ll_rev") |> print_as_message(digits = 10)
   
   res
 })
+```
+
+Results from the simulation study is summarized below
+
+``` r
+# compute the bias
+ests <- sapply(
+  sim_res, simplify = "array",
+  \(x) sapply(x, \(z) c(z$beta_fixef[2:3], z$sigs)))
+
+dimnames(ests)[[1]] <- c("fixef_1", "fixef_2", "Genetic")
+error <- ests - c(tail(beta, 2), sigs)
+
+apply(error, 1:2, mean) # the bias estimates
+#>               CDF Adaptive Spherical Radial
+#> fixef_1 -0.003689                 -0.003718
+#> fixef_2 -0.004400                 -0.004671
+#> Genetic -0.018272                 -0.015432
+apply(error, 1:2, sd) / sqrt(dim(error)[3]) # the standard errors
+#>              CDF Adaptive Spherical Radial
+#> fixef_1 0.004357                  0.004372
+#> fixef_2 0.008036                  0.008037
+#> Genetic 0.026877                  0.027002
+
+# compute the root mean square error
+apply(error, 1:2, \(x) sqrt(mean(x^2)))
+#>             CDF Adaptive Spherical Radial
+#> fixef_1 0.04350                   0.04366
+#> fixef_2 0.08008                   0.08010
+#> Genetic 0.26805                   0.26911
+
+# box plot of the errors
+error <- aperm(error, c(3, 2, 1))
+dimnames(error)[[2]][dimnames(error)[[2]] == "Adaptive Spherical Radial"] <- 
+  "ASR"
+
+error_flat <- matrix(
+  error, dim(error)[1], 
+  dimnames = list(NULL, outer(dimnames(error)[[2]], dimnames(error)[[3]], 
+                              paste)))
+par(mar = c(5, 5, 1, 1))
+boxplot(error_flat, ylab = "Error")
+abline(h = 0, lty = 2)
+```
+
+![](fig-mgsm/show_sim_res-1.png)
+
+``` r
+# statistics for the computation time
+comp_time <- sapply(sim_res, \(x) sapply(x, `[[`, "time")["elapsed", ])
+rowMeans(comp_time)
+#>                       CDF Adaptive Spherical Radial 
+#>                     6.139                    92.126
+apply(comp_time, 1, sd)
+#>                       CDF Adaptive Spherical Radial 
+#>                     2.518                    46.652
 ```
