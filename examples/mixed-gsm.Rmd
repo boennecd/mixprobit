@@ -549,8 +549,8 @@ error_flat <- matrix(
   error, dim(error)[1], 
   dimnames = list(NULL, outer(dimnames(error)[[2]], dimnames(error)[[3]], 
                               paste)))
-par(mar = c(5, 5, 1, 1))
-boxplot(error_flat, ylab = "Error")
+par(mar = c(7, 5, 1, 1))
+boxplot(error_flat, ylab = "Error", las = 2)
 abline(h = 0, lty = 2)
 
 # statistics for the computation time
