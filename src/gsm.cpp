@@ -126,7 +126,7 @@ gsm_cens_term::gsm_cens_output gsm_cens_term::func_spherical_radial
     mix_binary bin(y_pass, eta, Zc, H_inv);
     mvn<mix_binary> m(bin);
     set_integrand(std::unique_ptr<base_integrand>(
-        new adaptive<mvn<mix_binary > > (m, true)));
+        new adaptive<mvn<mix_binary > > (m, true, 1000L)));
 
     return integral_arpx(maxpts, key, abseps, releps);
   })();

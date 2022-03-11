@@ -259,19 +259,19 @@ independent of the random effect dimension, `p`.
 
 ``` r
 var(replicate(1000, with(get_sim_dat(10, 2), u %*% Z + eta)))
-#> [1] 1.916
+#> [1] 1.976
 var(replicate(1000, with(get_sim_dat(10, 3), u %*% Z + eta)))
-#> [1] 2.071
+#> [1] 1.979
 var(replicate(1000, with(get_sim_dat(10, 4), u %*% Z + eta)))
-#> [1] 1.918
+#> [1] 2.091
 var(replicate(1000, with(get_sim_dat(10, 5), u %*% Z + eta)))
-#> [1] 1.96
+#> [1] 2.003
 var(replicate(1000, with(get_sim_dat(10, 6), u %*% Z + eta)))
-#> [1] 2.03
+#> [1] 1.992
 var(replicate(1000, with(get_sim_dat(10, 7), u %*% Z + eta)))
-#> [1] 1.953
+#> [1] 1.969
 var(replicate(1000, with(get_sim_dat(10, 8), u %*% Z + eta)))
-#> [1] 2.036
+#> [1] 1.982
 ```
 
 Next we perform a quick example.
@@ -299,6 +299,7 @@ wd <- function(expr)
 #####
 # get the functions to use
 GHQ_R    <- wd(aprx$get_GHQ_R   (y = y, eta = eta, Z = Z, S = S, b = b))
+#> Loading required package: Rcpp
 GHQ_cpp  <- wd(aprx$get_GHQ_cpp (y = y, eta = eta, Z = Z, S = S, b = b))
 AGHQ_cpp <- wd(aprx$get_AGHQ_cpp(y = y, eta = eta, Z = Z, S = S, b = b))
 
@@ -350,7 +351,7 @@ truth_maybe_Aqmc
 #> attr(,"intvls")
 #> [1] 10000000
 #> attr(,"error")
-#> [1] 3.495e-10
+#> [1] 3.492e-10
 
 truth_maybe_Amc <- wd(
   aprx$get_Asim_mth(y = y, eta = eta, Z = Z, S = S, maxpts = 1e7, 
@@ -358,11 +359,11 @@ truth_maybe_Amc <- wd(
 truth_maybe_Amc
 #> [1] 6.188e-05
 #> attr(,"error")
-#> [1] 2.401e-08
+#> [1] 2.402e-08
 #> attr(,"inform")
 #> [1] 0
 #> attr(,"inivls")
-#> [1] 24181
+#> [1] 24151
 
 truth <- wd(
   mixprobit:::aprx_binary_mix_brute(y = y, eta = eta, Z = Z, Sigma = S, 
@@ -372,17 +373,17 @@ c(Estiamte = truth, SE = attr(truth, "SE"),
   `Estimate (log)` = log(c(truth)),  
   `SE (log)` = abs(attr(truth, "SE") / truth))
 #>       Estiamte             SE Estimate (log)       SE (log) 
-#>      6.184e-05      2.566e-10     -9.691e+00      4.149e-06
+#>      6.184e-05      2.563e-10     -9.691e+00      4.144e-06
 
 tr <- c(truth)
 all.equal(tr, c(truth_maybe_cdf))
 #> [1] "Mean relative difference: 0.000305"
 all.equal(tr, c(truth_maybe_qmc))
-#> [1] "Mean relative difference: 2.435e-05"
+#> [1] "Mean relative difference: 2.436e-05"
 all.equal(tr, c(truth_maybe_Aqmc))
-#> [1] "Mean relative difference: 9.696e-06"
+#> [1] "Mean relative difference: 9.689e-06"
 all.equal(tr, c(truth_maybe_Amc))
-#> [1] "Mean relative difference: 0.0005788"
+#> [1] "Mean relative difference: 0.0005847"
 
 # compare with using fewer samples and GHQ
 all.equal(tr,   GHQ_R())
@@ -390,15 +391,15 @@ all.equal(tr,   GHQ_R())
 all.equal(tr,   GHQ_cpp())
 #> [1] "Mean relative difference: 2.226e-05"
 all.equal(tr,   AGHQ_cpp())
-#> [1] "Mean relative difference: 2.068e-06"
+#> [1] "Mean relative difference: 2.063e-06"
 comp <- function(f, ...)
   mean(replicate(10, abs((tr - c(f())) / tr)))
 comp(cdf_aprx_R)
-#> [1] 9.598e-05
+#> [1] 9.597e-05
 comp(qmc_aprx)
 #> [1] 0.001256
 comp(qmc_Aaprx)
-#> [1] 0.0002439
+#> [1] 0.0002437
 comp(cdf_aprx_cpp)
 #> [1] 0.0003223
 comp(function() sim_aprx(1L))
@@ -410,18 +411,18 @@ comp(function() sim_aprx(3L))
 comp(function() sim_aprx(4L))
 #> [1] 0.004099
 comp(function() sim_Aaprx(1L))
-#> [1] 0.0003946
+#> [1] 0.0003925
 comp(function() sim_Aaprx(2L))
-#> [1] 0.0002729
+#> [1] 0.0002862
 comp(function() sim_Aaprx(3L))
-#> [1] 0.0007611
+#> [1] 0.0007626
 comp(function() sim_Aaprx(4L))
-#> [1] 0.0006802
+#> [1] 0.0006801
 
 # compare computations times
 system.time(GHQ_R()) # way too slow (seconds!). Use C++ method instead
 #>    user  system elapsed 
-#>   1.525   0.000   1.525
+#>   1.468   0.000   1.469
 microbenchmark::microbenchmark(
   `GHQ (C++)` = GHQ_cpp(), `AGHQ (C++)` = AGHQ_cpp(),
   `CDF` = cdf_aprx_R(), `CDF (C++)` = cdf_aprx_cpp(),
@@ -432,17 +433,17 @@ microbenchmark::microbenchmark(
   times = 10)
 #> Unit: milliseconds
 #>                         expr    min     lq  mean median    uq   max neval
-#>                    GHQ (C++) 30.953 31.087 31.35  31.34 31.46 31.85    10
-#>                   AGHQ (C++) 31.196 31.370 32.37  31.77 33.24 35.45    10
-#>                          CDF 11.936 11.986 12.09  12.05 12.09 12.48    10
-#>                    CDF (C++)  7.522  7.654 11.03  12.37 12.47 13.09    10
-#>                          QMC 22.031 22.346 22.53  22.45 22.74 23.26    10
-#>                 QMC Adaptive 23.917 23.970 24.24  24.16 24.39 24.90    10
-#>           Genz & Monahan (1) 20.637 20.944 21.51  21.02 21.23 24.24    10
-#>           Genz & Monahan (2) 21.894 22.066 22.39  22.34 22.76 22.88    10
-#>           Genz & Monahan (3) 20.720 21.102 21.86  21.66 22.51 23.45    10
-#>           Genz & Monahan (4) 20.912 20.990 21.37  21.11 21.32 22.99    10
-#>  Genz & Monahan Adaptive (2)  9.408 10.696 11.30  11.35 11.72 13.31    10
+#>                    GHQ (C++) 30.480 30.735 31.35  31.46 31.83 31.91    10
+#>                   AGHQ (C++) 30.766 30.863 31.32  31.26 31.78 32.09    10
+#>                          CDF 11.620 11.727 11.90  11.84 12.03 12.53    10
+#>                    CDF (C++)  7.467  7.564 10.70  12.01 12.06 12.33    10
+#>                          QMC 21.818 21.876 22.27  22.01 22.69 23.27    10
+#>                 QMC Adaptive 23.643 24.068 24.32  24.33 24.67 24.87    10
+#>           Genz & Monahan (1) 20.283 20.719 20.99  20.80 21.46 21.66    10
+#>           Genz & Monahan (2) 21.414 21.482 21.79  21.87 21.97 22.02    10
+#>           Genz & Monahan (3) 20.854 21.190 21.33  21.32 21.60 21.62    10
+#>           Genz & Monahan (4) 20.458 20.510 20.89  20.86 21.15 21.58    10
+#>  Genz & Monahan Adaptive (2)  9.155 10.695 11.14  10.99 11.25 12.90    10
 ```
 
 ## More Rigorous Comparison
@@ -834,17 +835,17 @@ sim_experiment(n = 3L , p = 2L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>                GHQ      AGHQ       CDF GenzMonahan GenzMonahanA       QMC
-#> SD       0.0425442 0.0382665 0.1840377          NA     0.147125 0.0561127
-#> RMSE     0.0406504 0.0386503 0.0839231          NA     0.117434 0.0478307
-#> Rel RMSE 0.3137423 0.2983075 0.6477030          NA     0.906092 0.3690803
+#> SD       0.0425442 0.0382647 0.1840377          NA     0.147115 0.0561127
+#> RMSE     0.0406502 0.0386483 0.0839228          NA     0.117424 0.0478310
+#> Rel RMSE 0.3137404 0.2982917 0.6477004          NA     0.906019 0.3690828
 #>               QMCA
-#> SD       0.0518171
-#> RMSE     0.0848911
-#> Rel RMSE 0.6551877
+#> SD       0.0518276
+#> RMSE     0.0848705
+#> Rel RMSE 0.6550290
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>       0.0000       0.0000       0.0002           NA       0.0000       0.0070 
+#>       0.0000       0.0000       0.0002           NA       0.0000       0.0068 
 #>         QMCA 
 #>       0.0018
 sim_experiment(n = 10L, p = 2L, n_threads = 6L)
@@ -869,19 +870,19 @@ sim_experiment(n = 10L, p = 2L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>                 GHQ      AGHQ       CDF GenzMonahan GenzMonahanA        QMC
-#> SD       0.00628152 0.0175367 0.0324666          NA    0.0191575 0.00912528
-#> RMSE     0.00619129 0.0156882 0.0221506          NA    0.0110268 0.01835440
-#> Rel RMSE 0.34027070 0.8622205 1.2170465          NA    0.6060859 1.00880640
+#> SD       0.00628152 0.0175401 0.0324666          NA    0.0191587 0.00912528
+#> RMSE     0.00619122 0.0156913 0.0221507          NA    0.0110273 0.01835438
+#> Rel RMSE 0.34026724 0.8623904 1.2170498          NA    0.6061167 1.00880504
 #>                QMCA
-#> SD       0.00775619
-#> RMSE     0.01840486
-#> Rel RMSE 1.01191099
+#> SD       0.00775649
+#> RMSE     0.01840192
+#> Rel RMSE 1.01174921
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>       0.0000       0.0002       0.0010           NA       0.0050       0.0272 
+#>       0.0002       0.0000       0.0010           NA       0.0048       0.0274 
 #>         QMCA 
-#>       0.0038
+#>       0.0036
 
 sim_experiment(n = 3L , p = 5L, n_threads = 6L)
 #>          # brute force samples:      10000000
@@ -905,15 +906,15 @@ sim_experiment(n = 3L , p = 5L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ      AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD        NA 0.0130424 0.0662419          NA    0.0413697  NA 0.0390941
-#> RMSE      NA 0.0134457 0.0335189          NA    0.0563334  NA 0.0572302
-#> Rel RMSE  NA 0.2279440 0.5681118          NA    0.9546058  NA 0.9704092
+#> SD        NA 0.0130364 0.0662419          NA    0.0413696  NA 0.0390840
+#> RMSE      NA 0.0134394 0.0335189          NA    0.0563320  NA 0.0571899
+#> Rel RMSE  NA 0.2278374 0.5681113          NA    0.9545828  NA 0.9697248
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0000       0.0002           NA       0.0002           NA 
+#>           NA       0.0000       0.0002           NA       0.0000           NA 
 #>         QMCA 
-#>       0.0014
+#>       0.0010
 sim_experiment(n = 10L, p = 5L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
@@ -923,7 +924,7 @@ sim_experiment(n = 10L, p = 5L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00039063
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00078125
-#>   Log-likelihood estimate (SE):   -8.17648526 (0.00002096)
+#>   Log-likelihood estimate (SE):   -8.17648530 (0.00002099)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -936,15 +937,15 @@ sim_experiment(n = 10L, p = 5L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ       AGHQ        CDF GenzMonahan GenzMonahanA QMC        QMCA
-#> SD        NA 0.00139986 0.00308127          NA  0.000426338  NA 0.000789658
-#> RMSE      NA 0.00145025 0.00474314          NA  0.000530630  NA 0.001633417
-#> Rel RMSE  NA 0.63113957 2.06616128          NA  0.230842606  NA 0.710572919
+#> SD        NA 0.00140037 0.00308127          NA  0.000426336  NA 0.000790001
+#> RMSE      NA 0.00145070 0.00474308          NA  0.000529975  NA 0.001629738
+#> Rel RMSE  NA 0.63133668 2.06613637          NA  0.230557659  NA 0.708970986
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0052       0.0018           NA       0.1744           NA 
+#>           NA       0.0050       0.0016           NA       0.1720           NA 
 #>         QMCA 
-#>       0.0154
+#>       0.0148
 
 sim_experiment(n = 3L , p = 7L, n_threads = 6L)
 #>          # brute force samples:      10000000
@@ -955,28 +956,28 @@ sim_experiment(n = 3L , p = 7L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00078125
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00039063
-#>   Log-likelihood estimate (SE):   -3.00436617 (0.00001341)
+#>   Log-likelihood estimate (SE):   -3.00436607 (0.00001336)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                          0.0495703                       -3.00436
 #> CDF                           0.0495699                       -3.00437
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0495691                       -3.00439
+#> GenzMonahanA                  0.0495692                       -3.00439
 #> QMC                                  NA                             NA
-#> QMCA                          0.0495632                       -3.00451
+#> QMCA                          0.0495633                       -3.00451
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ      AGHQ      CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD        NA 0.0303457 0.258171          NA     0.149894  NA 0.0680096
-#> RMSE      NA 0.0341485 0.150268          NA     0.178256  NA 0.1975253
-#> Rel RMSE  NA 0.2293094 1.009072          NA     1.196920  NA 1.3267189
+#> SD        NA 0.0300152 0.258171          NA     0.149904  NA 0.0678613
+#> RMSE      NA 0.0338001 0.150269          NA     0.180512  NA 0.1968045
+#> Rel RMSE  NA 0.2269698 1.009077          NA     1.212056  NA 1.3218764
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0002       0.0002           NA       0.0014           NA 
+#>           NA       0.0000       0.0002           NA       0.0012           NA 
 #>         QMCA 
-#>       0.0066
+#>       0.0062
 sim_experiment(n = 10L, p = 7L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
@@ -986,28 +987,28 @@ sim_experiment(n = 10L, p = 7L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00078125
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00156250
-#>   Log-likelihood estimate (SE):   -9.19098802 (0.00001541)
+#>   Log-likelihood estimate (SE):   -9.19098817 (0.00001543)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                        0.000101955                       -9.19098
 #> CDF                         0.000101995                       -9.19059
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                0.000101938                       -9.19114
+#> GenzMonahanA                0.000101939                       -9.19114
 #> QMC                                  NA                             NA
-#> QMCA                        0.000101984                       -9.19069
+#> QMCA                        0.000101984                       -9.19070
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ        AGHQ         CDF GenzMonahan GenzMonahanA QMC        QMCA
-#> SD        NA 0.000452473 0.000548974          NA  0.000309004  NA 0.000538218
-#> RMSE      NA 0.000450291 0.000437332          NA  0.000209453  NA 0.000589959
-#> Rel RMSE  NA 0.480774320 0.466588264          NA  0.223555855  NA 0.629353771
+#> SD        NA 0.000452854 0.000548974          NA  0.000308829  NA 0.000538248
+#> RMSE      NA 0.000450557 0.000437475          NA  0.000207681  NA 0.000585616
+#> Rel RMSE  NA 0.481057851 0.466741036          NA  0.221664710  NA 0.624724650
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.1934       0.0012           NA       0.0526           NA 
+#>           NA       0.1926       0.0010           NA       0.0526           NA 
 #>         QMCA 
-#>       0.0086
+#>       0.0084
 sim_experiment(n = 20L, p = 7L, n_threads = 6L)
 #>          # brute force samples:      10000000
 #>                   # nodes  GHQ:            NA
@@ -1017,30 +1018,30 @@ sim_experiment(n = 20L, p = 7L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00039063
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00312500
-#>   Log-likelihood estimate (SE):  -19.27634223 (0.00002292)
+#>   Log-likelihood estimate (SE):  -19.27634148 (0.00002260)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                   0.00000000425004                       -19.2763
 #> CDF                    0.00000000424831                       -19.2767
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA           0.00000000425044                       -19.2762
+#> GenzMonahanA           0.00000000425045                       -19.2762
 #> QMC                                  NA                             NA
-#> QMCA                   0.00000000424985                       -19.2764
+#> QMCA                   0.00000000424978                       -19.2764
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ            AGHQ             CDF GenzMonahan     GenzMonahanA QMC
-#> SD        NA 0.0000000306182 0.0000000460672          NA 0.00000000644523  NA
-#> RMSE      NA 0.0000000306909 0.0000000398215          NA 0.00000000804346  NA
-#> Rel RMSE  NA 0.3749259099242 0.4865229254435          NA 0.09816959415322  NA
+#> SD        NA 0.0000000306149 0.0000000460672          NA 0.00000000644486  NA
+#> RMSE      NA 0.0000000306745 0.0000000398352          NA 0.00000000789973  NA
+#> Rel RMSE  NA 0.3747249504826 0.4866900149718          NA 0.09641489300947  NA
 #>                     QMCA
-#> SD       0.0000000473081
-#> RMSE     0.0000000420577
-#> Rel RMSE 0.5135384685265
+#> SD       0.0000000466529
+#> RMSE     0.0000000408190
+#> Rel RMSE 0.4984180500900
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.3556       0.0248           NA       0.8520           NA 
+#>           NA       0.3488       0.0246           NA       0.8024           NA 
 #>         QMCA 
 #>       0.0082
 ```
@@ -2000,6 +2001,8 @@ the difference in computation time is quite substantial.
 ``` r
 # assign function to get Sobol sequences from this package
 library(randtoolbox)
+#> Loading required package: rngWELL
+#> This is randtoolbox. For an overview, type 'help("randtoolbox")'.
 get_sobol_seq <- function(dim, scrambling = 0L, seed = formals(sobol)$seed){
   ptr <- mixprobit:::get_sobol_obj(dimen = dim, scrambling = scrambling, 
                                    seed = seed)
@@ -2018,9 +2021,9 @@ microbenchmark::microbenchmark(
   mixprobit = get_sobol_seq(dim)(n), 
   randtoolbox = sobol(n = n, dim = dim), times = 1000)
 #> Unit: microseconds
-#>         expr    min     lq   mean median     uq  max neval
-#>    mixprobit  4.419  4.957  8.935  7.049  7.619 2177  1000
-#>  randtoolbox 59.313 61.337 68.356 62.847 66.206 1906  1000
+#>         expr    min     lq   mean median    uq  max neval
+#>    mixprobit  4.525  5.255  9.296  7.338  8.11 2199  1000
+#>  randtoolbox 61.031 64.284 70.580 66.401 69.49 2023  1000
 
 # w/ larger dim
 dim <- 50L
@@ -2030,9 +2033,9 @@ microbenchmark::microbenchmark(
   mixprobit = get_sobol_seq(dim)(n), 
   randtoolbox = sobol(n = n, dim = dim), times = 1000)
 #> Unit: microseconds
-#>         expr   min    lq  mean median    uq    max neval
-#>    mixprobit 12.84 14.90 18.01  17.95 19.68   70.7  1000
-#>  randtoolbox 79.74 86.14 96.10  90.24 96.52 2637.7  1000
+#>         expr   min    lq  mean median    uq     max neval
+#>    mixprobit 13.44 15.00 18.08  17.88 19.75   45.58  1000
+#>  randtoolbox 80.84 85.78 94.71  89.72 96.04 2336.12  1000
 
 #####
 # after having initialized
@@ -2055,12 +2058,12 @@ microbenchmark::microbenchmark(
   times = 1000)
 #> Unit: microseconds
 #>                        expr     min      lq    mean  median      uq     max
-#>       mixprobit   (1 point)   1.426   1.938   3.116   3.111   3.631   19.28
-#>       randtoolbox (1 point)  41.663  44.300  49.037  46.386  50.460  152.55
-#>    mixprobit   (100 points)   3.517   4.367   5.606   5.422   6.074   20.06
-#>    randtoolbox (100 points)  45.763  48.758  55.254  51.025  54.971 1446.81
-#>  mixprobit   (10000 points) 182.077 197.297 210.150 201.687 207.389 1605.70
-#>  randtoolbox (10000 points) 351.999 366.190 438.279 377.685 390.558 4247.73
+#>       mixprobit   (1 point)   1.459   1.948   2.981   3.015   3.514   13.06
+#>       randtoolbox (1 point)  41.336  44.204  48.440  45.992  49.139  134.33
+#>    mixprobit   (100 points)   3.487   4.462   5.528   5.405   5.980   34.94
+#>    randtoolbox (100 points)  45.591  48.684  54.622  50.561  54.344 1551.56
+#>  mixprobit   (10000 points) 184.058 198.145 220.362 202.258 208.221 2053.50
+#>  randtoolbox (10000 points) 348.013 366.298 410.969 374.720 384.362 2378.51
 #>  neval
 #>   1000
 #>   1000
@@ -2082,8 +2085,8 @@ microbenchmark::microbenchmark(
   randtoolbox = sobol(n = n, dim = dim, scrambling = 1L), times = 1000)
 #> Unit: microseconds
 #>         expr   min    lq  mean median    uq    max neval
-#>    mixprobit 192.9 195.4 200.0  198.5 199.8  356.9  1000
-#>  randtoolbox 253.6 261.3 271.4  265.1 270.6 2171.3  1000
+#>    mixprobit 189.1 197.1 202.7  198.5 202.5 2212.8  1000
+#>  randtoolbox 249.2 258.0 266.7  262.4 268.9  525.2  1000
 
 sobol_obj <- get_sobol_seq(dim, scrambling = 1L)
 invisible(sobol_obj(1L))
@@ -2102,12 +2105,12 @@ microbenchmark::microbenchmark(
   times = 1000)
 #> Unit: microseconds
 #>                        expr     min      lq     mean  median       uq      max
-#>       mixprobit   (1 point)   1.443   2.180    4.080    3.36    4.633    35.45
-#>       randtoolbox (1 point)  42.086  46.288   55.590   50.33   58.317   193.49
-#>    mixprobit   (100 points)   4.675   6.056    8.293    7.35    8.634    41.29
-#>    randtoolbox (100 points)  51.351  56.591   68.620   61.30   70.171  1454.42
-#>  mixprobit   (10000 points) 300.861 341.360  403.439  355.47  374.135  2933.87
-#>  randtoolbox (10000 points) 914.021 968.560 1230.626 1001.47 1066.035 35952.31
+#>       mixprobit   (1 point)   1.441   2.271    3.948   3.306    4.396    29.89
+#>       randtoolbox (1 point)  42.106  46.314   54.906  51.013   59.032   186.99
+#>    mixprobit   (100 points)   4.793   6.219    8.517   7.449    8.895    41.69
+#>    randtoolbox (100 points)  51.073  56.161   66.551  60.562   68.987  1527.90
+#>  mixprobit   (10000 points) 299.127 344.599  443.991 356.818  376.154 36675.73
+#>  randtoolbox (10000 points) 903.213 958.093 1155.613 979.433 1012.933  3205.65
 #>  neval
 #>   1000
 #>   1000
@@ -2315,7 +2318,7 @@ truth_maybe_Aqmc
 #> attr(,"intvls")
 #> [1] 1000000
 #> attr(,"error")
-#> [1] 2.287e-13
+#> [1] 2.286e-13
 
 truth_maybe_Amc <- wd(
   aprx$get_Asim_mth(eta = eta, Z = Z, p = p - 1L, Sigma = Sigma, 
@@ -2343,9 +2346,9 @@ tr <- c(truth)
 all.equal(tr, c(truth_maybe_cdf))
 #> [1] "Mean relative difference: 8.311e-05"
 all.equal(tr, c(truth_maybe_Aqmc))
-#> [1] "Mean relative difference: 4.965e-07"
+#> [1] "Mean relative difference: 4.961e-07"
 all.equal(tr, c(truth_maybe_Amc))
-#> [1] "Mean relative difference: 1.107e-05"
+#> [1] "Mean relative difference: 1.108e-05"
 
 # compare with using fewer samples and GHQ
 all.equal(tr,   GHQ_cpp())
@@ -2369,13 +2372,13 @@ comp(function() sim_aprx(3L))
 comp(function() sim_aprx(4L))
 #> [1] 0.1135
 comp(function() sim_Aaprx(1L))
-#> [1] 0.0001677
+#> [1] 0.0001678
 comp(function() sim_Aaprx(2L))
 #> [1] 5.654e-05
 comp(function() sim_Aaprx(3L))
 #> [1] 7.011e-05
 comp(function() sim_Aaprx(4L))
-#> [1] 4.103e-05
+#> [1] 4.102e-05
 
 # compare computations times
 microbenchmark::microbenchmark(
@@ -2387,17 +2390,17 @@ microbenchmark::microbenchmark(
   `Genz & Monahan Adaptive (2)` = sim_Aaprx(2L),
   times = 5)
 #> Unit: milliseconds
-#>                         expr    min     lq   mean median     uq    max neval
-#>                    GHQ (C++) 227.36 237.04 237.63 237.56 241.80 244.38     5
-#>                   AGHQ (C++) 197.07 197.81 203.24 202.86 208.22 210.25     5
-#>                    CDF (C++)  64.58  64.78  66.59  67.19  67.79  68.62     5
-#>                          QMC 809.84 823.77 840.62 839.04 860.36 870.08     5
-#>                 QMC Adaptive 419.45 452.78 617.14 680.09 717.33 816.06     5
-#>           Genz & Monahan (1) 792.55 823.65 824.96 830.05 837.81 840.71     5
-#>           Genz & Monahan (2) 811.51 831.87 838.32 833.73 844.34 870.13     5
-#>           Genz & Monahan (3) 826.01 851.58 866.18 863.16 872.01 918.16     5
-#>           Genz & Monahan (4) 816.17 861.28 865.93 869.81 876.29 906.10     5
-#>  Genz & Monahan Adaptive (2) 780.21 784.03 806.52 791.37 828.51 848.48     5
+#>                         expr    min     lq   mean median    uq    max neval
+#>                    GHQ (C++) 228.73 229.30 229.66 229.68 230.2 230.38     5
+#>                   AGHQ (C++) 197.52 197.65 204.93 198.43 199.1 231.91     5
+#>                    CDF (C++)  62.46  62.46  62.63  62.54  62.7  62.97     5
+#>                          QMC 798.59 798.60 799.02 798.69 799.5 799.70     5
+#>                 QMC Adaptive 415.97 429.99 581.37 615.71 677.2 767.93     5
+#>           Genz & Monahan (1) 788.68 789.74 789.64 789.82 789.9 790.05     5
+#>           Genz & Monahan (2) 801.23 802.47 806.71 803.42 806.2 820.21     5
+#>           Genz & Monahan (3) 801.85 806.72 809.41 811.96 813.2 813.34     5
+#>           Genz & Monahan (4) 806.90 808.66 808.92 809.59 809.6 809.84     5
+#>  Genz & Monahan Adaptive (2) 769.67 771.40 772.01 772.50 772.9 773.58     5
 ```
 
 The CDF approach is noticeably faster. One explanation is that the AGHQ
@@ -2441,7 +2444,7 @@ local({
 })
 #> Unit: milliseconds
 #>                expr   min    lq  mean median    uq   max neval
-#>  test_pnorm(u, uni) 318.3 318.6 319.9  319.6 321.1 321.5    10
+#>  test_pnorm(u, uni) 319.8 320.7 321.4  321.6 321.8 323.2    10
 ```
 
 In contrast, the CDF approximation can be implemented with only `n * p`
@@ -2475,8 +2478,8 @@ local({
   microbenchmark::microbenchmark(test_dnorm(u), times = 10)
 })
 #> Unit: milliseconds
-#>           expr  min    lq  mean median    uq   max neval
-#>  test_dnorm(u) 77.7 78.14 78.33  78.24 78.56 79.27    10
+#>           expr   min   lq  mean median    uq   max neval
+#>  test_dnorm(u) 78.34 78.8 78.99  79.01 79.17 79.88    10
 ```
 
 ## More Rigorous Comparison (Multinomial)
@@ -2856,28 +2859,28 @@ sim_experiment(n =  2L, p = 3L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00097656
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estimate (SE):   -3.24068105 (0.00013983)
+#>   Log-likelihood estimate (SE):   -3.24068113 (0.00013993)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                          0.0391405                       -3.24060
 #> CDF                           0.0391661                       -3.23994
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0391346                       -3.24075
+#> GenzMonahanA                  0.0391347                       -3.24075
 #> QMC                                  NA                             NA
 #> QMCA                          0.0391342                       -3.24076
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ      AGHQ      CDF GenzMonahan GenzMonahanA QMC     QMCA
-#> SD        NA 0.0644611 0.398768          NA     0.148358  NA 0.142237
-#> RMSE      NA 0.0577083 0.378684          NA     0.118825  NA 0.407591
-#> Rel RMSE  NA 0.4550527 2.984086          NA     0.937018  NA 3.215995
+#> SD        NA 0.0644954 0.398768          NA     0.148338  NA 0.142307
+#> RMSE      NA 0.0577387 0.378707          NA     0.119723  NA 0.407880
+#> Rel RMSE  NA 0.4552927 2.984263          NA     0.944097  NA 3.218277
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0010       0.0002           NA       0.2530           NA 
+#>           NA       0.0012       0.0002           NA       0.2730           NA 
 #>         QMCA 
-#>       0.1702
+#>       0.1840
 sim_experiment(n =  4L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -2899,14 +2902,14 @@ sim_experiment(n =  4L, p = 3L, n_threads = 6L)
 #> QMCA                          0.0125822                       -4.37548
 #> 
 #> SD & RMSE (/10000.00)
-#>          GHQ       AGHQ       CDF GenzMonahan GenzMonahanA QMC     QMCA
-#> SD        NA 0.00838196 0.0763867          NA    0.0286483  NA 0.080496
-#> RMSE      NA 0.00957922 0.0502401          NA    0.0346883  NA 0.111286
-#> Rel RMSE  NA 0.17409286 0.9129156          NA    0.6303443  NA 2.021164
+#>          GHQ       AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
+#> SD        NA 0.00838226 0.0763867          NA    0.0286489  NA 0.0804951
+#> RMSE      NA 0.00957926 0.0502401          NA    0.0346887  NA 0.1112882
+#> Rel RMSE  NA 0.17409353 0.9129156          NA    0.6303507  NA 2.0212047
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0016       0.0050           NA       0.0010           NA 
+#>           NA       0.0014       0.0050           NA       0.0008           NA 
 #>         QMCA 
 #>       0.0092
 sim_experiment(n =  8L, p = 3L, n_threads = 6L)
@@ -2918,7 +2921,7 @@ sim_experiment(n =  8L, p = 3L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.50000000
-#>   Log-likelihood estimate (SE):  -15.48150224 (0.00001951)
+#>   Log-likelihood estimate (SE):  -15.48150223 (0.00001951)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -2927,21 +2930,21 @@ sim_experiment(n =  8L, p = 3L, n_threads = 6L)
 #> GenzMonahan                          NA                             NA
 #> GenzMonahanA             0.000000189016                       -15.4814
 #> QMC                                  NA                             NA
-#> QMCA                     0.000000189122                       -15.4809
+#> QMCA                     0.000000189123                       -15.4809
 #> 
 #> SD & RMSE (/10000.00)
-#>          GHQ          AGHQ           CDF GenzMonahan  GenzMonahanA QMC
-#> SD        NA 0.00000330864 0.00000565877          NA 0.00000110648  NA
-#> RMSE      NA 0.00000304791 0.00000217613          NA 0.00000086175  NA
-#> Rel RMSE  NA 1.04013966097 0.74422244997          NA 0.29449958700  NA
+#>          GHQ          AGHQ           CDF GenzMonahan   GenzMonahanA QMC
+#> SD        NA 0.00000331245 0.00000565877          NA 0.000001106960  NA
+#> RMSE      NA 0.00000305172 0.00000217613          NA 0.000000862088  NA
+#> Rel RMSE  NA 1.04143792039 0.74422323076          NA 0.294614868472  NA
 #>                   QMCA
-#> SD       0.00000235749
-#> RMSE     0.00000237140
-#> Rel RMSE 0.80978091289
+#> SD       0.00000235623
+#> RMSE     0.00000237553
+#> Rel RMSE 0.81118854764
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0012       0.0016           NA       0.0016           NA 
+#>           NA       0.0010       0.0016           NA       0.0016           NA 
 #>         QMCA 
 #>       0.0042
 sim_experiment(n = 16L, p = 3L, n_threads = 6L)
@@ -2953,7 +2956,7 @@ sim_experiment(n = 16L, p = 3L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00390625
-#>   Log-likelihood estimate (SE):  -10.95650764 (0.00002054)
+#>   Log-likelihood estimate (SE):  -10.95650767 (0.00002053)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -2966,15 +2969,15 @@ sim_experiment(n = 16L, p = 3L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ        AGHQ         CDF GenzMonahan GenzMonahanA QMC        QMCA
-#> SD        NA 0.000293058 0.000487082          NA  0.000321853  NA 0.000236325
-#> RMSE      NA 0.000324009 0.000252211          NA  0.000151333  NA 0.000159988
-#> Rel RMSE  NA 1.698267977 1.318483904          NA  0.792251628  NA 0.837190316
+#> SD        NA 0.000292740 0.000487082          NA  0.000321846  NA 0.000236212
+#> RMSE      NA 0.000323684 0.000252213          NA  0.000151316  NA 0.000159799
+#> Rel RMSE  NA 1.696558454 1.318494290          NA  0.792162767  NA 0.836199418
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0036       0.0170           NA       0.0034           NA 
+#>           NA       0.0038       0.0180           NA       0.0034           NA 
 #>         QMCA 
-#>       0.0244
+#>       0.0246
 sim_experiment(n = 32L, p = 3L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -2984,7 +2987,7 @@ sim_experiment(n = 32L, p = 3L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.50000000
-#>   Log-likelihood estimate (SE):  -27.05525634 (0.00000619)
+#>   Log-likelihood estimate (SE):  -27.05525633 (0.00000619)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -2997,17 +3000,17 @@ sim_experiment(n = 32L, p = 3L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ               AGHQ                CDF GenzMonahan
-#> SD        NA 0.0000000000171133 0.0000000001017300          NA
-#> RMSE      NA 0.0000000000202855 0.0000000000925754          NA
-#> Rel RMSE  NA 0.4220130688764949 1.9300004824596837          NA
+#> SD        NA 0.0000000000171180 0.0000000001017300          NA
+#> RMSE      NA 0.0000000000202903 0.0000000000925755          NA
+#> Rel RMSE  NA 0.4221127008419608 1.9300024198014711          NA
 #>                 GenzMonahanA QMC               QMCA
-#> SD       0.00000000000534081  NA 0.0000000000265594
-#> RMSE     0.00000000000696942  NA 0.0000000000288489
-#> Rel RMSE 0.14482335569997018  NA 0.5995844197574175
+#> SD       0.00000000000534072  NA 0.0000000000265649
+#> RMSE     0.00000000000696925  NA 0.0000000000288765
+#> Rel RMSE 0.14481968449288035  NA 0.6001584162304279
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0042       0.0718           NA       0.0064           NA 
+#>           NA       0.0040       0.0718           NA       0.0064           NA 
 #>         QMCA 
 #>       0.0154
 
@@ -3020,28 +3023,28 @@ sim_experiment(n =  2L, p = 4L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00097656
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estimate (SE):   -2.57926328 (0.00005098)
+#>   Log-likelihood estimate (SE):   -2.57926298 (0.00005104)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                          0.0758256                       -2.57932
 #> CDF                           0.0758560                       -2.57892
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0758136                       -2.57948
+#> GenzMonahanA                  0.0758127                       -2.57949
 #> QMC                                  NA                             NA
-#> QMCA                          0.0758585                       -2.57889
+#> QMCA                          0.0758586                       -2.57888
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ     AGHQ      CDF GenzMonahan GenzMonahanA QMC     QMCA
-#> SD        NA 0.121852 0.817109          NA     0.258170  NA 0.249906
-#> RMSE      NA 0.109975 0.426435          NA     0.212061  NA 0.361609
-#> Rel RMSE  NA 0.562267 2.179396          NA     1.084488  NA 1.848225
+#> SD        NA 0.121668 0.817109          NA     0.257683  NA 0.250086
+#> RMSE      NA 0.109867 0.426294          NA     0.216404  NA 0.362852
+#> Rel RMSE  NA 0.561713 2.178676          NA     1.106691  NA 1.854580
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0060       0.0004           NA       0.0104           NA 
+#>           NA       0.0056       0.0004           NA       0.0102           NA 
 #>         QMCA 
-#>       0.0380
+#>       0.0384
 sim_experiment(n =  4L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3051,7 +3054,7 @@ sim_experiment(n =  4L, p = 4L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00195312
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00195312
-#>   Log-likelihood estimate (SE):   -5.48264627 (0.00007380)
+#>   Log-likelihood estimate (SE):   -5.48264620 (0.00007380)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -3060,19 +3063,19 @@ sim_experiment(n =  4L, p = 4L, n_threads = 6L)
 #> GenzMonahan                          NA                             NA
 #> GenzMonahanA                 0.00415941                       -5.48238
 #> QMC                                  NA                             NA
-#> QMCA                         0.00415439                       -5.48359
+#> QMCA                         0.00415438                       -5.48359
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ       AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD        NA 0.00357056 0.0805191          NA    0.0288289  NA 0.0265070
-#> RMSE      NA 0.00498885 0.0462447          NA    0.0266737  NA 0.0508586
-#> Rel RMSE  NA 0.21884480 2.0276537          NA    1.1693715  NA 2.2325897
+#> SD        NA 0.00357164 0.0805191          NA    0.0288250  NA 0.0265001
+#> RMSE      NA 0.00499224 0.0462438          NA    0.0266715  NA 0.0508704
+#> Rel RMSE  NA 0.21899361 2.0276141          NA    1.1692777  NA 2.2331047
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0196       0.0010           NA       0.0268           NA 
+#>           NA       0.0212       0.0012           NA       0.0282           NA 
 #>         QMCA 
-#>       0.0516
+#>       0.0580
 sim_experiment(n =  8L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3082,7 +3085,7 @@ sim_experiment(n =  8L, p = 4L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00781250
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00390625
-#>   Log-likelihood estimate (SE):  -12.24320048 (0.00005840)
+#>   Log-likelihood estimate (SE):  -12.24320031 (0.00005889)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -3091,19 +3094,19 @@ sim_experiment(n =  8L, p = 4L, n_threads = 6L)
 #> GenzMonahan                          NA                             NA
 #> GenzMonahanA              0.00000479782                       -12.2473
 #> QMC                                  NA                             NA
-#> QMCA                      0.00000480794                       -12.2452
+#> QMCA                      0.00000480748                       -12.2453
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ         AGHQ         CDF GenzMonahan GenzMonahanA QMC         QMCA
-#> SD        NA 0.0000290393 0.000110461          NA  0.000110688  NA 0.0000641956
-#> RMSE      NA 0.0000275100 0.000112113          NA  0.000269057  NA 0.0001398326
-#> Rel RMSE  NA 0.4666815517 1.898325189          NA  4.580643993  NA 2.3746799461
+#> SD        NA 0.0000291038 0.000110461          NA  0.000110697  NA 0.0000633992
+#> RMSE      NA 0.0000275871 0.000112107          NA  0.000269117  NA 0.0001389542
+#> Rel RMSE  NA 0.4679892097 1.898218113          NA  4.581671851  NA 2.3599647231
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0212       0.0084           NA       0.0054           NA 
+#>           NA       0.0226       0.0084           NA       0.0054           NA 
 #>         QMCA 
-#>       0.0452
+#>       0.0498
 sim_experiment(n = 16L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3113,32 +3116,32 @@ sim_experiment(n = 16L, p = 4L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.01562500
-#>   Log-likelihood estimate (SE):  -17.29048839 (0.00003521)
+#>   Log-likelihood estimate (SE):  -17.29048847 (0.00003522)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                    0.0000000309632                       -17.2905
 #> CDF                     0.0000000309560                       -17.2907
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA            0.0000000309266                       -17.2917
+#> GenzMonahanA            0.0000000309266                       -17.2916
 #> QMC                                  NA                             NA
-#> QMCA                    0.0000000309106                       -17.2922
+#> QMCA                    0.0000000309105                       -17.2922
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ           AGHQ            CDF GenzMonahan   GenzMonahanA QMC
-#> SD        NA 0.000000949897 0.000000888727          NA 0.000000971357  NA
-#> RMSE      NA 0.000001006792 0.000000595495          NA 0.000001109115  NA
-#> Rel RMSE  NA 1.886967750692 1.112274674429          NA 2.074524238979  NA
+#> SD        NA 0.000000950575 0.000000888727          NA 0.000000971303  NA
+#> RMSE      NA 0.000001007462 0.000000595493          NA 0.000001109015  NA
+#> Rel RMSE  NA 1.888229149054 1.112269707060          NA 2.074336398456  NA
 #>                   QMCA
-#> SD       0.00000126386
-#> RMSE     0.00000193250
-#> Rel RMSE 3.61504969294
+#> SD       0.00000126393
+#> RMSE     0.00000193349
+#> Rel RMSE 3.61691796728
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0210       0.0884           NA       0.0050           NA 
+#>           NA       0.0218       0.0888           NA       0.0048           NA 
 #>         QMCA 
-#>       0.0144
+#>       0.0148
 sim_experiment(n = 32L, p = 4L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3148,7 +3151,7 @@ sim_experiment(n = 32L, p = 4L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.50000000
-#>   Log-likelihood estimate (SE):  -33.82240832 (0.00002531)
+#>   Log-likelihood estimate (SE):  -33.82240831 (0.00002531)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -3161,19 +3164,19 @@ sim_experiment(n = 32L, p = 4L, n_threads = 6L)
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ                  AGHQ                  CDF GenzMonahan
-#> SD        NA 0.0000000000000938917 0.000000000000211170          NA
-#> RMSE      NA 0.0000000000001125262 0.000000000000138023          NA
-#> Rel RMSE  NA 1.6328776351716158821 1.986213389155755848          NA
+#> SD        NA 0.0000000000000938465 0.000000000000211170          NA
+#> RMSE      NA 0.0000000000001124673 0.000000000000138023          NA
+#> Rel RMSE  NA 1.6320214980622507195 1.986212609632481252          NA
 #>                   GenzMonahanA QMC                  QMCA
-#> SD       0.0000000000000568164  NA 0.0000000000001164525
-#> RMSE     0.0000000000000790993  NA 0.0000000000000838864
-#> Rel RMSE 1.1473914440671606485  NA 1.2072502765825812165
+#> SD       0.0000000000000568211  NA 0.0000000000001165047
+#> RMSE     0.0000000000000791046  NA 0.0000000000000839784
+#> Rel RMSE 1.1474688142507494248  NA 1.2085627870195121414
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0184       0.0618           NA       0.0100           NA 
+#>           NA       0.0188       0.0622           NA       0.0098           NA 
 #>         QMCA 
-#>       0.0278
+#>       0.0292
 
 sim_experiment(n =  2L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
@@ -3184,28 +3187,28 @@ sim_experiment(n =  2L, p = 5L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00048828
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00097656
-#>   Log-likelihood estimate (SE):   -2.84281256 (0.00005065)
+#>   Log-likelihood estimate (SE):   -2.84281230 (0.00005073)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                          0.0582607                       -2.84283
 #> CDF                           0.0582618                       -2.84281
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA                  0.0582663                       -2.84273
+#> GenzMonahanA                  0.0582664                       -2.84273
 #> QMC                                  NA                             NA
-#> QMCA                          0.0582898                       -2.84233
+#> QMCA                          0.0582899                       -2.84233
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ      AGHQ      CDF GenzMonahan GenzMonahanA QMC     QMCA
-#> SD        NA 0.0696056 0.332336          NA     0.107589  NA 0.192243
-#> RMSE      NA 0.0640661 0.203880          NA     0.117362  NA 0.343277
-#> Rel RMSE  NA 0.3867685 1.231023          NA     0.708480  NA 2.071813
+#> SD        NA 0.0691823 0.332336          NA     0.107344  NA 0.192336
+#> RMSE      NA 0.0636109 0.203879          NA     0.117830  NA 0.344034
+#> Rel RMSE  NA 0.3840213 1.231015          NA     0.711305  NA 2.076379
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0412       0.0038           NA       0.0148           NA 
+#>           NA       0.0432       0.0038           NA       0.0154           NA 
 #>         QMCA 
-#>       0.0432
+#>       0.0460
 sim_experiment(n =  4L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3215,7 +3218,7 @@ sim_experiment(n =  4L, p = 5L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.00195312
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00195312
-#>   Log-likelihood estimate (SE):   -5.74331361 (0.00005898)
+#>   Log-likelihood estimate (SE):   -5.74331415 (0.00005891)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
@@ -3224,19 +3227,19 @@ sim_experiment(n =  4L, p = 5L, n_threads = 6L)
 #> GenzMonahan                          NA                             NA
 #> GenzMonahanA                 0.00320200                       -5.74398
 #> QMC                                  NA                             NA
-#> QMCA                         0.00320396                       -5.74337
+#> QMCA                         0.00320395                       -5.74337
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ       AGHQ       CDF GenzMonahan GenzMonahanA QMC      QMCA
-#> SD        NA 0.00442094 0.0334425          NA    0.0209137  NA 0.0202197
-#> RMSE      NA 0.00515591 0.0339049          NA    0.0423540  NA 0.0185545
-#> Rel RMSE  NA 0.28020141 1.8421262          NA    2.3036803  NA 1.0086084
+#> SD        NA 0.00444310 0.0334425          NA    0.0208982  NA 0.0201996
+#> RMSE      NA 0.00515552 0.0339034          NA    0.0423127  NA 0.0186475
+#> Rel RMSE  NA 0.28018010 1.8420453          NA    2.3014300  NA 1.0136670
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0794       0.0090           NA       0.0064           NA 
+#>           NA       0.0862       0.0090           NA       0.0064           NA 
 #>         QMCA 
-#>       0.0554
+#>       0.0596
 sim_experiment(n =  8L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3246,28 +3249,28 @@ sim_experiment(n =  8L, p = 5L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.25000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00781250
-#>   Log-likelihood estimate (SE):  -11.66493762 (0.00005315)
+#>   Log-likelihood estimate (SE):  -11.66493758 (0.00005319)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                      0.00000858958                       -11.6650
 #> CDF                       0.00000860078                       -11.6637
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA              0.00000858415                       -11.6656
+#> GenzMonahanA              0.00000858416                       -11.6656
 #> QMC                                  NA                             NA
-#> QMCA                      0.00000858955                       -11.6650
+#> QMCA                      0.00000858947                       -11.6650
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ         AGHQ         CDF GenzMonahan GenzMonahanA QMC        QMCA
-#> SD        NA 0.0000378947 0.000230459          NA  0.000162375  NA 0.000239597
-#> RMSE      NA 0.0000399838 0.000223153          NA  0.000112960  NA 0.000184772
-#> Rel RMSE  NA 0.3992462001 2.223356216          NA  1.127900481  NA 1.845399988
+#> SD        NA 0.0000379121 0.000230459          NA  0.000162318  NA 0.000240482
+#> RMSE      NA 0.0000400057 0.000223152          NA  0.000112968  NA 0.000189839
+#> Rel RMSE  NA 0.3994646074 2.223343005          NA  1.127974338  NA 1.896178710
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.1580       0.0290           NA       0.0040           NA 
+#>           NA       0.1668       0.0294           NA       0.0038           NA 
 #>         QMCA 
-#>       0.0192
+#>       0.0200
 sim_experiment(n = 16L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3277,32 +3280,32 @@ sim_experiment(n = 16L, p = 5L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.00781250
-#>   Log-likelihood estimate (SE):  -18.57387788 (0.00004733)
+#>   Log-likelihood estimate (SE):  -18.57387848 (0.00004712)
 #> 
 #>              Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                  NA                             NA
 #> AGHQ                   0.00000000857876                       -18.5740
 #> CDF                    0.00000000860408                       -18.5710
 #> GenzMonahan                          NA                             NA
-#> GenzMonahanA           0.00000000856698                       -18.5754
+#> GenzMonahanA           0.00000000856701                       -18.5753
 #> QMC                                  NA                             NA
-#> QMCA                   0.00000000857596                       -18.5743
+#> QMCA                   0.00000000857588                       -18.5743
 #> 
 #> SD & RMSE (/10000.00)
-#>          GHQ           AGHQ            CDF GenzMonahan   GenzMonahanA QMC
-#> SD        NA 0.000000048501 0.000000402865          NA 0.000000422636  NA
-#> RMSE      NA 0.000000053834 0.000000261999          NA 0.000000375264  NA
-#> Rel RMSE  NA 0.338048342865 1.641225654882          NA 2.359948603987  NA
+#>          GHQ            AGHQ            CDF GenzMonahan   GenzMonahanA QMC
+#> SD        NA 0.0000000484694 0.000000402865          NA 0.000000421812  NA
+#> RMSE      NA 0.0000000537648 0.000000262047          NA 0.000000374340  NA
+#> Rel RMSE  NA 0.3376133565115 1.641525896942          NA 2.354113685865  NA
 #>                    QMCA
-#> SD       0.000000189870
-#> RMSE     0.000000277606
-#> Rel RMSE 1.744788830605
+#> SD       0.000000189235
+#> RMSE     0.000000276632
+#> Rel RMSE 1.738699341826
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.3120       0.0564           NA       0.0082           NA 
+#>           NA       0.3374       0.0602           NA       0.0086           NA 
 #>         QMCA 
-#>       0.0624
+#>       0.0660
 sim_experiment(n = 32L, p = 5L, n_threads = 6L)
 #>          # brute force samples:       1000000
 #>                   # nodes  GHQ:            NA
@@ -3312,7 +3315,7 @@ sim_experiment(n = 32L, p = 5L, n_threads = 6L)
 #> Adaptive Genz & Monahan releps:    0.50000000
 #>                     QMC releps:            NA
 #>            Adaptive QMC releps:    0.50000000
-#>   Log-likelihood estimate (SE):  -46.15490848 (0.00002711)
+#>   Log-likelihood estimate (SE):  -46.15490848 (0.00002712)
 #> 
 #>                Mean estimate (likelihood) Mean estimate (log-likelihood)
 #> GHQ                                    NA                             NA
@@ -3321,23 +3324,23 @@ sim_experiment(n = 32L, p = 5L, n_threads = 6L)
 #> GenzMonahan                            NA                             NA
 #> GenzMonahanA 0.00000000000000000000902318                       -46.1545
 #> QMC                                    NA                             NA
-#> QMCA         0.00000000000000000000903855                       -46.1528
+#> QMCA         0.00000000000000000000903856                       -46.1528
 #> 
 #> SD & RMSE (/10000.00)
 #>          GHQ                       AGHQ                        CDF GenzMonahan
-#> SD        NA 0.000000000000000000533861 0.000000000000000000935806          NA
-#> RMSE      NA 0.000000000000000000635923 0.000000000000000000669593          NA
-#> Rel RMSE  NA 1.537181219389847974809982 1.603844008862315817509625          NA
+#> SD        NA 0.000000000000000000534105 0.000000000000000000935806          NA
+#> RMSE      NA 0.000000000000000000636232 0.000000000000000000669593          NA
+#> Rel RMSE  NA 1.537930808527625314852116 1.603844037304093639306757          NA
 #>                        GenzMonahanA QMC                       QMCA
-#> SD       0.000000000000000000162306  NA 0.000000000000000000464894
-#> RMSE     0.000000000000000000125255  NA 0.000000000000000000475751
-#> Rel RMSE 0.300702207295228007843946  NA 1.138135082586177349028844
+#> SD       0.000000000000000000162308  NA 0.000000000000000000465179
+#> RMSE     0.000000000000000000125253  NA 0.000000000000000000476092
+#> Rel RMSE 0.300697315812176069194095  NA 1.138945239777048756835143
 #> 
 #> Computation times
 #>          GHQ         AGHQ          CDF  GenzMonahan GenzMonahanA          QMC 
-#>           NA       0.0834       0.2042           NA       0.0160           NA 
+#>           NA       0.0876       0.2138           NA       0.0170           NA 
 #>         QMCA 
-#>       0.0430
+#>       0.0458
 ```
 
 ``` r
@@ -4352,11 +4355,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L))
 #> Unit: microseconds
 #>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3  824.5  830.8  840.4  832.9  840.2  946.2   100
-#>   AGHQ 7 1574.7 1579.1 1599.5 1584.1 1599.5 1758.7   100
-#>    GHQ 3  518.9  527.3  533.9  533.2  537.4  587.2   100
-#>    GHQ 7 1286.3 1309.4 1323.7 1315.6 1327.1 1469.0   100
-#>   GHQ 21 3799.6 3822.7 3865.6 3856.4 3882.2 4283.0   100
+#>   AGHQ 3  793.5  809.3  826.1  820.9  829.4  967.5   100
+#>   AGHQ 7 1554.2 1596.8 1614.6 1608.6 1623.1 1892.1   100
+#>    GHQ 3  513.3  520.1  540.6  528.9  533.8  802.0   100
+#>    GHQ 7 1265.1 1294.2 1319.9 1309.7 1320.0 1644.2   100
+#>   GHQ 21 3736.6 3820.8 3852.1 3846.2 3866.5 4353.6   100
 ```
 
 The adaptive version is much more precise. Moreover, the it seems that 5
@@ -4407,11 +4410,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 1L))
 #> Unit: microseconds
 #>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3 1003.6 1019.0 1037.7 1028.6 1054.3 1193.3   100
-#>   AGHQ 7 2053.8 2067.4 2106.1 2086.5 2124.7 2750.5   100
-#>    GHQ 3  697.5  708.6  732.8  714.6  740.6  998.3   100
-#>    GHQ 7 1758.0 1774.4 1807.8 1802.1 1824.0 2046.6   100
-#>   GHQ 21 5043.6 5101.3 5193.1 5162.9 5213.7 7010.6   100
+#>   AGHQ 3 1012.2 1042.7 1089.4 1123.3 1127.2 1154.9   100
+#>   AGHQ 7 2027.0 2083.6 2174.9 2242.5 2257.8 2550.5   100
+#>    GHQ 3  699.8  720.1  756.3  776.7  779.8  833.9   100
+#>    GHQ 7 1742.9 1828.4 1894.5 1929.6 1936.6 1981.2   100
+#>   GHQ 21 4961.3 5108.9 5327.1 5485.4 5520.2 5652.6   100
 ```
 
 ``` r
@@ -4457,11 +4460,11 @@ microbenchmark::microbenchmark(
   ` GHQ 21` = n_adap(21L, n_times = 1000L, order = 2L))
 #> Unit: microseconds
 #>     expr    min     lq   mean median     uq    max neval
-#>   AGHQ 3 1024.3 1049.7 1074.3 1056.9 1084.3 1320.7   100
-#>   AGHQ 7 1986.9 2040.4 2085.9 2060.0 2091.3 3522.0   100
-#>    GHQ 3  713.7  718.1  741.2  735.5  748.6  917.8   100
-#>    GHQ 7 1691.0 1738.4 1771.5 1746.5 1795.9 2098.1   100
-#>   GHQ 21 4991.1 5123.2 5183.4 5158.3 5203.9 6321.8   100
+#>   AGHQ 3 1009.2 1035.7 1063.2 1038.3 1119.4 1390.4   100
+#>   AGHQ 7 1960.0 2009.5 2053.3 2012.5 2110.4 2360.2   100
+#>    GHQ 3  699.5  717.7  734.9  720.6  753.1  916.3   100
+#>    GHQ 7 1668.6 1713.3 1756.7 1716.9 1847.5 2083.7   100
+#>   GHQ 21 4879.2 5005.5 5124.3 5014.5 5378.3 5515.3   100
 ```
 
 It does not take much more time and using an adaptive method only seems

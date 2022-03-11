@@ -3,4 +3,7 @@ salamander.rds
 mixed-gsm.R
 salamander.R
 Rplots.pdf
-cache-mgsm
+cache-mgsm/*
+!cache-mgsm/pedigree
+cache-mgsm/pedigree/*
+!cache-mgsm/pedigree/.placeholder

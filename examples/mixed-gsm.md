@@ -152,7 +152,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 124.803   0.056 125.168
+#>  67.344   0.016  67.394
 
 # fit the model with the CDF approach
 system.time(
@@ -161,7 +161,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   46.70    0.00   46.71
+#>  46.446   0.003  46.451
 ```
 
 The results are shown below.
@@ -172,14 +172,14 @@ rbind(`Estimate spherical radial` = res_sr$beta_fixef,
       `Estimate CDF` = res_cdf$beta_fixef,
       Truth = c(beta[1], tail(beta, 2)))
 #>                             [,1]   [,2]   [,3]
-#> Estimate spherical radial -1.113 0.4882 0.9918
+#> Estimate spherical radial -1.131 0.4883 0.9922
 #> Estimate CDF              -1.159 0.4880 0.9916
 #> Truth                     -1.000 0.5000 1.0000
 
 res_sr$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
-#> [1,]  0.9797 -0.1639
-#> [2,] -0.1639  0.2841
+#> [1,]  0.9808 -0.1643
+#> [2,] -0.1643  0.2845
 res_cdf$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
 #> [1,]  0.9802 -0.1646
@@ -221,7 +221,7 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -12535.365
+#> [1] -12534.829
 print(res_cdf$logLik, digits = 8)
 #> [1] -12534.595
 
@@ -236,15 +236,15 @@ survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.806   0.000   9.806
+#>   9.710   0.001   9.711
 sd(func_ests)
-#> [1] 0.01302
+#> [1] 0.008224
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.835   0.000   9.835
+#>   9.744   0.000   9.744
 sd(func_ests)
-#> [1] 0.008175
+#> [1] 0.007606
 ```
 
 ## Pedigree Data
@@ -411,7 +411,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 117.661   0.003 117.667
+#>   105.1     0.0   105.1
 
 # fit the model with the CDF approach
 system.time(
@@ -419,7 +419,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   6.326   0.000   6.326
+#>   6.044   0.000   6.044
 ```
 
 The results are shown below.
@@ -435,11 +435,9 @@ rbind(`Estimate spherical radial` = res_sr$beta_fixef,
 #> Truth                     -1.000 0.5000 1.000
 
 res_sr$sigs # estimated scale parameters
-#>   [9,]  [10,] 
-#> 2.2690 0.4733
+#> [1] 2.2700 0.4734
 res_cdf$sigs # estimated scale parameters
-#>   [9,]  [10,] 
-#> 2.3083 0.4816
+#> [1] 2.3083 0.4816
 sigs
 #>     Genetic Environment 
 #>         1.5         0.5
@@ -476,7 +474,7 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -2720.6343
+#> [1] -2720.6256
 print(res_cdf$logLik, digits = 8)
 #> [1] -2720.7268
 ```
@@ -487,13 +485,120 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   20.47    0.00   20.47
+#>   19.42    0.00   19.42
 sd(func_ests)
-#> [1] 0.1729
+#> [1] 0.1548
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   2.525   0.000   2.526
+#>   2.426   0.000   2.425
 sd(func_ests)
-#> [1] 0.005468
+#> [1] 0.005469
+```
+
+## Simulation Study
+
+We run simulation study using in a simplified model without the genetic
+effect below.
+
+``` r
+# the simulation function we will use
+sigs <- c(Genetic = 1.5)
+
+sim_dat <- \(n_clusters)
+  lapply(seq_len(n_clusters), \(id) {
+    # sample the number of children and construct the scale matrices
+    n_children <- sample.int(6L, 1L)
+    n_members <- n_children + 2L
+    sex <- c(1:2, sample.int(2L, n_children, replace = TRUE))
+    
+    fam <- data.frame(
+      id = seq_len(n_members), sex = sex,
+      father = c(NA, NA, rep(1L, n_children)), 
+      mother = c(NA, NA, rep(2L, n_children)))
+    ped <- with(fam, pedigree(
+      id = id, dadid = father, momid = mother, sex = sex))
+    
+    genentic_mat <- 2 * kinship(ped)
+    
+    # get the covariance matrix and sample the random effects and the 
+    # covariates
+    sigma <- diag(n_members) + sigs[1] * genentic_mat
+    U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
+    X <- cbind(continous = rnorm(n_members), sex = sex == 1)
+    
+    # find the event times
+    offset <- X %*% tail(beta, NCOL(X)) + U
+    
+    beta_use <- head(beta, -NCOL(X))
+    y <- sapply(offset, \(o){
+      rng <- runif(1)
+      res <- uniroot(\(ti) rng - pnorm(-o - x(ti) %*% beta_use), 
+                     c(1e-32, 10000), 
+                     tol = 1e-10)
+      res$root
+    })
+    
+    cens <- pmin(admin_cens, runif(n_members, 0, 2 * admin_cens))
+    
+    X <- cbind(intercept = 1, X)
+    
+    out <- list(
+      event = as.numeric(y < cens), y = pmin(y, cens), X = X, 
+      id = rep(id, n_members), scale_mats = list(genetic = genentic_mat))
+  })
+  
+# the seeds we will use
+seeds <- c(8401826L, 19570958L, 87207905L, 39109909L, 99443018L, 2376809L, 47711086L, 31776421L, 25001561L, 52480852L, 60995910L, 21615146L, 94750831L, 93554588L, 34801146L, 36420473L, 22444614L, 75001896L, 24531192L, 80062842L, 2550195L, 53048710L, 85436064L, 34437762L, 69997970L, 1398478L, 91388403L, 73915718L, 64407295L, 99315526L, 55230929L, 65254925L, 78593369L, 5490535L, 68973709L, 16502678L, 48015260L, 40584496L, 40234129L, 21559783L, 55991123L, 56211248L, 40530496L, 64880106L, 73843004L, 70419165L, 86063754L, 8426283L, 62523674L, 76475834L, 18648984L, 32812748L, 33439015L, 35109557L, 64695510L, 89300314L, 67141661L, 54871836L, 86274621L, 29495382L, 98744647L, 70279529L, 87794930L, 95918838L, 16179951L, 14344327L, 7258644L, 24703384L, 70432309L, 59709907L, 90392706L, 6833276L, 81342050L, 79794195L, 17842594L, 27444067L, 44945811L, 68154408L, 39539322L, 43510922L, 47071732L, 65301241L, 43997413L, 27680735L, 27550685L, 9154686L, 65359476L, 68151567L, 75590209L, 32994761L, 23446289L, 42236969L, 64634732L, 19941161L, 27046869L, 37687425L, 20225748L, 57217006L, 65626553L, 56052853L)
+
+# get the simulation results
+sim_res <- lapply(seeds, \(seed){
+  res_file <- file.path("cache-mgsm", "pedigree", sprintf("%d.RDS", seed))
+  if(!file.exists(res_file)){
+    set.seed(seed)
+    dat <- sim_dat(500L)
+    
+    comp_n_take_time <- \(method){
+      cmp_time <- system.time(
+        res <- fit_mgsm_pedigree(
+          data = dat, maxpts = c(1000L, 10000L), df = 5L, 
+          method = method))
+      res$time <- cmp_time
+      res
+    }
+    
+    sink(sprintf("todo-delete-%d.txt", seed))
+    res_sr <- comp_n_take_time("adaptive_spherical_radial")
+    cat("finished one\n")
+    res_cdf <- comp_n_take_time("cdf_approach")
+    cat("finished two\n")
+    sink()
+    res_cdf$max_ll_rev <- res_cdf$fn(res_sr$optim$par)
+    res_sr$max_ll_rev <- res_sr$fn(res_cdf$optim$par)
+    
+    saveRDS(list(CDF = res_cdf, `Adaptive Spherical Radial` = res_sr),
+            res_file)
+  }
+  
+  res <- readRDS(res_file)
+  print_as_message <- \(x)
+    message(paste0(capture.output(x), collapse = "\n"))
+    
+  message("\n\nComputation time")
+  sapply(res, \(x) unname(x$time["elapsed"])) |> print_as_message()
+  
+  message("\nEstiamtes")
+  sapply(res, \(x) tail(x$beta_fixef, 2)) |> 
+    t() |> rbind(Truth = tail(beta, 2)) |> 
+    print_as_message()
+  
+  sapply(res, `[[`, "sigs") |> c(Truth = unname(sigs)) |> 
+     print_as_message()
+  
+  message("\nMaximum log-likelihood")
+  sapply(res, \(x) -x$optim$value) |> print_as_message()
+  -sapply(res, `[[`, "max_ll_rev") |> print_as_message()
+  
+  res
+})
 ```

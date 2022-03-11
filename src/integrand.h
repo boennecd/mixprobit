@@ -1,8 +1,9 @@
 #ifndef INTEGRAND_H
 #define INTEGRAND_H
 #include "arma-wrap.h"
-#include "mix-optim.h"
 #include "utils.h"
+#include <psqn-bfgs.h>
+#include <algorithm>
 
 namespace integrand {
 /* base class to use for the integral approximations like with ranrth */
@@ -134,65 +135,79 @@ class adaptive final : public base_integrand {
 public:
   other_integrand const &other_terms;
 
-  struct opt_data {
+  class opt_data final : PSQN::problem {
     typedef adaptive<other_integrand>::opt_data my_kind;
     other_integrand const &other_terms;
+    arma::uword const n_par = other_terms.get_n_par();
+
+  public:
     arma::vec mode;
     arma::mat neg_hes_inv_half;
     double constant;
     bool success = true;
 
-    /* functions used in the optimization */
-    static double optim_obj(int npar, double *point, void *data) {
-      my_kind dat = *(my_kind*)data;
-
-      return -dat.other_terms(point, true);
-    }
-    static void optim_gr(int npar, double *point, double *grad, void *data){
-      my_kind dat = *(my_kind*)data;
-      arma::vec gr(grad, npar, false, true);
-      gr = -dat.other_terms.gr(point);
+    PSQN::psqn_uint size() const {
+      return n_par;
     }
 
-    /* mode, negative Hessian, etc. are set in the constructor */
-    opt_data(other_integrand const &other_terms, int const max_it,
-             double const abstol, double const reltol, bool const use_chol):
-      other_terms(other_terms) {
-      arma::uword const n_par = other_terms.get_n_par();
-      arma::vec start(n_par, arma::fill::zeros);
+    double func(double const *val) {
+      return -other_terms(val, true);
+    }
+
+    double grad(double const * val,
+                double       * grad_set){
+      arma::vec gr(grad_set, n_par, false, true);
+      gr = -other_terms.gr(val);
+      return func(val);
+    }
+
+    /* mode, negative Hessian, etc. are set in the init member function */
+    opt_data(other_integrand const &other_terms):
+      other_terms(other_terms) { }
+
+    void init(int const max_it, double const abstol, double const reltol,
+              bool const use_chol){
+      success = true;
+      mode.zeros(n_par);
+
+      auto on_failure = [&]{
+        success = false;
+        mode.zeros(n_par);
+      };
 
       {
-        double const integrand_start_val =
-          optim_obj(n_par, start.begin(), (void*)this);
+        double const integrand_start_val{func(mode.begin())};
         if(!std::isfinite(integrand_start_val)){
           // Rcpp::warning("adaptive: invalid starting value");
-          success = false;
+          on_failure();
           return;
         }
 
         arma::vec gr_test(n_par);
-        optim_gr(n_par, start.begin(), gr_test.begin(), (void*)this);
+        grad(mode.begin(), gr_test.begin());
         for(double gr_i : gr_test)
           if(!std::isfinite(gr_i)){
             // Rcpp::warning("adaptive: invalid starting value (gr)");
-            success = false;
+            on_failure();
             return;
           }
       }
 
-      auto const opt_res = optimizers::bfgs(
-        start, optim_obj, optim_gr, (void*)this, max_it, 0L, abstol, reltol);
-      if(opt_res.fail != 0L)
-        throw std::runtime_error("integrand::adaptive: fail != 0L");
+      auto const opt_res = PSQN::bfgs
+        (*this, mode.begin(), reltol, max_it,
+         PSQN::bfgs_defaults::c1, PSQN::bfgs_defaults::c2, 0, -1,
+         abstol);
+      if(opt_res.info != PSQN::info_code::converged){
+        on_failure();
+        return;
+      }
 
-      mode = opt_res.par;
       arma::mat Hes = other_terms.Hessian(mode.memptr());
       if(use_chol){
-        mode = opt_res.par;
         Hes *= -1.;
         if(!arma::chol(neg_hes_inv_half, arma::inv(Hes))){
           // Rcpp::warning("adaptive: Cholesky decomposition failed");
-          success = false;
+          on_failure();
           return;
 
         }
@@ -205,7 +220,7 @@ public:
         Hes *= -1.;
         if(!arma::eig_sym(eig_val, neg_hes_inv_half, Hes)){
           // Rcpp::warning("adaptive: Eigenvalue decomposition failed");
-          success = false;
+          on_failure();
           return;
         }
 
@@ -217,7 +232,7 @@ public:
         for(auto e : eig_val){
           if(e <= 0.){
             // Rcpp::warning("adaptive: Non-positive definite Hessian");
-            success = false;
+            on_failure();
             return;
           }
 
@@ -235,13 +250,15 @@ public:
       constant += static_cast<double>(n_par) / 2. * log2pi;
     }
   };
-  opt_data const dat;
+  opt_data dat;
 
   adaptive(other_integrand const &other_terms, bool const use_chol,
            int const max_it = 10000L, double const abstol = -1,
            double const reltol = 1e-5):
     use_chol(use_chol), other_terms(other_terms),
-    dat(other_terms, max_it, abstol, reltol, use_chol) { }
+    dat(other_terms) {
+    dat.init(max_it, abstol, reltol, use_chol);
+  }
 
   double operator()
     (double const *par, bool const ret_log = false) const {

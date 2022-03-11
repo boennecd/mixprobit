@@ -36,7 +36,7 @@ bs_spline_w_constraints <- function(event, obs_time, df, ord = 4L){
     bd_knots = bd_knots, ik_knots = ik_knots, offset = offset)
 }
 
-#' @importFrom stats lm lm.fit
+#' @importFrom stats lm lm.fit sd
 gsm_beta_start <- function(obs_time, event, X_fixef, X_vary){
   # we match the mean and standard deviation of the log of time of the observed
   # outcomes
@@ -80,6 +80,7 @@ gsm_beta_start <- function(obs_time, event, X_fixef, X_vary){
 #'
 #' @importFrom stats model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
+#' @importFrom utils head tail
 #' @export
 fit_mgsm <- function(
   formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
@@ -146,7 +147,7 @@ fit_mgsm <- function(
   X <- t(X)
   Z <- t(Z)
   X_prime <- t(X_prime)
-  cpp_data <- tapply(1:NROW(dat_full), id, function(indices)
+  cpp_data <- tapply(1:NROW(data), id, function(indices)
     list(X = X[, indices], X_prime = X_prime[, indices],
          Z = Z[, indices], y = obs_time[indices],
          event = as.numeric(event[indices])),
@@ -162,7 +163,7 @@ fit_mgsm <- function(
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_eval(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, method = method),
+      abseps = abseps, releps = releps, method_use = method),
       silent = silent)
     if(inherits(res, "try-error")) NA else -res
   }
@@ -175,7 +176,7 @@ fit_mgsm <- function(
     sig <- tail(par, -length(beta_start))
     res <- try(gsm_gr(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, method = method),
+      abseps = abseps, releps = releps, method_use = method),
       silent = silent)
     if(inherits(res, "try-error"))
       return(rep(NA, length(par)))
@@ -218,6 +219,7 @@ fit_mgsm <- function(
 }
 
 #' @inheritParams fit_mgsm
+#' @importFrom utils head tail
 #' @export
 fit_mgsm_pedigree <- function(
   data, df = 4L, maxpts = c(1000L, 10000L), key = 3L, abseps = 0,
@@ -237,7 +239,7 @@ fit_mgsm_pedigree <- function(
     bs_spline_w_constraints(event = event, obs_time = obs_time, df = df)
 
   # construct the basis for the time-varying effect
-  dat_pass <- lapply(dat, function(x){
+  dat_pass <- lapply(data, function(x){
     X_vary <- spline$basis(x$y)
     X_vary_prime <- spline$d_basis(x$y)
 
@@ -271,7 +273,7 @@ fit_mgsm_pedigree <- function(
 
   trans_vars <- diag(n_par)
   trans_vars[idx_varying, idx_varying] <- spline$constraints
-  par <- trans_vars %*% par
+  par <- drop(trans_vars %*% par)
   par[idx_varying] <- log(par[idx_varying])
 
   get_beta <- function(theta){
@@ -307,7 +309,7 @@ fit_mgsm_pedigree <- function(
     sigs <- tail(par, -length(beta_start))
     res <- try(gsm_eval_pedigree(
       ptr = ptr, beta = beta, sigs = sigs, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, method = method),
+      abseps = abseps, releps = releps, method_use = method),
       silent = silent)
     if(inherits(res, "try-error")) NA else -res
   }
@@ -320,7 +322,7 @@ fit_mgsm_pedigree <- function(
     sigs <- tail(par, -length(beta_start))
     res <- try(gsm_gr_pedigree(
       ptr = ptr, beta = beta, sigs = sigs, maxpts = maxpts, key = key,
-      abseps = abseps, releps = releps, method = method),
+      abseps = abseps, releps = releps, method_use = method),
       silent = silent)
     if(inherits(res, "try-error"))
       return(rep(NA, length(par)))
