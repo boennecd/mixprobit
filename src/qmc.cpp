@@ -27,8 +27,7 @@ qmc_approx_output approx(
 
   size_t const n_par = func.get_n_par(),
              n_seeds = seeds.n_elem,
-               n_min = std::max(100L * n_par / n_seeds,
-                                static_cast<long unsigned>(25L)),
+               n_min = std::max<size_t>(100L * n_par / n_seeds, 25L),
                  inc = n_seeds * n_min;
   arma::mat par(n_par, n_min);
 
