@@ -15,7 +15,9 @@ fit_mgsm(
   abseps = 0,
   releps = 0.001,
   seed = 1L,
-  method = c("adaptive_spherical_radial", "cdf_approach", "spherical_radial")
+  method = c("adaptive_spherical_radial", "cdf_approach", "spherical_radial"),
+  trace = 0L,
+  max_it = 10000L
 )
 }
 \arguments{
@@ -41,6 +43,8 @@ when fitting the model.}
 intractble part of the marginal likelihood. \code{"spherical_radial"} and
 \code{"adaptive_spherical_radial"} yields (adaptive) stochastic
 spherical-radial rules and \code{"spherical_radial"} yields the CDF approach.}
+
+\item{trace, max_it}{arguments passed to \code{\link{psqn_bfgs}}.}
 }
 \description{
 Fits a mixed generalized survival model with the probit link

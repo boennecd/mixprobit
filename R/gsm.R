@@ -77,6 +77,7 @@ gsm_beta_start <- function(obs_time, event, X_fixef, X_vary){
 #' intractble part of the marginal likelihood. \code{"spherical_radial"} and
 #' \code{"adaptive_spherical_radial"} yields (adaptive) stochastic
 #' spherical-radial rules and \code{"spherical_radial"} yields the CDF approach.
+#' @param trace,max_it arguments passed to \code{\link{psqn_bfgs}}.
 #'
 #' @importFrom stats model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
@@ -87,7 +88,8 @@ fit_mgsm <- function(
   formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
   key = 3L, abseps = 0, releps = 1e-3, seed = 1L,
   method = c("adaptive_spherical_radial",  "cdf_approach",
-                 "spherical_radial")){
+                 "spherical_radial"),
+  trace = 0L, max_it = 10000L){
   method <- method[1]
   .check_valid_gsm_method(method)
 
@@ -199,7 +201,8 @@ fit_mgsm <- function(
       gr = function(x)
         structure(gr(x, maxpts = maxpts),
                   value = fn(x, maxpts = maxpts)),
-      max_it = 1000L, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3)
+      max_it = max_it, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3,
+      trace = trace)
   }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
@@ -232,7 +235,8 @@ fit_mgsm_pedigree <- function(
   data, df = 4L, maxpts = c(1000L, 10000L), key = 3L, abseps = 0,
   releps = 1e-3, seed = 1L,
   method = c("adaptive_spherical_radial",  "cdf_approach",
-                 "spherical_radial")){
+                 "spherical_radial"),
+  trace = 0L, max_it = 10000L){
   method <- method[1]
   .check_valid_gsm_method(method)
 
@@ -351,7 +355,8 @@ fit_mgsm_pedigree <- function(
       gr = function(x)
         structure(gr(x, maxpts = maxpts),
                   value = fn(x, maxpts = maxpts)),
-      max_it = 10000L, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3)
+      max_it = max_it, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3,
+      trace = trace)
   }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
