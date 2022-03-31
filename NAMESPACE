@@ -3,6 +3,7 @@
 export(fit_mgsm)
 export(fit_mgsm_pedigree)
 importFrom(Rcpp,sourceCpp)
+importFrom(psqn,psqn_bfgs)
 importFrom(splines,splineDesign)
 importFrom(stats,lm)
 importFrom(stats,lm.fit)

@@ -81,6 +81,7 @@ gsm_beta_start <- function(obs_time, event, X_fixef, X_vary){
 #' @importFrom stats model.frame model.response terms model.matrix quantile optim
 #' @importFrom splines splineDesign
 #' @importFrom utils head tail
+#' @importFrom psqn psqn_bfgs
 #' @export
 fit_mgsm <- function(
   formula, data, id, rng_formula, df = 4L, maxpts = c(1000L, 10000L),
@@ -165,7 +166,7 @@ fit_mgsm <- function(
       ptr = ptr, beta = beta, sig = sig, maxpts = maxpts, key = key,
       abseps = abseps, releps = releps, method_use = method),
       silent = silent)
-    if(inherits(res, "try-error")) NA else -res
+    if(inherits(res, "try-error")) NA_real_ else -res
   }
 
   gr <- function(theta, maxpts, key, abseps, releps, method, seed,
@@ -179,7 +180,7 @@ fit_mgsm <- function(
       abseps = abseps, releps = releps, method_use = method),
       silent = silent)
     if(inherits(res, "try-error"))
-      return(rep(NA, length(par)))
+      return(rep(NA_real_, length(par)))
 
     d_theta(-res, theta)
   }
@@ -191,9 +192,15 @@ fit_mgsm <- function(
   # fit the model
   maxpts <- sort(maxpts)
   fits <- vector("list", length(maxpts))
-  opt_func <- function(par, maxpts)
-    optim(par, fn, gr, method = "BFGS", control = list(maxit = 10000L),
-          maxpts = maxpts)
+  opt_func <- function(par, maxpts){
+    fn_scale <- length(unique(id))
+    psqn_bfgs(
+      par, fn = function(x) fn(x, maxpts = maxpts),
+      gr = function(x)
+        structure(gr(x, maxpts = maxpts),
+                  value = fn(x, maxpts = maxpts)),
+      max_it = 1000L, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3)
+  }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
   for(i in seq_len(length(maxpts) - 1L))
@@ -311,7 +318,7 @@ fit_mgsm_pedigree <- function(
       ptr = ptr, beta = beta, sigs = sigs, maxpts = maxpts, key = key,
       abseps = abseps, releps = releps, method_use = method),
       silent = silent)
-    if(inherits(res, "try-error")) NA else -res
+    if(inherits(res, "try-error")) NA_real_ else -res
   }
 
   gr <- function(theta, maxpts, key, abseps, releps, method, seed,
@@ -325,7 +332,7 @@ fit_mgsm_pedigree <- function(
       abseps = abseps, releps = releps, method_use = method),
       silent = silent)
     if(inherits(res, "try-error"))
-      return(rep(NA, length(par)))
+      return(rep(NA_real_, length(par)))
 
     d_theta(-res, theta)
   }
@@ -337,9 +344,15 @@ fit_mgsm_pedigree <- function(
   # fit the model
   maxpts <- sort(maxpts)
   fits <- vector("list", length(maxpts))
-  opt_func <- function(par, maxpts)
-    optim(par, fn, gr, method = "BFGS", control = list(maxit = 10000L),
-          maxpts = maxpts)
+  opt_func <- function(par, maxpts){
+    fn_scale <- length(data)
+    psqn_bfgs(
+      par, fn = function(x) fn(x, maxpts = maxpts),
+      gr = function(x)
+        structure(gr(x, maxpts = maxpts),
+                  value = fn(x, maxpts = maxpts)),
+      max_it = 10000L, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3)
+  }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
   for(i in seq_len(length(maxpts) - 1L))

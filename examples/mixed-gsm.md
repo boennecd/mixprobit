@@ -152,7 +152,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#>  67.344   0.016  67.394
+#> 262.887   0.056 263.093
 
 # fit the model with the CDF approach
 system.time(
@@ -161,7 +161,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>  46.446   0.003  46.451
+#> 153.231   0.044 153.488
 ```
 
 The results are shown below.
@@ -172,18 +172,18 @@ rbind(`Estimate spherical radial` = res_sr$beta_fixef,
       `Estimate CDF` = res_cdf$beta_fixef,
       Truth = c(beta[1], tail(beta, 2)))
 #>                             [,1]   [,2]   [,3]
-#> Estimate spherical radial -1.131 0.4883 0.9922
-#> Estimate CDF              -1.159 0.4880 0.9916
+#> Estimate spherical radial -1.155 0.4880 0.9913
+#> Estimate CDF              -1.158 0.4879 0.9915
 #> Truth                     -1.000 0.5000 1.0000
 
 res_sr$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
-#> [1,]  0.9808 -0.1643
-#> [2,] -0.1643  0.2845
+#> [1,]  0.9798 -0.1646
+#> [2,] -0.1646  0.2849
 res_cdf$Sigma # estimated covariance matrix
 #>         [,1]    [,2]
-#> [1,]  0.9802 -0.1646
-#> [2,] -0.1646  0.2850
+#> [1,]  0.9800 -0.1647
+#> [2,] -0.1647  0.2849
 Sigma # the true covariance matrix
 #>         [,1]    [,2]
 #> [1,]  0.9673 -0.1505
@@ -221,9 +221,9 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -12534.829
+#> [1] -12534.479
 print(res_cdf$logLik, digits = 8)
-#> [1] -12534.595
+#> [1] -12534.565
 
 # can be compared with say a Weibull model without the random effects
 survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
@@ -236,15 +236,15 @@ survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.710   0.001   9.711
+#>   10.56    0.00   10.56
 sd(func_ests)
-#> [1] 0.008224
+#> [1] 0.01185
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.744   0.000   9.744
+#>   10.31    0.00   10.31
 sd(func_ests)
-#> [1] 0.007606
+#> [1] 0.008223
 ```
 
 ## Pedigree Data
@@ -410,8 +410,8 @@ system.time(
   res_sr <- fit_mgsm_pedigree(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
-#>     user   system  elapsed 
-#> 1124.925    0.039 1125.091
+#>    user  system elapsed 
+#> 817.742   0.091 818.291
 
 # fit the model with the CDF approach
 system.time(
@@ -419,7 +419,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>  28.626   0.012  28.638
+#> 142.734   0.024 142.773
 ```
 
 The results are shown below.
@@ -430,14 +430,14 @@ rbind(`Estimate spherical radial` = res_sr$beta_fixef,
       `Estimate CDF` = res_cdf$beta_fixef,
       Truth = c(beta[1], tail(beta, 2)))
 #>                             [,1]   [,2]   [,3]
-#> Estimate spherical radial -1.208 0.5189 0.9827
-#> Estimate CDF              -1.210 0.5188 0.9860
+#> Estimate spherical radial -1.187 0.5164 0.9830
+#> Estimate CDF              -1.208 0.5180 0.9853
 #> Truth                     -1.000 0.5000 1.0000
 
 res_sr$sigs # estimated scale parameters
-#> [1] 1.5417 0.5079
+#> [1] 1.5340 0.5144
 res_cdf$sigs # estimated scale parameters
-#> [1] 1.5621 0.5127
+#> [1] 1.5489 0.5115
 sigs
 #>     Genetic Environment 
 #>         1.5         0.5
@@ -474,9 +474,9 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -11038.167
+#> [1] -11049.109
 print(res_cdf$logLik, digits = 8)
-#> [1] -11038.756
+#> [1] -11038.748
 ```
 
 ``` r
@@ -485,15 +485,15 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   76.87    0.00   76.88
+#>   80.91    0.00   80.91
 sd(func_ests)
-#> [1] 0.2297
+#> [1] 0.1563
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   8.073   0.000   8.072
+#>   8.875   0.000   8.875
 sd(func_ests)
-#> [1] 0.009564
+#> [1] 0.009752
 ```
 
 ## Simulation Study
