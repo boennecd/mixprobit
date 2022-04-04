@@ -193,21 +193,34 @@ fit_mgsm <- function(
 
   # fit the model
   maxpts <- sort(maxpts)
-  fits <- vector("list", length(maxpts))
+  fits <- vector("list", length(maxpts) + 1L)
+  fn_scale <- length(unique(id))
   opt_func <- function(par, maxpts){
-    fn_scale <- length(unique(id))
-    psqn_bfgs(
-      par, fn = function(x) fn(x, maxpts = maxpts),
+    out <- psqn_bfgs(
+      par, fn = function(x) fn(x, maxpts = maxpts) / fn_scale,
       gr = function(x)
-        structure(gr(x, maxpts = maxpts),
-                  value = fn(x, maxpts = maxpts)),
-      max_it = max_it, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3,
+        structure(gr(x, maxpts = maxpts) / fn_scale,
+                  value = fn(x, maxpts = maxpts) / fn_scale),
+      max_it = max_it, rel_eps = 1e-8, gr_tol = 1e-2,
       trace = trace)
+    out$value <- fn(out$par, maxpts = maxpts)
+    out
   }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
   for(i in seq_len(length(maxpts) - 1L))
     fits[[i + 1L]] <- opt_func(fits[[i]]$par, maxpts[i + 1L])
+
+  # end with optim
+  opt_func_optim <- function(par, maxpts){
+    optim(
+      par, fn = fn, gr = gr,
+      method = "BFGS", maxpts = maxpts,
+      control = list(maxit = 1000L, fnscale = fn_scale, trace = trace > 0))
+  }
+
+  fits[[length(fits)]] <- opt_func_optim(
+    fits[[length(fits) - 1L]]$par, max(maxpts))
 
   # format the result and return
   fit <- fits[[length(fits)]]
@@ -347,21 +360,34 @@ fit_mgsm_pedigree <- function(
 
   # fit the model
   maxpts <- sort(maxpts)
-  fits <- vector("list", length(maxpts))
+  fits <- vector("list", length(maxpts) + 1L)
+  fn_scale <- length(data)
   opt_func <- function(par, maxpts){
-    fn_scale <- length(data)
-    psqn_bfgs(
-      par, fn = function(x) fn(x, maxpts = maxpts),
+    out <- psqn_bfgs(
+      par, fn = function(x) fn(x, maxpts = maxpts) / fn_scale,
       gr = function(x)
-        structure(gr(x, maxpts = maxpts),
-                  value = fn(x, maxpts = maxpts)),
-      max_it = max_it, rel_eps = 1e-8, gr_tol = sqrt(fn_scale) * 1e-3,
+        structure(gr(x, maxpts = maxpts) / fn_scale,
+                  value = fn(x, maxpts = maxpts) / fn_scale),
+      max_it = max_it, rel_eps = 1e-8, gr_tol = 1e-2,
       trace = trace)
+    out$value <- fn(out$par, maxpts = maxpts)
+    out
   }
 
   fits[[1L]] <- opt_func(par, maxpts[1])
   for(i in seq_len(length(maxpts) - 1L))
     fits[[i + 1L]] <- opt_func(fits[[i]]$par, maxpts[i + 1L])
+
+  # end with optim
+  opt_func_optim <- function(par, maxpts){
+    optim(
+      par, fn = fn, gr = gr,
+      method = "BFGS", maxpts = maxpts,
+      control = list(maxit = 1000L, fnscale = fn_scale, trace = trace > 0))
+  }
+
+  fits[[length(fits)]] <- opt_func_optim(
+    fits[[length(fits) - 1L]]$par, max(maxpts))
 
   # format the result and return
   fit <- fits[[length(fits)]]
