@@ -51,11 +51,7 @@ accelerated failure time model.
 
 The marginal distribution is
 
-![
-\\vec x\_{ij}(t)^\\top\\vec\\beta = \\epsilon\_{ij}
-](https://latex.codecogs.com/svg.latex?%0A%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20%3D%20%5Cepsilon_%7Bij%7D%0A "
-\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij}
-")
+![\\vec x\_{ij}(t)^\\top\\vec\\beta = \\epsilon\_{ij}](https://latex.codecogs.com/svg.latex?%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20%3D%20%5Cepsilon_%7Bij%7D "\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij}")
 
 with
 ![\\epsilon\_{ij}](https://latex.codecogs.com/svg.latex?%5Cepsilon_%7Bij%7D "\epsilon_{ij}")
@@ -200,7 +196,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 371.830   0.011 371.877
+#> 146.240   0.008 146.267
 
 # fit the model with the CDF approach
 system.time(
@@ -209,7 +205,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "cdf_approach"))
 #>    user  system elapsed 
-#> 116.084   0.008 116.099
+#>  65.451   0.012  65.465
 ```
 
 The results are shown below.
@@ -290,13 +286,13 @@ survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   20.69    0.00   20.69
+#>   9.603   0.000   9.604
 sd(func_ests)
 #> [1] 0.01358
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   15.84    0.00   15.84
+#>   9.683   0.000   9.684
 sd(func_ests)
 #> [1] 0.008076
 ```
@@ -502,7 +498,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 971.364   0.004 971.418
+#>   366.0     0.0   366.1
 
 # fit the model with the CDF approach
 system.time(
@@ -510,7 +506,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>    66.1     0.0    66.1
+#>   37.35    0.00   37.35
 ```
 
 The results are shown below.
@@ -582,13 +578,13 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   186.2     0.0   186.2
+#>   76.32    0.00   76.32
 sd(func_ests)
 #> [1] 0.1949
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>    13.5     0.0    13.5
+#>   8.251   0.000   8.250
 sd(func_ests)
 #> [1] 0.01048
 ```

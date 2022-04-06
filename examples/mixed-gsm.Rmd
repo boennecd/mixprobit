@@ -54,9 +54,7 @@ accelerated failure time model.
 
 The marginal distribution is 
 
-$$
-\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij}
-$$
+$$\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij}$$
 
 with $\epsilon_{ij}$ being normally distributed with mean zero and variance
 $1 + \vec z_{ij}^\top\Sigma\vec z_{ij}$. Thus, the marginal CDF is
