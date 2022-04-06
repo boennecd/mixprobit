@@ -22,17 +22,17 @@ hazard of the model is
 ![
 h(t\\mid  \\vec x\_{ij}, \\vec z\_{ij}, \\vec u_i) = 
   \\vec x\_{ij}'(t)^\\top\\vec\\beta
-  \\frac{\\phi(-\\vec x\_{ij}(t)^\\top\\vec\\beta - \\vec z\_{ij}^\\top\\vec u_i)}
+  \\frac{\\phi(\\vec x\_{ij}(t)^\\top\\vec\\beta + \\vec z\_{ij}^\\top\\vec u_i)}
        {\\Phi(-\\vec x\_{ij}(t)^\\top\\vec\\beta - \\vec z\_{ij}^\\top\\vec u_i)}
-](https://latex.codecogs.com/svg.latex?%0Ah%28t%5Cmid%20%20%5Cvec%20x_%7Bij%7D%2C%20%5Cvec%20z_%7Bij%7D%2C%20%5Cvec%20u_i%29%20%3D%20%0A%20%20%5Cvec%20x_%7Bij%7D%27%28t%29%5E%5Ctop%5Cvec%5Cbeta%0A%20%20%5Cfrac%7B%5Cphi%28-%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20-%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5Cvec%20u_i%29%7D%0A%20%20%20%20%20%20%20%7B%5CPhi%28-%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20-%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5Cvec%20u_i%29%7D%0A "
+](https://latex.codecogs.com/svg.latex?%0Ah%28t%5Cmid%20%20%5Cvec%20x_%7Bij%7D%2C%20%5Cvec%20z_%7Bij%7D%2C%20%5Cvec%20u_i%29%20%3D%20%0A%20%20%5Cvec%20x_%7Bij%7D%27%28t%29%5E%5Ctop%5Cvec%5Cbeta%0A%20%20%5Cfrac%7B%5Cphi%28%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20%2B%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5Cvec%20u_i%29%7D%0A%20%20%20%20%20%20%20%7B%5CPhi%28-%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20-%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5Cvec%20u_i%29%7D%0A "
 h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) = 
   \vec x_{ij}'(t)^\top\vec\beta
-  \frac{\phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
+  \frac{\phi(\vec x_{ij}(t)^\top\vec\beta + \vec z_{ij}^\top\vec u_i)}
        {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
 ")
 
-The model can also be viewed as the survival time being distributed such
-that
+where the derivative is with respect to time. The model can also be
+viewed as the survival time being conditionally distributed such that
 
 ![
 \\vec x\_{ij}(t)^\\top\\vec\\beta = -\\vec z\_{ij}^\\top\\vec u_i + \\epsilon\_{ij}
@@ -46,8 +46,56 @@ is standard normally distributed. A special case is
 ![\\vec x\_{ij}(t) = (\\log(t), \\vec a\_{ij}^\\top)^\\top](https://latex.codecogs.com/svg.latex?%5Cvec%20x_%7Bij%7D%28t%29%20%3D%20%28%5Clog%28t%29%2C%20%5Cvec%20a_%7Bij%7D%5E%5Ctop%29%5E%5Ctop "\vec x_{ij}(t) = (\log(t), \vec a_{ij}^\top)^\top")
 for some covariates
 ![\\vec a\_{ij}](https://latex.codecogs.com/svg.latex?%5Cvec%20a_%7Bij%7D "\vec a_{ij}").
-Thus is a log-normal distribution and a particular of an accelerated
-failure time.
+This is a log-normal distribution and a particular  
+accelerated failure time model.
+
+The marginal distribution is
+
+![
+\\vec x\_{ij}(t)^\\top\\vec\\beta = \\epsilon\_{ij}
+](https://latex.codecogs.com/svg.latex?%0A%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%20%3D%20%5Cepsilon_%7Bij%7D%0A "
+\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij}
+")
+
+with
+![\\epsilon\_{ij}](https://latex.codecogs.com/svg.latex?%5Cepsilon_%7Bij%7D "\epsilon_{ij}")
+being normally distributed with mean zero and variance
+![1 + \\vec z\_{ij}^\\top\\Sigma\\vec z\_{ij}](https://latex.codecogs.com/svg.latex?1%20%2B%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5CSigma%5Cvec%20z_%7Bij%7D "1 + \vec z_{ij}^\top\Sigma\vec z_{ij}").
+Thus, the marginal CDF is
+
+![
+F(t\\mid \\vec x\_{ij}, \\vec z\_{ij}) = 
+  \\Phi\\left(\\frac{\\vec x\_{ij}(t)^\\top\\vec\\beta}{\\sqrt{1 + \\vec z\_{ij}^\\top\\Sigma\\vec z\_{ij}}}\\right) 
+](https://latex.codecogs.com/svg.latex?%0AF%28t%5Cmid%20%5Cvec%20x_%7Bij%7D%2C%20%5Cvec%20z_%7Bij%7D%29%20%3D%20%0A%20%20%5CPhi%5Cleft%28%5Cfrac%7B%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%7D%7B%5Csqrt%7B1%20%2B%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5CSigma%5Cvec%20z_%7Bij%7D%7D%7D%5Cright%29%20%0A "
+F(t\mid \vec x_{ij}, \vec z_{ij}) = 
+  \Phi\left(\frac{\vec x_{ij}(t)^\top\vec\beta}{\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}\right) 
+")
+
+and the marginal hazard is
+
+![
+\\lambda(t \\mid \\vec x\_{ij}, \\vec z\_{ij}) = 
+  \\frac{\\vec x\_{ij}'(t)^\\top\\vec\\beta}
+       {\\sqrt{1 + \\vec z\_{ij}^\\top\\Sigma\\vec z\_{ij}}}
+  \\frac
+    {\\phi\\left(\\frac
+      {\\vec x\_{ij}(t)^\\top\\vec\\beta}
+      {\\sqrt{1 + \\vec z\_{ij}^\\top\\Sigma\\vec z\_{ij}}}\\right)}
+    {\\Phi\\left(\\frac
+      {-\\vec x\_{ij}(t)^\\top\\vec\\beta}
+      {\\sqrt{1 + \\vec z\_{ij}^\\top\\Sigma\\vec z\_{ij}}}\\right)}
+](https://latex.codecogs.com/svg.latex?%0A%5Clambda%28t%20%5Cmid%20%5Cvec%20x_%7Bij%7D%2C%20%5Cvec%20z_%7Bij%7D%29%20%3D%20%0A%20%20%5Cfrac%7B%5Cvec%20x_%7Bij%7D%27%28t%29%5E%5Ctop%5Cvec%5Cbeta%7D%0A%20%20%20%20%20%20%20%7B%5Csqrt%7B1%20%2B%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5CSigma%5Cvec%20z_%7Bij%7D%7D%7D%0A%20%20%5Cfrac%0A%20%20%20%20%7B%5Cphi%5Cleft%28%5Cfrac%0A%20%20%20%20%20%20%7B%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%7D%0A%20%20%20%20%20%20%7B%5Csqrt%7B1%20%2B%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5CSigma%5Cvec%20z_%7Bij%7D%7D%7D%5Cright%29%7D%0A%20%20%20%20%7B%5CPhi%5Cleft%28%5Cfrac%0A%20%20%20%20%20%20%7B-%5Cvec%20x_%7Bij%7D%28t%29%5E%5Ctop%5Cvec%5Cbeta%7D%0A%20%20%20%20%20%20%7B%5Csqrt%7B1%20%2B%20%5Cvec%20z_%7Bij%7D%5E%5Ctop%5CSigma%5Cvec%20z_%7Bij%7D%7D%7D%5Cright%29%7D%0A "
+\lambda(t \mid \vec x_{ij}, \vec z_{ij}) = 
+  \frac{\vec x_{ij}'(t)^\top\vec\beta}
+       {\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}
+  \frac
+    {\phi\left(\frac
+      {\vec x_{ij}(t)^\top\vec\beta}
+      {\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}\right)}
+    {\Phi\left(\frac
+      {-\vec x_{ij}(t)^\top\vec\beta}
+      {\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}\right)}
+")
 
 The code to do the stimulation and to assign the model parameters is
 given below.
@@ -152,7 +200,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 142.710   0.003 142.716
+#> 371.830   0.011 371.877
 
 # fit the model with the CDF approach
 system.time(
@@ -161,7 +209,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   63.63    0.00   63.63
+#> 116.084   0.008 116.099
 ```
 
 The results are shown below.
@@ -189,6 +237,12 @@ Sigma # the true covariance matrix
 #> [1,]  0.9673 -0.1505
 #> [2,] -0.1505  0.2787
 
+# L2 norm of the gradient at the MLE
+sqrt(sum(res_cdf$gr_mle^2))
+#> [1] 1.142
+sqrt(sum(res_sr$gr_mle^2))
+#> [1] 1.572
+
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
 vs <- seq(1e-2, admin_cens, length.out = 1000)
@@ -197,7 +251,7 @@ cmp_haz <- \(x, xp, beta_use, offset = 0)
   sapply(vs, \(v){
     eta <- x(v) %*% beta_use + offset
     eta_p <- xp(v) %*% beta_use
-    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+    eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
   })
   
 Xt_spline <- res_cdf$spline$basis
@@ -236,13 +290,13 @@ survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.739   0.000   9.739
+#>   20.69    0.00   20.69
 sd(func_ests)
 #> [1] 0.01358
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.782   0.000   9.783
+#>   15.84    0.00   15.84
 sd(func_ests)
 #> [1] 0.008076
 ```
@@ -301,6 +355,14 @@ beta <- c(-1, .7, .1, .5, 1)
 
 admin_cens <- 5 # the administrative censoring time
 
+# the scale parameters
+sigs <- c(Genetic = 1.5, Environment = 0.5)
+
+# the proportion of variance
+c(sigs, Individual = 1) / c(sum(sigs) + 1)
+#>     Genetic Environment  Individual 
+#>      0.5000      0.1667      0.3333
+
 # plot of the hazard when the other fixed effects are zero
 par(mar = c(5, 5, 1, 1))
 seq(1e-2, admin_cens, length.out = 1000) |>
@@ -310,7 +372,7 @@ seq(1e-2, admin_cens, length.out = 1000) |>
           beta_use <- head(beta, -2)
           eta <- x(vs) %*% beta_use
           eta_p <- xp(vs) %*% beta_use
-          eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+          eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
         }, 
         xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
         xaxs = "i", yaxs = "i", type = "l")
@@ -321,14 +383,26 @@ grid()
 ![](fig-mgsm/pedigree_assing_sim_dat-1.png)
 
 ``` r
-# the scale parameters
-sigs <- c(Genetic = 1.5, Environment = 0.5)
+# plot the marginal hazard
+seq(1e-2, admin_cens, length.out = 1000) |>
+  (\(vs)
+   plot(vs, 
+        {
+          norm_const <- sqrt(sum(sigs) + 1)
+          beta_use <- head(beta, -2) / norm_const
+          eta <- x(vs) %*% beta_use
+          eta_p <- xp(vs) %*% beta_use
+          eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
+        }, 
+        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+        xaxs = "i", yaxs = "i", type = "l")
+  )()
+grid()
+```
 
-# the proportion of variance
-c(sigs, Individual = 1) / c(sum(sigs) + 1)
-#>     Genetic Environment  Individual 
-#>      0.5000      0.1667      0.3333
+![](fig-mgsm/pedigree_assing_sim_dat-2.png)
 
+``` r
 # simulates a given number of clusters
 sim_dat <- \(n_clusters)
   lapply(seq_len(n_clusters), \(id) {
@@ -384,6 +458,23 @@ A data set is sampled below and a few summary statistics are shown.
 set.seed(26218609)
 dat <- sim_dat(2000L)
 
+# compute the marginal hazard as an example. It should not match the previous 
+# plot because of the covariate depends 
+library(muhaz)
+par(mar = c(5, 5, 1, 1))
+local({
+  events <- sapply(dat, `[[`, "event") |> unlist()
+  times <- sapply(dat, `[[`, "y") |> unlist()
+  marg_haz <- muhaz(times, events, max.time = max(times[events > 0]), 
+                    bw.grid = .25)
+  plot(marg_haz)
+  grid()
+})
+```
+
+![](fig-mgsm/pedigree_sim-1.png)
+
+``` r
 # fraction of observed events
 sapply(dat, `[[`, "event") |> unlist() |> mean()
 #> [1] 0.6008
@@ -411,7 +502,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 355.780   0.008 355.821
+#> 971.364   0.004 971.418
 
 # fit the model with the CDF approach
 system.time(
@@ -419,7 +510,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   34.17    0.00   34.17
+#>    66.1     0.0    66.1
 ```
 
 The results are shown below.
@@ -441,6 +532,12 @@ res_cdf$sigs # estimated scale parameters
 sigs
 #>     Genetic Environment 
 #>         1.5         0.5
+
+# L2 norm of the gradient at the MLE
+sqrt(sum(res_cdf$gr_mle^2))
+#> [1] 1.46
+sqrt(sum(res_sr$gr_mle^2))
+#> [1] 6.485
 
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
@@ -485,13 +582,13 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   74.05    0.00   74.05
+#>   186.2     0.0   186.2
 sd(func_ests)
 #> [1] 0.1949
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   7.982   0.000   7.983
+#>    13.5     0.0    13.5
 sd(func_ests)
 #> [1] 0.01048
 ```

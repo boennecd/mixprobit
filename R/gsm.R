@@ -238,7 +238,7 @@ fit_mgsm <- function(
 
   list(beta_fixef = beta_fixef, beta_spline = beta_spline, Sigma = Sigma,
        fn = fn, gr = gr, logLik = -fit$value, get_beta = get_beta,
-       optim = fit, fits = fits, spline = spline)
+       optim = fit, fits = fits, spline = spline, gr_mle = gr(fit$par))
 }
 
 #' @inheritParams fit_mgsm
@@ -400,5 +400,5 @@ fit_mgsm_pedigree <- function(
 
   list(beta_fixef = beta_fixef, beta_spline = beta_spline, sigs = sigs,
        fn = fn, gr = gr, logLik = -fit$value, get_beta = get_beta,
-       optim = fit, fits = fits, spline = spline)
+       optim = fit, fits = fits, spline = spline, gr_mle = gr(fit$par))
 }

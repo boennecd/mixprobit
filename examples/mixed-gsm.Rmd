@@ -35,11 +35,13 @@ The conditional hazard of the model is
 $$
 h(t\mid  \vec x_{ij}, \vec z_{ij}, \vec u_i) = 
   \vec x_{ij}'(t)^\top\vec\beta
-  \frac{\phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
+  \frac{\phi(\vec x_{ij}(t)^\top\vec\beta + \vec z_{ij}^\top\vec u_i)}
        {\Phi(-\vec x_{ij}(t)^\top\vec\beta - \vec z_{ij}^\top\vec u_i)}
 $$
 
-The model can also be viewed as the survival time being distributed such that
+where the derivative is with respect to time.
+The model can also be viewed as the survival time being conditionally 
+distributed such that
 
 $$
 \vec x_{ij}(t)^\top\vec\beta = -\vec z_{ij}^\top\vec u_i + \epsilon_{ij}
@@ -47,8 +49,37 @@ $$
 
 where $\epsilon_{ij}$ is standard normally distributed. A special case is 
 $\vec x_{ij}(t) = (\log(t), \vec a_{ij}^\top)^\top$ for some covariates 
-$\vec a_{ij}$. Thus is a  log-normal distribution and a particular of an 
-accelerated failure time.
+$\vec a_{ij}$. This is a log-normal distribution and a particular  
+accelerated failure time model.
+
+The marginal distribution is 
+
+$$
+\vec x_{ij}(t)^\top\vec\beta = \epsilon_{ij}
+$$
+
+with $\epsilon_{ij}$ being normally distributed with mean zero and variance
+$1 + \vec z_{ij}^\top\Sigma\vec z_{ij}$. Thus, the marginal CDF is
+
+$$
+F(t\mid \vec x_{ij}, \vec z_{ij}) = 
+  \Phi\left(\frac{\vec x_{ij}(t)^\top\vec\beta}{\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}\right) 
+$$
+
+and the marginal hazard is 
+
+$$
+\lambda(t \mid \vec x_{ij}, \vec z_{ij}) = 
+  \frac{\vec x_{ij}'(t)^\top\vec\beta}
+       {\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}
+  \frac
+    {\phi\left(\frac
+      {\vec x_{ij}(t)^\top\vec\beta}
+      {\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}\right)}
+    {\Phi\left(\frac
+      {-\vec x_{ij}(t)^\top\vec\beta}
+      {\sqrt{1 + \vec z_{ij}^\top\Sigma\vec z_{ij}}}\right)}
+$$
 
 The code to do the stimulation and to assign the model parameters is given 
 below.
@@ -163,6 +194,10 @@ res_sr$Sigma # estimated covariance matrix
 res_cdf$Sigma # estimated covariance matrix
 Sigma # the true covariance matrix
 
+# L2 norm of the gradient at the MLE
+sqrt(sum(res_cdf$gr_mle^2))
+sqrt(sum(res_sr$gr_mle^2))
+
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
 vs <- seq(1e-2, admin_cens, length.out = 1000)
@@ -171,7 +206,7 @@ cmp_haz <- \(x, xp, beta_use, offset = 0)
   sapply(vs, \(v){
     eta <- x(v) %*% beta_use + offset
     eta_p <- xp(v) %*% beta_use
-    eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+    eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
   })
   
 Xt_spline <- res_cdf$spline$basis
@@ -255,6 +290,12 @@ beta <- c(-1, .7, .1, .5, 1)
 
 admin_cens <- 5 # the administrative censoring time
 
+# the scale parameters
+sigs <- c(Genetic = 1.5, Environment = 0.5)
+
+# the proportion of variance
+c(sigs, Individual = 1) / c(sum(sigs) + 1)
+
 # plot of the hazard when the other fixed effects are zero
 par(mar = c(5, 5, 1, 1))
 seq(1e-2, admin_cens, length.out = 1000) |>
@@ -264,18 +305,28 @@ seq(1e-2, admin_cens, length.out = 1000) |>
           beta_use <- head(beta, -2)
           eta <- x(vs) %*% beta_use
           eta_p <- xp(vs) %*% beta_use
-          eta_p * exp(dnorm(-eta, log = TRUE) - pnorm(-eta, log = TRUE))
+          eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
         }, 
         xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
         xaxs = "i", yaxs = "i", type = "l")
   )()
 grid()
 
-# the scale parameters
-sigs <- c(Genetic = 1.5, Environment = 0.5)
-
-# the proportion of variance
-c(sigs, Individual = 1) / c(sum(sigs) + 1)
+# plot the marginal hazard
+seq(1e-2, admin_cens, length.out = 1000) |>
+  (\(vs)
+   plot(vs, 
+        {
+          norm_const <- sqrt(sum(sigs) + 1)
+          beta_use <- head(beta, -2) / norm_const
+          eta <- x(vs) %*% beta_use
+          eta_p <- xp(vs) %*% beta_use
+          eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
+        }, 
+        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+        xaxs = "i", yaxs = "i", type = "l")
+  )()
+grid()
 
 # simulates a given number of clusters
 sim_dat <- \(n_clusters)
@@ -332,6 +383,19 @@ A data set is sampled below and a few summary statistics are shown.
 set.seed(26218609)
 dat <- sim_dat(2000L)
 
+# compute the marginal hazard as an example. It should not match the previous 
+# plot because of the covariate depends 
+library(muhaz)
+par(mar = c(5, 5, 1, 1))
+local({
+  events <- sapply(dat, `[[`, "event") |> unlist()
+  times <- sapply(dat, `[[`, "y") |> unlist()
+  marg_haz <- muhaz(times, events, max.time = max(times[events > 0]), 
+                    bw.grid = .25)
+  plot(marg_haz)
+  grid()
+})
+
 # fraction of observed events
 sapply(dat, `[[`, "event") |> unlist() |> mean()
 
@@ -371,6 +435,10 @@ rbind(`Estimate spherical radial` = res_sr$beta_fixef,
 res_sr$sigs # estimated scale parameters
 res_cdf$sigs # estimated scale parameters
 sigs
+
+# L2 norm of the gradient at the MLE
+sqrt(sum(res_cdf$gr_mle^2))
+sqrt(sum(res_sr$gr_mle^2))
 
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
