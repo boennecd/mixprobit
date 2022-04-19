@@ -196,7 +196,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 146.240   0.008 146.267
+#> 146.602   0.016 146.646
 
 # fit the model with the CDF approach
 system.time(
@@ -205,7 +205,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>  65.451   0.012  65.465
+#>  65.913   0.016  65.931
 ```
 
 The results are shown below.
@@ -286,13 +286,13 @@ survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.603   0.000   9.604
+#>   9.568   0.000   9.569
 sd(func_ests)
 #> [1] 0.01358
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.683   0.000   9.684
+#>   9.933   0.000   9.937
 sd(func_ests)
 #> [1] 0.008076
 ```
@@ -359,44 +359,58 @@ c(sigs, Individual = 1) / c(sum(sigs) + 1)
 #>     Genetic Environment  Individual 
 #>      0.5000      0.1667      0.3333
 
-# plot of the hazard when the other fixed effects are zero
+# plot of the hazard and survival function when the other fixed effects are zero
 par(mar = c(5, 5, 1, 1))
 seq(1e-2, admin_cens, length.out = 1000) |>
-  (\(vs)
-   plot(vs, 
+  (\(vs){
+    beta_use <- head(beta, -2)
+    eta <- x(vs) %*% beta_use
+    
+    plot(vs, 
         {
-          beta_use <- head(beta, -2)
-          eta <- x(vs) %*% beta_use
           eta_p <- xp(vs) %*% beta_use
           eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
         }, 
         xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
         xaxs = "i", yaxs = "i", type = "l")
-  )()
-grid()
+    grid()
+    
+    plot(vs, pnorm(-eta), 
+        xlim = c(1e-2, admin_cens), xlab = "Time", 
+        ylab = "Survival probability", bty = "l", xaxs = "i", yaxs = "i", 
+        type = "l", ylim = c(0, 1))
+    grid()
+  })()
 ```
 
-![](fig-mgsm/pedigree_assing_sim_dat-1.png)
+![](fig-mgsm/pedigree_assing_sim_dat-1.png)![](fig-mgsm/pedigree_assing_sim_dat-2.png)
 
 ``` r
-# plot the marginal hazard
+
+# plot the marginal hazard and survival function
 seq(1e-2, admin_cens, length.out = 1000) |>
-  (\(vs)
-   plot(vs, 
-        {
-          norm_const <- sqrt(sum(sigs) + 1)
-          beta_use <- head(beta, -2) / norm_const
-          eta <- x(vs) %*% beta_use
-          eta_p <- xp(vs) %*% beta_use
-          eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
-        }, 
-        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
-        xaxs = "i", yaxs = "i", type = "l")
-  )()
-grid()
+  (\(vs){
+    marg_sd <- sqrt(sum(sigs) + 1)
+    beta_use <- head(beta, -2) / marg_sd
+    eta <- x(vs) %*% beta_use
+    plot(vs, 
+         {
+           eta_p <- xp(vs) %*% beta_use
+           eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
+         }, 
+         xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+         xaxs = "i", yaxs = "i", type = "l")
+    grid()
+    
+    plot(vs, pnorm(-eta), 
+        xlim = c(1e-2, admin_cens), xlab = "Time", 
+        ylab = "Survival probability", bty = "l", xaxs = "i", yaxs = "i", 
+        type = "l", ylim = c(0, 1))
+    grid()
+  })()
 ```
 
-![](fig-mgsm/pedigree_assing_sim_dat-2.png)
+![](fig-mgsm/pedigree_assing_sim_dat-3.png)![](fig-mgsm/pedigree_assing_sim_dat-4.png)
 
 ``` r
 # simulates a given number of clusters
@@ -420,7 +434,7 @@ sim_dat <- \(n_clusters)
     
     # get the covariance matrix and sample the random effects and the 
     # covariates
-    sigma <- diag(n_members) + sigs[1] * genentic_mat + sigs[2] * env_mat
+    sigma <- sigs[1] * genentic_mat + sigs[2] * env_mat
     U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
     X <- cbind(continous = rnorm(n_members), sex = sex == 1)
     
@@ -457,23 +471,69 @@ dat <- sim_dat(2000L)
 # compute the marginal hazard as an example. It should not match the previous 
 # plot because of the covariate depends 
 library(muhaz)
+library(bshazard)
 par(mar = c(5, 5, 1, 1))
 local({
   events <- sapply(dat, `[[`, "event") |> unlist()
   times <- sapply(dat, `[[`, "y") |> unlist()
-  marg_haz <- muhaz(times, events, max.time = max(times[events > 0]), 
-                    bw.grid = .25)
-  plot(marg_haz)
+  muhaz(times, events, max.time = max(times[events > 0]), bw.grid = .25) |> 
+    plot(bty = "l")
+  grid()
+  
+  bshazard(Surv(times, events) ~1, degree = 3, verbose = FALSE, nbin = 40) |> 
+    plot(bty = "l")
+  grid()
+  
+  survfit(Surv(times, events) ~ 1) |> 
+    plot(ylab = "Survival probability", xlab = "time", bty = "l", 
+        xaxs = "i", yaxs = "i")
   grid()
 })
 ```
 
 ![](fig-mgsm/pedigree_sim-1.png)
 
+    #> NOTE: entry.status has been set to 0 for all.
+
+![](fig-mgsm/pedigree_sim-2.png)![](fig-mgsm/pedigree_sim-3.png)
+
+``` r
+# we can work on a more comparable subset with the covariates which are roughly
+# zero
+local({
+  events <- sapply(dat, `[[`, "event") |> unlist()
+  times <- sapply(dat, `[[`, "y") |> unlist()
+  
+  keep <- abs(unlist(sapply(dat, function(x) x$X[, "continous"]))) < .05 &
+        unlist(sapply(dat, function(x) x$X[, "sex"])) == 0
+  events <- events[keep]
+  times <- times[keep]
+  
+  muhaz(times, events, max.time = max(times[events > 0]), bw.grid = .25) |> 
+    plot(bty = "l")
+  grid()
+  
+  bshazard(Surv(times, events) ~1, degree = 3, verbose = FALSE, nbin = 40) |> 
+    plot(bty = "l")
+  grid()
+  
+  survfit(Surv(times, events) ~ 1) |> 
+    plot(ylab = "Survival probability", xlab = "time", bty = "l", 
+        xaxs = "i", yaxs = "i")
+  grid()
+})
+```
+
+![](fig-mgsm/pedigree_sim-4.png)
+
+    #> NOTE: entry.status has been set to 0 for all.
+
+![](fig-mgsm/pedigree_sim-5.png)![](fig-mgsm/pedigree_sim-6.png)
+
 ``` r
 # fraction of observed events
 sapply(dat, `[[`, "event") |> unlist() |> mean()
-#> [1] 0.6008
+#> [1] 0.6118
 
 # the number of observations
 sapply(dat, `[[`, "event") |> unlist() |> length()
@@ -483,9 +543,9 @@ sapply(dat, `[[`, "event") |> unlist() |> length()
 lapply(dat, \(x) x$y[x$event]) |> unlist() |>
   quantile(probs = seq(0, 1, length.out = 11))
 #>        0%       10%       20%       30%       40%       50%       60%       70% 
-#> 0.0004151 0.0976126 0.1480287 0.2199829 0.3237706 0.5365080 0.9711412 1.7312081 
+#> 0.0004151 0.1101311 0.1686566 0.2434024 0.3587865 0.5932633 0.9665985 1.6823319 
 #>       80%       90%      100% 
-#> 2.7580866 4.4679331 5.0000000
+#> 2.5914045 4.1202138 5.0000000
 ```
 
 The model is fitted below.
@@ -498,7 +558,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#>   366.0     0.0   366.1
+#> 339.293   0.004 339.331
 
 # fit the model with the CDF approach
 system.time(
@@ -506,7 +566,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   37.35    0.00   37.35
+#>   81.84    0.00   81.85
 ```
 
 The results are shown below.
@@ -517,23 +577,23 @@ rbind(`Estimate spherical radial` = res_sr$beta_fixef,
       `Estimate CDF` = res_cdf$beta_fixef,
       Truth = c(beta[1], tail(beta, 2)))
 #>                             [,1]   [,2]   [,3]
-#> Estimate spherical radial -1.191 0.5173 0.9860
-#> Estimate CDF              -1.209 0.5187 0.9861
+#> Estimate spherical radial -1.101 0.5138 0.9833
+#> Estimate CDF              -1.130 0.5179 0.9917
 #> Truth                     -1.000 0.5000 1.0000
 
 res_sr$sigs # estimated scale parameters
-#> [1] 1.5323 0.5175
+#> [1] 1.5234 0.5049
 res_cdf$sigs # estimated scale parameters
-#> [1] 1.5605 0.5126
+#> [1] 1.5610 0.5196
 sigs
 #>     Genetic Environment 
 #>         1.5         0.5
 
 # L2 norm of the gradient at the MLE
 sqrt(sum(res_cdf$gr_mle^2))
-#> [1] 1.46
+#> [1] 1.743
 sqrt(sum(res_sr$gr_mle^2))
-#> [1] 6.485
+#> [1] 2.851
 
 # plot of the estimated hazard and the true hazard when the other fixed effects
 # are zero
@@ -567,9 +627,9 @@ grid()
 ``` r
 # the maximum likelihood
 print(res_sr$logLik, digits = 8)
-#> [1] -11049.134
+#> [1] -11201.661
 print(res_cdf$logLik, digits = 8)
-#> [1] -11038.756
+#> [1] -11190.743
 ```
 
 ``` r
@@ -578,15 +638,15 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   76.32    0.00   76.32
+#>   63.38    0.00   63.38
 sd(func_ests)
-#> [1] 0.1949
+#> [1] 0.06087
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   8.251   0.000   8.250
+#>   8.633   0.000   8.633
 sd(func_ests)
-#> [1] 0.01048
+#> [1] 0.009246
 ```
 
 ## Simulation Study
@@ -616,7 +676,7 @@ sim_dat <- \(n_clusters)
     
     # get the covariance matrix and sample the random effects and the 
     # covariates
-    sigma <- diag(n_members) + sigs[1] * genentic_mat
+    sigma <- sigs[1] * genentic_mat
     U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
     X <- cbind(continous = rnorm(n_members), sex = sex == 1)
     
@@ -643,6 +703,7 @@ sim_dat <- \(n_clusters)
   
 # the seeds we will use
 seeds <- c(8401826L, 19570958L, 87207905L, 39109909L, 99443018L, 2376809L, 47711086L, 31776421L, 25001561L, 52480852L, 60995910L, 21615146L, 94750831L, 93554588L, 34801146L, 36420473L, 22444614L, 75001896L, 24531192L, 80062842L, 2550195L, 53048710L, 85436064L, 34437762L, 69997970L, 1398478L, 91388403L, 73915718L, 64407295L, 99315526L, 55230929L, 65254925L, 78593369L, 5490535L, 68973709L, 16502678L, 48015260L, 40584496L, 40234129L, 21559783L, 55991123L, 56211248L, 40530496L, 64880106L, 73843004L, 70419165L, 86063754L, 8426283L, 62523674L, 76475834L, 18648984L, 32812748L, 33439015L, 35109557L, 64695510L, 89300314L, 67141661L, 54871836L, 86274621L, 29495382L, 98744647L, 70279529L, 87794930L, 95918838L, 16179951L, 14344327L, 7258644L, 24703384L, 70432309L, 59709907L, 90392706L, 6833276L, 81342050L, 79794195L, 17842594L, 27444067L, 44945811L, 68154408L, 39539322L, 43510922L, 47071732L, 65301241L, 43997413L, 27680735L, 27550685L, 9154686L, 65359476L, 68151567L, 75590209L, 32994761L, 23446289L, 42236969L, 64634732L, 19941161L, 27046869L, 37687425L, 20225748L, 57217006L, 65626553L, 56052853L)
+seeds <- head(seeds, 25)
 
 # get the simulation results
 sim_res <- lapply(seeds, \(seed){
@@ -711,21 +772,21 @@ error <- ests - c(tail(beta, 2), sigs)
 
 apply(error, 1:2, mean) # the bias estimates
 #>               CDF Adaptive Spherical Radial
-#> fixef_1 -0.003652                 -0.003842
-#> fixef_2 -0.004346                 -0.004701
-#> Genetic -0.017812                 -0.020075
+#> fixef_1  0.005519                  0.005258
+#> fixef_2 -0.006060                 -0.006465
+#> Genetic  0.033994                  0.029445
 apply(error, 1:2, sd) / sqrt(dim(error)[3]) # the standard errors
 #>              CDF Adaptive Spherical Radial
-#> fixef_1 0.004359                  0.004351
-#> fixef_2 0.008038                  0.008030
-#> Genetic 0.026833                  0.026980
+#> fixef_1 0.007355                   0.00728
+#> fixef_2 0.013307                   0.01325
+#> Genetic 0.046751                   0.04504
 
 # compute the root mean square error
 apply(error, 1:2, \(x) sqrt(mean(x^2)))
 #>             CDF Adaptive Spherical Radial
-#> fixef_1 0.04353                   0.04347
-#> fixef_2 0.08009                   0.08003
-#> Genetic 0.26758                   0.26920
+#> fixef_1 0.03645                   0.03605
+#> fixef_2 0.06547                   0.06523
+#> Genetic 0.23154                   0.22259
 
 # box plot of the errors
 error <- aperm(error, c(3, 2, 1))
@@ -748,8 +809,8 @@ abline(h = 0, lty = 2)
 comp_time <- sapply(sim_res, \(x) sapply(x, `[[`, "time")["elapsed", ])
 rowMeans(comp_time)
 #>                       CDF Adaptive Spherical Radial 
-#>                     11.07                    120.73
+#>                     11.69                    108.65
 apply(comp_time, 1, sd)
 #>                       CDF Adaptive Spherical Radial 
-#>                     2.077                    53.818
+#>                     1.985                    52.605
 ```

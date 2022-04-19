@@ -294,37 +294,51 @@ sigs <- c(Genetic = 1.5, Environment = 0.5)
 # the proportion of variance
 c(sigs, Individual = 1) / c(sum(sigs) + 1)
 
-# plot of the hazard when the other fixed effects are zero
+# plot of the hazard and survival function when the other fixed effects are zero
 par(mar = c(5, 5, 1, 1))
 seq(1e-2, admin_cens, length.out = 1000) |>
-  (\(vs)
-   plot(vs, 
+  (\(vs){
+    beta_use <- head(beta, -2)
+    eta <- x(vs) %*% beta_use
+    
+    plot(vs, 
         {
-          beta_use <- head(beta, -2)
-          eta <- x(vs) %*% beta_use
           eta_p <- xp(vs) %*% beta_use
           eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
         }, 
         xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
         xaxs = "i", yaxs = "i", type = "l")
-  )()
-grid()
+    grid()
+    
+    plot(vs, pnorm(-eta), 
+        xlim = c(1e-2, admin_cens), xlab = "Time", 
+        ylab = "Survival probability", bty = "l", xaxs = "i", yaxs = "i", 
+        type = "l", ylim = c(0, 1))
+    grid()
+  })()
 
-# plot the marginal hazard
+
+# plot the marginal hazard and survival function
 seq(1e-2, admin_cens, length.out = 1000) |>
-  (\(vs)
-   plot(vs, 
-        {
-          norm_const <- sqrt(sum(sigs) + 1)
-          beta_use <- head(beta, -2) / norm_const
-          eta <- x(vs) %*% beta_use
-          eta_p <- xp(vs) %*% beta_use
-          eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
-        }, 
-        xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
-        xaxs = "i", yaxs = "i", type = "l")
-  )()
-grid()
+  (\(vs){
+    marg_sd <- sqrt(sum(sigs) + 1)
+    beta_use <- head(beta, -2) / marg_sd
+    eta <- x(vs) %*% beta_use
+    plot(vs, 
+         {
+           eta_p <- xp(vs) %*% beta_use
+           eta_p * exp(dnorm(eta, log = TRUE) - pnorm(-eta, log = TRUE))
+         }, 
+         xlim = c(1e-2, admin_cens), xlab = "Time", ylab = "Hazard", bty = "l", 
+         xaxs = "i", yaxs = "i", type = "l")
+    grid()
+    
+    plot(vs, pnorm(-eta), 
+        xlim = c(1e-2, admin_cens), xlab = "Time", 
+        ylab = "Survival probability", bty = "l", xaxs = "i", yaxs = "i", 
+        type = "l", ylim = c(0, 1))
+    grid()
+  })()
 
 # simulates a given number of clusters
 sim_dat <- \(n_clusters)
@@ -347,7 +361,7 @@ sim_dat <- \(n_clusters)
     
     # get the covariance matrix and sample the random effects and the 
     # covariates
-    sigma <- diag(n_members) + sigs[1] * genentic_mat + sigs[2] * env_mat
+    sigma <- sigs[1] * genentic_mat + sigs[2] * env_mat
     U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
     X <- cbind(continous = rnorm(n_members), sex = sex == 1)
     
@@ -384,13 +398,47 @@ dat <- sim_dat(2000L)
 # compute the marginal hazard as an example. It should not match the previous 
 # plot because of the covariate depends 
 library(muhaz)
+library(bshazard)
 par(mar = c(5, 5, 1, 1))
 local({
   events <- sapply(dat, `[[`, "event") |> unlist()
   times <- sapply(dat, `[[`, "y") |> unlist()
-  marg_haz <- muhaz(times, events, max.time = max(times[events > 0]), 
-                    bw.grid = .25)
-  plot(marg_haz)
+  muhaz(times, events, max.time = max(times[events > 0]), bw.grid = .25) |> 
+    plot(bty = "l")
+  grid()
+  
+  bshazard(Surv(times, events) ~1, degree = 3, verbose = FALSE, nbin = 40) |> 
+    plot(bty = "l")
+  grid()
+  
+  survfit(Surv(times, events) ~ 1) |> 
+    plot(ylab = "Survival probability", xlab = "time", bty = "l", 
+        xaxs = "i", yaxs = "i")
+  grid()
+})
+
+# we can work on a more comparable subset with the covariates which are roughly
+# zero
+local({
+  events <- sapply(dat, `[[`, "event") |> unlist()
+  times <- sapply(dat, `[[`, "y") |> unlist()
+  
+  keep <- abs(unlist(sapply(dat, function(x) x$X[, "continous"]))) < .05 &
+        unlist(sapply(dat, function(x) x$X[, "sex"])) == 0
+  events <- events[keep]
+  times <- times[keep]
+  
+  muhaz(times, events, max.time = max(times[events > 0]), bw.grid = .25) |> 
+    plot(bty = "l")
+  grid()
+  
+  bshazard(Surv(times, events) ~1, degree = 3, verbose = FALSE, nbin = 40) |> 
+    plot(bty = "l")
+  grid()
+  
+  survfit(Surv(times, events) ~ 1) |> 
+    plot(ylab = "Survival probability", xlab = "time", bty = "l", 
+        xaxs = "i", yaxs = "i")
   grid()
 })
 
@@ -507,7 +555,7 @@ sim_dat <- \(n_clusters)
     
     # get the covariance matrix and sample the random effects and the 
     # covariates
-    sigma <- diag(n_members) + sigs[1] * genentic_mat
+    sigma <- sigs[1] * genentic_mat
     U <- drop(mvtnorm::rmvnorm(1, sigma = sigma))
     X <- cbind(continous = rnorm(n_members), sex = sex == 1)
     
@@ -534,6 +582,7 @@ sim_dat <- \(n_clusters)
   
 # the seeds we will use
 seeds <- c(8401826L, 19570958L, 87207905L, 39109909L, 99443018L, 2376809L, 47711086L, 31776421L, 25001561L, 52480852L, 60995910L, 21615146L, 94750831L, 93554588L, 34801146L, 36420473L, 22444614L, 75001896L, 24531192L, 80062842L, 2550195L, 53048710L, 85436064L, 34437762L, 69997970L, 1398478L, 91388403L, 73915718L, 64407295L, 99315526L, 55230929L, 65254925L, 78593369L, 5490535L, 68973709L, 16502678L, 48015260L, 40584496L, 40234129L, 21559783L, 55991123L, 56211248L, 40530496L, 64880106L, 73843004L, 70419165L, 86063754L, 8426283L, 62523674L, 76475834L, 18648984L, 32812748L, 33439015L, 35109557L, 64695510L, 89300314L, 67141661L, 54871836L, 86274621L, 29495382L, 98744647L, 70279529L, 87794930L, 95918838L, 16179951L, 14344327L, 7258644L, 24703384L, 70432309L, 59709907L, 90392706L, 6833276L, 81342050L, 79794195L, 17842594L, 27444067L, 44945811L, 68154408L, 39539322L, 43510922L, 47071732L, 65301241L, 43997413L, 27680735L, 27550685L, 9154686L, 65359476L, 68151567L, 75590209L, 32994761L, 23446289L, 42236969L, 64634732L, 19941161L, 27046869L, 37687425L, 20225748L, 57217006L, 65626553L, 56052853L)
+seeds <- head(seeds, 25)
 
 # get the simulation results
 sim_res <- lapply(seeds, \(seed){

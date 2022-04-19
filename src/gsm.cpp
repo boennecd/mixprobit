@@ -537,7 +537,6 @@ arma::mat pedigree_vcov
   (std::vector<arma::mat> const &scale_mats, arma::vec const &sigs){
   arma::uword const dim{scale_mats[0].n_rows};
   arma::mat out(dim, dim, arma::fill::zeros);
-  out.diag() += 1;
 
   for(size_t i = 0; i < scale_mats.size(); ++i)
     out += sigs[i] * scale_mats[i];
