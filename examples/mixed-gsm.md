@@ -196,7 +196,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 146.602   0.016 146.646
+#> 144.909   0.004 144.933
 
 # fit the model with the CDF approach
 system.time(
@@ -205,7 +205,7 @@ system.time(
     rng_formula = ~ Z2, maxpts = c(1000L, 10000L), df = 8L, 
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>  65.913   0.016  65.931
+#>  64.328   0.008  64.337
 ```
 
 The results are shown below.
@@ -286,13 +286,13 @@ survreg(Surv(y, event) ~ X1 + X2, data = dat_full) |> logLik()
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.568   0.000   9.569
+#>   9.453   0.000   9.454
 sd(func_ests)
 #> [1] 0.01358
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   9.933   0.000   9.937
+#>   9.493   0.000   9.494
 sd(func_ests)
 #> [1] 0.008076
 ```
@@ -558,7 +558,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L, 
     method = "adaptive_spherical_radial"))
 #>    user  system elapsed 
-#> 339.293   0.004 339.331
+#>   330.5     0.0   330.5
 
 # fit the model with the CDF approach
 system.time(
@@ -566,7 +566,7 @@ system.time(
     data = dat, maxpts = c(1000L, 10000L), df = 5L,
     method = "cdf_approach"))
 #>    user  system elapsed 
-#>   81.84    0.00   81.85
+#>   79.02    0.00   79.02
 ```
 
 The results are shown below.
@@ -638,13 +638,13 @@ print(res_cdf$logLik, digits = 8)
 system.time(
   func_ests <- sapply(1:20, \(s) res_sr $fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   63.38    0.00   63.38
+#>   61.87    0.00   61.87
 sd(func_ests)
 #> [1] 0.06087
 system.time(
   func_ests <- sapply(1:20, \(s) res_cdf$fn(res_sr$optim$par, seed = s)))
 #>    user  system elapsed 
-#>   8.633   0.000   8.633
+#>   8.381   0.000   8.380
 sd(func_ests)
 #> [1] 0.009246
 ```
@@ -703,7 +703,6 @@ sim_dat <- \(n_clusters)
   
 # the seeds we will use
 seeds <- c(8401826L, 19570958L, 87207905L, 39109909L, 99443018L, 2376809L, 47711086L, 31776421L, 25001561L, 52480852L, 60995910L, 21615146L, 94750831L, 93554588L, 34801146L, 36420473L, 22444614L, 75001896L, 24531192L, 80062842L, 2550195L, 53048710L, 85436064L, 34437762L, 69997970L, 1398478L, 91388403L, 73915718L, 64407295L, 99315526L, 55230929L, 65254925L, 78593369L, 5490535L, 68973709L, 16502678L, 48015260L, 40584496L, 40234129L, 21559783L, 55991123L, 56211248L, 40530496L, 64880106L, 73843004L, 70419165L, 86063754L, 8426283L, 62523674L, 76475834L, 18648984L, 32812748L, 33439015L, 35109557L, 64695510L, 89300314L, 67141661L, 54871836L, 86274621L, 29495382L, 98744647L, 70279529L, 87794930L, 95918838L, 16179951L, 14344327L, 7258644L, 24703384L, 70432309L, 59709907L, 90392706L, 6833276L, 81342050L, 79794195L, 17842594L, 27444067L, 44945811L, 68154408L, 39539322L, 43510922L, 47071732L, 65301241L, 43997413L, 27680735L, 27550685L, 9154686L, 65359476L, 68151567L, 75590209L, 32994761L, 23446289L, 42236969L, 64634732L, 19941161L, 27046869L, 37687425L, 20225748L, 57217006L, 65626553L, 56052853L)
-seeds <- head(seeds, 25)
 
 # get the simulation results
 sim_res <- lapply(seeds, \(seed){
@@ -772,21 +771,21 @@ error <- ests - c(tail(beta, 2), sigs)
 
 apply(error, 1:2, mean) # the bias estimates
 #>               CDF Adaptive Spherical Radial
-#> fixef_1  0.005519                  0.005258
-#> fixef_2 -0.006060                 -0.006465
-#> Genetic  0.033994                  0.029445
+#> fixef_1 -0.001951                 -0.002405
+#> fixef_2  0.002152                  0.001776
+#> Genetic -0.004154                 -0.007253
 apply(error, 1:2, sd) / sqrt(dim(error)[3]) # the standard errors
 #>              CDF Adaptive Spherical Radial
-#> fixef_1 0.007355                   0.00728
-#> fixef_2 0.013307                   0.01325
-#> Genetic 0.046751                   0.04504
+#> fixef_1 0.004097                  0.004041
+#> fixef_2 0.007361                  0.007341
+#> Genetic 0.028001                  0.027713
 
 # compute the root mean square error
 apply(error, 1:2, \(x) sqrt(mean(x^2)))
 #>             CDF Adaptive Spherical Radial
-#> fixef_1 0.03645                   0.03605
-#> fixef_2 0.06547                   0.06523
-#> Genetic 0.23154                   0.22259
+#> fixef_1 0.04081                   0.04028
+#> fixef_2 0.07328                   0.07306
+#> Genetic 0.27864                   0.27583
 
 # box plot of the errors
 error <- aperm(error, c(3, 2, 1))
@@ -809,8 +808,8 @@ abline(h = 0, lty = 2)
 comp_time <- sapply(sim_res, \(x) sapply(x, `[[`, "time")["elapsed", ])
 rowMeans(comp_time)
 #>                       CDF Adaptive Spherical Radial 
-#>                     11.69                    108.65
+#>                     11.86                    104.48
 apply(comp_time, 1, sd)
 #>                       CDF Adaptive Spherical Radial 
-#>                     1.985                    52.605
+#>                     2.465                    51.523
 ```
